@@ -101,6 +101,28 @@ class CommittedCourseTests(unittest.TestCase):
     def test_committed_course_contract(self):
         self.assertEqual([], cfx11_course_audit.audit())
 
+    def test_every_preview_requires_human_and_agent_discovery_paths(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for relative in ("web/index.html", "SKILL.html", "web/cfx11/SKILL.html"):
+                destination = root / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(ROOT / relative, destination)
+            self.assertEqual([], cfx11_course_audit.audit_discovery(root))
+            foyer = root / "web/index.html"
+            foyer.write_text(foyer.read_text(encoding="utf-8").replace("/lab/static/cfx11/index.html", "/missing-preview"), encoding="utf-8")
+            findings = cfx11_course_audit.audit_discovery(root)
+            self.assertTrue(any("web/index.html" in finding for finding in findings), findings)
+
+    def test_runtime_contract_detects_removed_input_and_kernel_controls(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            course = Path(temporary) / "cfx11"
+            shutil.copytree(ROOT / "web/cfx11", course)
+            client = course / "course.js"
+            client.write_text(client.read_text(encoding="utf-8").replace('addEventListener("input-request"', 'addEventListener("removed-input"'), encoding="utf-8")
+            findings = cfx11_course_audit.audit(course)
+            self.assertTrue(any("in-cell Python input" in finding for finding in findings), findings)
+
     def test_dynamic_content_keeps_a_strict_url_and_theme_boundary(self):
         client = (ROOT / "web/cfx11/course.js").read_text(encoding="utf-8")
         styles = (ROOT / "web/cfx11/course.css").read_text(encoding="utf-8")

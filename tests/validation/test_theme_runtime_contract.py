@@ -114,6 +114,23 @@ class ThemeRuntimeContractTests(unittest.TestCase):
         self.assertIn("require(repositoryPlaywright)", source)
         self.assertNotIn('require("playwright-core")', source)
 
+    def test_declared_course_previews_are_projected_with_their_runtime_assets(self) -> None:
+        build = (ROOT / "scripts/build/build_pages.sh").read_text(encoding="utf-8")
+        for token in (
+            'previews = manifest.get("previews", [])',
+            'entries = manifest.get("preview_entries", {})',
+            'shutil.copytree(source, target_root / name, dirs_exist_ok=True)',
+            'shutil.copytree(shared, target_root / "shared", dirs_exist_ok=True)',
+            'shutil.copy2(root / "web/_skill_explorer.js", target_root / "_skill_explorer.js")',
+            'for course in [*manifest.get("released", []), *manifest.get("previews", [])]',
+            'for course in manifest.get("previews", [])',
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, build)
+        self.assertIn('entries.get(name) != f"/lab/static/{name}/index.html"', build)
+        self.assertEqual(3, build.count('re.sub(r"<!--.*?-->", "",'))
+        self.assertEqual(3, build.count(r'<script\b(?=[^>]*\bid="foyer-release")'))
+
     def test_required_worker_builds_the_candidate_once_for_pages(self) -> None:
         core = (ROOT / ".gitlab/ci/core.yml").read_text(encoding="utf-8")
         test_job = core_job("test", "external_integration_audit")

@@ -18,12 +18,16 @@ const state = {
   blocks: [],
   activeBlock: null,
   activeChat: null,
+  requestBlocks: new Map(),
+  latestKernel: null,
 };
 
 const elements = Object.fromEntries([
   "course-nav", "lesson-title", "lesson-meta", "lesson-body", "runtime-status", "run-all",
   "stop-runtime", "reset-runtime", "settings-dialog", "api-key", "api-status", "open-settings",
-  "previous-lesson", "next-lesson", "progress-value", "progress-label",
+  "previous-lesson", "next-lesson", "progress-value", "progress-label", "theme-toggle",
+  "clear-api-key", "kernel-status", "queue-status", "kernel-variables", "inspect-runtime",
+  "restart-runtime", "test-api-key",
 ].map(id => [id, document.getElementById(id)]));
 
 function escapeHtml(value) {
@@ -253,6 +257,23 @@ function appendChannel(output, label, value, className = "") {
   output.append(row);
 }
 
+function appendError(output, stderr) {
+  if (!stderr) return;
+  const actionable = String(stderr).split("\n").find(line => line.includes("The browser could not reach"));
+  if (!actionable) {
+    appendChannel(output, "stderr", stderr, "stderr");
+    return;
+  }
+  appendChannel(output, "Connection", actionable.replace(/^.*?(The browser could not reach)/, "$1"), "stderr");
+  const details = document.createElement("details");
+  const summary = document.createElement("summary");
+  summary.textContent = "Full Python traceback";
+  const pre = document.createElement("pre");
+  pre.textContent = stderr;
+  details.append(summary, pre);
+  output.append(details);
+}
+
 function renderReply(block, reply) {
   if (reply.batch_mode === "gil-locked-threads") {
     elements["runtime-status"].textContent = "Python ready · batches use GIL-locked threads";
@@ -277,7 +298,7 @@ function renderReply(block, reply) {
     row.append(label, renderDisplay({ type: reply.display_type, data: reply.display, language: reply.display_language }));
     block.output.append(row);
   }
-  appendChannel(block.output, "stderr", reply.stderr, "stderr");
+  appendError(block.output, reply.stderr);
   if (reply.error_line) {
     const line = Math.max(0, reply.error_line - 1);
     block.editor.addLineClass?.(line, "background", "course-error-line");
@@ -293,18 +314,75 @@ function renderReply(block, reply) {
     details.append(summary, pre);
     block.output.append(details);
   }
+  if (reply.kernel) renderKernel(reply.kernel);
+}
+
+function renderKernel(kernel) {
+  state.latestKernel = kernel;
+  const shortId = String(kernel.session_id || "").split("-")[0] || "starting";
+  elements["kernel-status"].textContent = `#${shortId} · ${kernel.execution_count || 0} executions`;
+  const rows = Array.isArray(kernel.variables) ? kernel.variables : [];
+  if (!rows.length) {
+    elements["kernel-variables"].innerHTML = "<p>No public variables are in memory yet.</p>";
+    return;
+  }
+  const table = document.createElement("table");
+  const head = document.createElement("thead");
+  const headRow = document.createElement("tr");
+  for (const label of ["Name", "Type", "Current value"]) {
+    const cell = document.createElement("th");
+    cell.scope = "col";
+    cell.textContent = label;
+    headRow.append(cell);
+  }
+  head.append(headRow);
+  const body = document.createElement("tbody");
+  for (const row of rows) {
+    const tr = document.createElement("tr");
+    for (const value of [row.name, row.type, row.preview]) {
+      const td = document.createElement("td");
+      const code = document.createElement("code");
+      code.textContent = String(value ?? "");
+      td.append(code);
+      tr.append(td);
+    }
+    body.append(tr);
+  }
+  table.append(head, body);
+  elements["kernel-variables"].replaceChildren(table);
+}
+
+function resetKernelView() {
+  state.latestKernel = null;
+  elements["kernel-status"].textContent = "Not started";
+  elements["kernel-variables"].innerHTML = "<p>Run a cell. Inspect the variables and their short previews.</p>";
+}
+
+function restartRuntime() {
+  state.runner.reset({
+    lessonDirectory: state.lesson.id.includes("/") ? state.lesson.id.slice(0, state.lesson.id.lastIndexOf("/")) : "introduction",
+    files: filesForLesson(state.lesson),
+  });
+  resetKernelView();
+  for (const block of state.blocks) {
+    block.article.dataset.state = "ready";
+    block.status.textContent = "Ready";
+    block.output.replaceChildren();
+  }
+  elements["runtime-status"].textContent = "Python restarted · variables cleared";
 }
 
 async function runBlock(block) {
-  state.activeBlock = block;
-  block.article.dataset.state = "running";
-  block.status.textContent = "Running";
+  block.article.dataset.state = "queued";
+  block.status.textContent = "Queued";
   block.output.replaceChildren();
   const stream = document.createElement("pre");
   stream.className = "model-stream";
   block.output.append(stream);
   try {
-    const reply = await state.runner.run(block.editor.getValue(), elements["api-key"].value.trim());
+    const execution = state.runner.run(block.editor.getValue(), elements["api-key"].value.trim());
+    state.requestBlocks.set(execution.requestId, block);
+    const reply = await execution;
     renderReply(block, reply);
     block.article.dataset.state = reply.ok ? "passed" : "failed";
     block.status.textContent = reply.ok ? `Ran as In [${reply.execution_count}]` : "Failed";
@@ -316,7 +394,9 @@ async function runBlock(block) {
     block.status.textContent = "Failed";
     return false;
   } finally {
-    state.activeBlock = null;
+    for (const [requestId, candidate] of state.requestBlocks) {
+      if (candidate === block) state.requestBlocks.delete(requestId);
+    }
   }
 }
 
@@ -408,8 +488,8 @@ async function loadLesson(lesson) {
     lessonDirectory: lesson.id.includes("/") ? lesson.id.slice(0, lesson.id.lastIndexOf("/")) : "introduction",
     files: filesForLesson(lesson),
   };
-  state.runner.reset(configuration);
-  elements["runtime-status"].textContent = "Python loads when you run a cell";
+  state.runner.configure(configuration);
+  elements["runtime-status"].textContent = state.latestKernel ? "Python session kept across lessons" : "Python loads when you run a cell";
   const index = state.manifest.lessons.indexOf(lesson);
   const previous = state.manifest.lessons[index - 1];
   const next = state.manifest.lessons[index + 1];
@@ -419,6 +499,13 @@ async function loadLesson(lesson) {
   if (next) { elements["next-lesson"].href = lessonHref(next); elements["next-lesson"].textContent = `Next · ${next.title}`; }
   renderProgress();
   window.scrollTo({ top: 0 });
+}
+
+function openLesson(lesson, { replace = false } = {}) {
+  const url = lessonHref(lesson);
+  if (replace) history.replaceState({ lesson: lesson.id }, "", url);
+  else history.pushState({ lesson: lesson.id }, "", url);
+  return loadLesson(lesson);
 }
 
 async function initialize() {
@@ -435,11 +522,67 @@ state.runner.addEventListener("model-stream", event => {
     state.activeChat.textContent += event.detail.text;
     return;
   }
-  const stream = state.activeBlock?.output.querySelector(".model-stream");
+  const stream = state.requestBlocks.get(event.detail.requestId)?.output.querySelector(".model-stream");
   if (stream) stream.textContent += event.detail.text;
 });
 
+state.runner.addEventListener("job-start", event => {
+  const block = state.requestBlocks.get(event.detail.id);
+  if (!block) return;
+  block.article.dataset.state = "running";
+  block.status.textContent = "Running";
+});
+
+state.runner.addEventListener("queue-change", event => {
+  const { active, queued } = event.detail;
+  elements["queue-status"].textContent = active
+    ? `${queued} waiting · 1 running`
+    : queued ? `${queued} waiting` : "Queue empty";
+});
+
+state.runner.addEventListener("input-request", event => {
+  const block = state.requestBlocks.get(event.detail.requestId);
+  if (!block) {
+    event.detail.respond("");
+    return;
+  }
+  const form = document.createElement("form");
+  form.className = "python-input";
+  const label = document.createElement("label");
+  label.textContent = event.detail.prompt || "Python input";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.required = true;
+  input.autocomplete = "off";
+  const submit = document.createElement("button");
+  submit.type = "submit";
+  submit.textContent = "Continue";
+  form.append(label, input, submit);
+  form.addEventListener("submit", submitEvent => {
+    submitEvent.preventDefault();
+    input.disabled = true;
+    submit.disabled = true;
+    event.detail.respond(input.value);
+  }, { once: true });
+  block.output.append(form);
+  input.focus();
+});
+
+function currentTheme() {
+  return document.documentElement.dataset.theme
+    || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+}
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  elements["theme-toggle"].textContent = theme === "dark" ? "Light mode" : "Dark mode";
+  elements["theme-toggle"].setAttribute("aria-pressed", String(theme === "dark"));
+  try { localStorage.setItem("cfx11-theme", theme); } catch (_) {}
+}
+
 elements["open-settings"].addEventListener("click", () => elements["settings-dialog"].showModal());
+applyTheme(currentTheme());
+elements["theme-toggle"].addEventListener("click", () => applyTheme(currentTheme() === "dark" ? "light" : "dark"));
 elements["api-key"].value = sessionStorage.getItem("cfx11-nvidia-key") || "";
 elements["api-key"].addEventListener("input", () => {
   const value = elements["api-key"].value.trim();
@@ -447,21 +590,70 @@ elements["api-key"].addEventListener("input", () => {
   elements["api-status"].textContent = value ? "The key is held in this browser tab only." : "No key is stored in this browser tab.";
 });
 elements["api-key"].dispatchEvent(new Event("input"));
+elements["clear-api-key"].addEventListener("click", () => {
+  elements["api-key"].value = "";
+  elements["api-key"].dispatchEvent(new Event("input"));
+  elements["api-key"].focus();
+});
+elements["test-api-key"].addEventListener("click", async () => {
+  const key = elements["api-key"].value.trim();
+  if (!key) {
+    elements["api-status"].textContent = "Paste a key before testing the connection.";
+    elements["api-key"].focus();
+    return;
+  }
+  elements["test-api-key"].disabled = true;
+  elements["api-status"].textContent = "Checking NVIDIA API access…";
+  try {
+    const response = await fetch("https://integrate.api.nvidia.com/v1/models", {
+      credentials: "omit",
+      headers: { Accept: "application/json", Authorization: `Bearer ${key}` },
+    });
+    elements["api-status"].textContent = response.ok
+      ? "Connected. Model cells can use this key."
+      : `NVIDIA rejected this key (${response.status}). Check or replace it.`;
+  } catch (error) {
+    const origin = location.origin === "null" ? "a local file" : location.origin;
+    elements["api-status"].textContent = `This origin (${origin}) cannot reach NVIDIA's API. Open the published HTTPS course.`;
+  } finally {
+    elements["test-api-key"].disabled = false;
+  }
+});
 elements["run-all"].addEventListener("click", async () => {
   if (!confirm(`Run ${state.blocks.length} cells in order? Model cells can consume NVIDIA API quota.`)) return;
   for (const block of state.blocks) if (!(await runBlock(block))) break;
 });
-elements["stop-runtime"].addEventListener("click", () => state.runner.stop());
-elements["reset-runtime"].addEventListener("click", () => {
-  state.runner.reset({
-    lessonDirectory: state.lesson.id.includes("/") ? state.lesson.id.slice(0, state.lesson.id.lastIndexOf("/")) : "introduction",
-    files: filesForLesson(state.lesson),
-  });
-  for (const block of state.blocks) {
-    block.article.dataset.state = "ready";
-    block.status.textContent = "Ready";
-    block.output.replaceChildren();
+elements["stop-runtime"].addEventListener("click", () => {
+  state.runner.stop();
+  resetKernelView();
+  elements["runtime-status"].textContent = "Python stopped · variables cleared";
+});
+elements["reset-runtime"].addEventListener("click", restartRuntime);
+elements["restart-runtime"].addEventListener("click", restartRuntime);
+elements["inspect-runtime"].addEventListener("click", async () => {
+  elements["inspect-runtime"].disabled = true;
+  try {
+    const reply = await state.runner.inspect();
+    if (reply.kernel) renderKernel(reply.kernel);
+  } finally {
+    elements["inspect-runtime"].disabled = false;
   }
+});
+document.addEventListener("click", event => {
+  const link = event.target.closest("a[data-lesson-id], #previous-lesson, #next-lesson");
+  if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  const lessonId = link.dataset.lessonId || new URL(link.href).searchParams.get("lesson");
+  const lesson = state.manifest?.lessons.find(item => item.id === lessonId);
+  if (!lesson) return;
+  event.preventDefault();
+  openLesson(lesson).catch(error => {
+    elements["lesson-body"].innerHTML = `<section class="fatal"><h2>Lesson could not open</h2><pre>${escapeHtml(error.stack || error.message)}</pre></section>`;
+  });
+});
+window.addEventListener("popstate", () => {
+  const requested = new URL(location.href).searchParams.get("lesson");
+  const lesson = state.manifest?.lessons.find(item => item.id === requested) || state.manifest?.lessons[0];
+  if (lesson) loadLesson(lesson);
 });
 
 initialize().catch(error => {

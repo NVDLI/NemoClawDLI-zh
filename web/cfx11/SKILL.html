@@ -30,7 +30,7 @@
     {
       "name": "Browser Python",
       "entry": "web/cfx11/runtime/worker.js",
-      "contract": "Run original cells in a persistent Pyodide worker and keep errors, stdout, rich values, model streams, and traces separate."
+      "contract": "Run original cells through one serialized queue in a persistent Pyodide worker. Keep input prompts, errors, stdout, rich values, model streams, traces, session identity, and bounded variable inspection visible. Preserve the kernel across in-tab lesson navigation; restart and reload clear it."
     },
     {
       "name": "NVIDIA model transport",
@@ -46,6 +46,7 @@
   "tests": [
     "python3 scripts/validation/cfx11_course_audit.py",
     "python3 -m unittest -v tests.validation.test_cfx11_course",
+    "node tests/runtime/test_cfx11_browser.mjs",
     "python3 scripts/validation/release_gate.py --tier fast --no-write --changed-since origin/main"
   ]
 }
@@ -121,7 +122,7 @@
   </header>
   <h1 id="skill-title">web/cfx11</h1>
   <p>Internal browser candidate for c-fx-11-v1, with reviewed Markdown source, executable XBlocks, and direct learner-owned NVIDIA API access.</p>
-  <p><strong>Start with <a href="SOURCE_PROVENANCE.md">source provenance</a> and <a href="course.json">the fidelity manifest</a>.</strong> The imported course is an internal review candidate until its source license is confirmed. Open <a href="runtime/SKILL.html">runtime/</a> for the browser implementation. The <a href="content/SKILL.html">content/</a> directory holds the original cells and support files; <a href="assets/SKILL.html">assets/</a> identifies the local portability asset.</p>
+  <p><strong><a href="index.html">Open the course preview</a>, then review <a href="SOURCE_PROVENANCE.md">source provenance</a> and <a href="course.json">the fidelity manifest</a>.</strong> The imported course is an internal review candidate until its source license is confirmed. Open <a href="runtime/SKILL.html">runtime/</a> for the browser implementation. The <a href="content/SKILL.html">content/</a> directory holds the original cells and support files; <a href="assets/SKILL.html">assets/</a> identifies the local portability asset.</p>
   <div class="skill-columns">
     <section><h2>Files</h2><ul>
       <li><a href="SOURCE_PROVENANCE.md"><code>SOURCE_PROVENANCE.md</code></a></li>

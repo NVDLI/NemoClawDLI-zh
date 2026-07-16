@@ -41,6 +41,11 @@ let pyodidePromise;
 let kernelReady = false;
 let executionCount = 0;
 let activeRequestId = null;
+let kernelStartedAt = null;
+let kernelSessionId = null;
+let mountedConfiguration = "";
+let nextPromptId = 1;
+const inputWaiters = new Map();
 
 function safeJson(value) {
   return JSON.stringify(value, (_, item) => typeof item === "bigint" ? String(item) : item);
@@ -78,10 +83,10 @@ function applyEventBlock(block, state) {
 }
 
 const NETWORK_RULES = Object.freeze(new Map([
-  ["integrate.api.nvidia.com", { paths: ["/v1/"], authorization: true }],
-  ["en.wikipedia.org", { paths: ["/w/api.php"], authorization: false }],
-  ["air-quality-api.open-meteo.com", { paths: ["/v1/air-quality"], authorization: false }],
-  ["mermaid.ink", { paths: ["/"], authorization: false }],
+  ["integrate.api.nvidia.com", { paths: ["/v1/"], headers: ["accept", "authorization", "content-type"] }],
+  ["en.wikipedia.org", { paths: ["/w/api.php"], headers: ["accept", "content-type"] }],
+  ["air-quality-api.open-meteo.com", { paths: ["/v1/air-quality"], headers: ["accept", "content-type"] }],
+  ["mermaid.ink", { paths: ["/"], headers: ["accept", "content-type"] }],
 ]));
 
 function checkedNetworkUrl(rawUrl) {
@@ -154,22 +159,20 @@ globalThis.courseHttpRequest = async function courseHttpRequest(requestJson) {
   const headers = new Headers();
   for (const [name, value] of Object.entries(request.headers || {})) {
     const normalized = name.toLowerCase();
-    if (["connection", "content-length", "host", "user-agent"].includes(normalized)) continue;
-    if (normalized === "authorization" && !rule.authorization) {
-      throw new Error(`Authorization is not permitted for ${url.hostname}.`);
-    }
+    if (!rule.headers.includes(normalized)) continue;
     headers.set(name, String(value));
   }
   const method = String(request.method || "GET").toUpperCase();
   const requestBody = ["GET", "HEAD"].includes(method) || request.body == null || request.body === ""
     ? undefined
     : String(request.body);
-  const response = await fetch(url, {
-    method,
-    credentials: "omit",
-    headers,
-    body: requestBody,
-  });
+  let response;
+  try {
+    response = await fetch(url, { method, credentials: "omit", headers, body: requestBody });
+  } catch (error) {
+    const origin = self.location.origin === "null" ? "a local file" : self.location.origin;
+    throw new Error(`The browser could not reach ${url.origin} from ${origin}. Open the published HTTPS course instead of a local file or unregistered origin, then retry. ${error instanceof Error ? error.message : String(error)}`);
+  }
   const stream = headers.get("accept")?.includes("text/event-stream") || false;
   const responseBytes = await readResponseBytes(response, stream && url.hostname === "integrate.api.nvidia.com");
   return safeJson({
@@ -178,6 +181,14 @@ globalThis.courseHttpRequest = async function courseHttpRequest(requestJson) {
     url: response.url || url.href,
     headers: Object.fromEntries(response.headers.entries()),
     body_base64: bytesToBase64(responseBytes),
+  });
+};
+
+globalThis.courseInput = function courseInput(prompt) {
+  const promptId = nextPromptId++;
+  return new Promise(resolve => {
+    inputWaiters.set(promptId, resolve);
+    self.postMessage({ type: "input-request", requestId: activeRequestId, promptId, prompt: String(prompt || "") });
   });
 };
 
@@ -216,31 +227,74 @@ function batchMode(pyodide) {
 
 async function prepareKernel(configuration = {}) {
   const pyodide = await runtime();
-  if (kernelReady) return pyodide;
-  pyodide.runPython('__course_scope = {"__name__": "__main__"}');
+  if (!kernelReady) {
+    pyodide.runPython('__course_scope = {"__name__": "__main__"}');
+    kernelSessionId = crypto.randomUUID();
+    kernelStartedAt = Date.now();
+  }
 
   const lessonDirectory = String(configuration.lessonDirectory || "course").replace(/[^A-Za-z0-9._/-]/g, "_");
   const root = `/course/${lessonDirectory}`;
-  pyodide.FS.mkdirTree(root);
-  for (const file of configuration.files || []) {
-    const relative = String(file.path || "");
-    if (!relative || relative.startsWith("/") || relative.split("/").includes("..")) {
-      throw new Error(`Unsafe lesson file path: ${relative}`);
+  const fingerprint = safeJson({ lessonDirectory, files: configuration.files || [] });
+  if (fingerprint !== mountedConfiguration) {
+    pyodide.FS.mkdirTree(root);
+    for (const file of configuration.files || []) {
+      const relative = String(file.path || "");
+      if (!relative || relative.startsWith("/") || relative.split("/").includes("..")) {
+        throw new Error(`Unsafe lesson file path: ${relative}`);
+      }
+      const response = await fetch(file.url, { credentials: "omit" });
+      if (!response.ok) throw new Error(`Could not load lesson file ${relative} (${response.status}).`);
+      const destination = `${root}/${relative}`;
+      pyodide.FS.mkdirTree(destination.slice(0, destination.lastIndexOf("/")));
+      pyodide.FS.writeFile(destination, new Uint8Array(await response.arrayBuffer()));
     }
-    const response = await fetch(file.url, { credentials: "omit" });
-    if (!response.ok) throw new Error(`Could not load lesson file ${relative} (${response.status}).`);
-    const destination = `${root}/${relative}`;
-    pyodide.FS.mkdirTree(destination.slice(0, destination.lastIndexOf("/")));
-    pyodide.FS.writeFile(destination, new Uint8Array(await response.arrayBuffer()));
+    mountedConfiguration = fingerprint;
   }
   pyodide.runPython(`import os\nos.chdir(${JSON.stringify(root)})`);
 
-  const compatibility = await fetch(new URL("course_compat.py", import.meta.url), { credentials: "omit" });
-  if (!compatibility.ok) throw new Error(`Could not load the browser Python compatibility layer (${compatibility.status}).`);
-  const bootstrap = await executeRaw(pyodide, await compatibility.text(), {}, 0);
-  if (!bootstrap.ok) throw new Error(`Compatibility layer failed to initialize:\n${bootstrap.stderr}`);
-  kernelReady = true;
+  if (!kernelReady) {
+    const compatibility = await fetch(new URL("course_compat.py", import.meta.url), { credentials: "omit" });
+    if (!compatibility.ok) throw new Error(`Could not load the browser Python compatibility layer (${compatibility.status}).`);
+    const bootstrap = await executeRaw(pyodide, await compatibility.text(), {}, 0);
+    if (!bootstrap.ok) throw new Error(`Compatibility layer failed to initialize:\n${bootstrap.stderr}`);
+    kernelReady = true;
+  }
   return pyodide;
+}
+
+function kernelSnapshot(pyodide) {
+  const raw = pyodide.runPython(`
+import json as __course_json
+import re as __course_re
+import types as __course_types
+__course_hidden = {"COURSE_EXECUTION_TRACE", "COURSE_BATCH_MODE"}
+__course_secret = __course_re.compile(r"key|token|secret|password|authorization|credential", __course_re.I)
+__course_rows = []
+for __course_name, __course_value in sorted(__course_scope.items()):
+    if __course_name.startswith("_") or __course_name in __course_hidden or isinstance(__course_value, __course_types.ModuleType):
+        continue
+    if __course_secret.search(__course_name):
+        __course_preview = "[hidden]"
+    else:
+        try:
+            __course_preview = repr(__course_value)
+        except Exception:
+            __course_preview = "<preview unavailable>"
+        if len(__course_preview) > 180:
+            __course_preview = __course_preview[:177] + "..."
+        __course_preview = __course_re.sub(r"nvapi-[A-Za-z0-9_-]{6,}", "nvapi-[hidden]", __course_preview)
+        __course_preview = __course_re.sub(r"(?i)(bearer\\s+)[A-Za-z0-9._-]{8,}", r"\\1[hidden]", __course_preview)
+    __course_rows.append({"name": __course_name, "type": type(__course_value).__name__, "preview": __course_preview})
+__course_json.dumps(__course_rows)
+`);
+  return {
+    session_id: kernelSessionId,
+    started_at: kernelStartedAt,
+    execution_count: executionCount,
+    variables: JSON.parse(String(raw)),
+    batch_mode: batchMode(pyodide),
+  };
 }
 
 function normalizeMagic(source) {
@@ -274,6 +328,7 @@ async function runCell(message) {
     const trace = pyodide.runPython('list(__course_scope.get("COURSE_EXECUTION_TRACE", []))');
     reply.trace = trace.toJs({ dict_converter: Object.fromEntries });
     reply.batch_mode = batchMode(pyodide);
+    reply.kernel = kernelSnapshot(pyodide);
     trace.destroy();
     pyodide.runPython('__course_scope["COURSE_EXECUTION_TRACE"] = []');
     return reply;
@@ -295,6 +350,7 @@ async function runChat(message) {
   try {
     const reply = await executeRaw(pyodide, "__course_chatbots[__course_chat_id].chat(__course_chat_prompt)", {}, ++executionCount);
     reply.batch_mode = batchMode(pyodide);
+    reply.kernel = kernelSnapshot(pyodide);
     return reply;
   } finally {
     pyodide.runPython('import os\nos.environ.pop("NVIDIA_API_KEY", None)');
@@ -306,14 +362,28 @@ async function runChat(message) {
 
 async function preload(message) {
   const pyodide = await prepareKernel(message.configuration);
-  return { ok: true, execution_count: 0, batch_mode: batchMode(pyodide) };
+  return { ok: true, execution_count: 0, batch_mode: batchMode(pyodide), kernel: kernelSnapshot(pyodide) };
+}
+
+async function inspectKernel(message) {
+  const pyodide = await prepareKernel(message.configuration);
+  return { ok: true, execution_count: executionCount, kernel: kernelSnapshot(pyodide) };
 }
 
 self.addEventListener("message", async ({ data }) => {
+  if (data.type === "input-response") {
+    const resolve = inputWaiters.get(data.promptId);
+    if (resolve) {
+      inputWaiters.delete(data.promptId);
+      resolve(String(data.value || ""));
+    }
+    return;
+  }
   if (data.type === "stop") return;
   try {
     const result = data.type === "preload"
       ? await preload(data)
+      : data.type === "inspect" ? await inspectKernel(data)
       : data.type === "chat" ? await runChat(data) : await runCell(data);
     self.postMessage({ type: "result", id: data.id, ...result });
   } catch (error) {

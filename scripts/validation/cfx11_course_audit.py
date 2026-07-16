@@ -57,6 +57,26 @@ def source_from_block(body: str, record: dict) -> str:
     return source_raw.decode("utf-8")
 
 
+def audit_discovery(root: Path = ROOT) -> list[str]:
+    """Require every learner preview to be reachable from both human and agent hubs."""
+
+    findings: list[str] = []
+    required = {
+        "web/index.html": "/lab/static/cfx11/index.html",
+        "SKILL.html": "web/cfx11/index.html",
+        "web/cfx11/SKILL.html": 'href="index.html">Open the course preview',
+    }
+    for relative, marker in required.items():
+        try:
+            source = (root / relative).read_text(encoding="utf-8")
+        except OSError:
+            findings.append(f"course discovery surface is missing: {relative}")
+            continue
+        if marker not in source:
+            findings.append(f"course preview is disconnected at {relative}")
+    return findings
+
+
 def audit(course: Path = COURSE) -> list[str]:
     findings: list[str] = []
     required = [
@@ -172,6 +192,7 @@ def audit(course: Path = COURSE) -> list[str]:
     client = (course / "course.js").read_text(encoding="utf-8")
     compatibility = (course / "runtime/course_compat.py").read_text(encoding="utf-8")
     learner_shell = (course / "index.html").read_text(encoding="utf-8")
+    styles = (course / "course.css").read_text(encoding="utf-8")
     boundary = runtime + client + compatibility + learner_shell
     if boundary.count("https://integrate.api.nvidia.com/v1") < 2:
         findings.append("direct NVIDIA API boundary is not explicit in both runtime and learner settings")
@@ -195,6 +216,28 @@ def audit(course: Path = COURSE) -> list[str]:
             findings.append(f"real upstream model transport contract is missing: {contract}")
     if "new CoursePythonRunner" not in client or "buildXBlocks" not in client:
         findings.append("Markdown code cells are not upgraded through the shared executable XBlock path")
+    if course == COURSE:
+        findings.extend(audit_discovery())
+    runtime_contracts = {
+        "visible learner key entry": (learner_shell, 'id="api-key"'),
+        "visible model connection test": (learner_shell + client, 'id="test-api-key"'),
+        "explicit theme control": (learner_shell, 'id="theme-toggle"'),
+        "kernel variable panel": (learner_shell, 'id="kernel-variables"'),
+        "serialized execution queue": (client, 'addEventListener("queue-change"'),
+        "in-cell Python input": (client + runtime + compatibility, 'addEventListener("input-request"'),
+        "kernel inspection": (client + runtime, 'state.runner.inspect()'),
+        "cross-lesson kernel configuration": (client, "state.runner.configure(configuration)"),
+        "stable NVIDIA request headers": (runtime, '["accept", "authorization", "content-type"]'),
+        "origin-specific transport error": (runtime, "published HTTPS course"),
+        "concise transport error presentation": (client, 'summary.textContent = "Full Python traceback"'),
+        "wide lesson reading surface": (styles, ".lesson-body p, .lesson-body li { max-width: 92ch; }"),
+        "theme-specific input palette": (styles, "--input-bg: #f2f8e9;"),
+        "theme-specific code palette": (styles, "--code-bg: #f6f8fa;"),
+        "fixed-color logo presentation": (styles, 'img[src$="/nvidia.png"]'),
+    }
+    for label, (source, marker) in runtime_contracts.items():
+        if marker not in source:
+            findings.append(f"browser course omits {label}")
     for contract in (
         "application/x-course-chat+json", "courseHttpRequest", "_browser_wikipedia_init",
         "_assert_upstream_packages", "await micropip.install(__course_local_wheels.to_py(), deps=False",

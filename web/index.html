@@ -8,25 +8,26 @@
 
 <!--
   RELEASE FOYER.
-  This page is the release surface for the bundle's browser course. It is the one
-  place a student lands first, and it discovers ONLY the course that is currently
-  released: nemoclaw (Securing Agents). Everything else in the bundle (shared
-  services, observability) is reachable from inside that course or from the SKILL
-  beacons, NOT from this foyer.
+  This page is the human entry for released courses and explicitly labeled internal
+  branch previews. A preview is discoverable for review but is not a release claim.
 
   The released set is declared once, machine-readably, in the <script id="foyer-release">
   block below and enforced by link_projection.foyer_release_check (RELEASED constant).
-  To release another course: add it to RELEASED, add its card here, re-run the cadence.
+  To release another course: move it from PREVIEWS to RELEASED, update its card, and re-run the cadence.
 -->
 <script type="application/json" id="foyer-release">
 {
   "kind": "release-foyer",
   "bundle": "building-agents",
   "released": ["nemoclaw"],
+  "previews": ["cfx11"],
   "entries": {
     "nemoclaw": "/lab/static/nemoclaw/index.html"
   },
-  "contract": "The foyer surfaces only the courses listed in 'released'. Enforced by link_projection.foyer_release_check."
+  "preview_entries": {
+    "cfx11": "/lab/static/cfx11/index.html"
+  },
+  "contract": "The foyer surfaces only declared releases and explicitly labeled previews. Enforced by link_projection.foyer_release_check."
 }
 </script>
 
@@ -116,6 +117,10 @@
   .path-card p { font-size: .92rem; color: var(--td); margin: .4em 0 0; line-height: 1.6; }
   .path-card .arrow { margin-top: 1em; color: var(--g); font-weight: 700;
                       font-size: .92rem; }
+  .preview-paths { margin: 1.6em 0; }
+  .preview-paths > h2 { margin: 0 0 .25em; color: var(--tx); font-size: 1.05rem; }
+  .preview-paths > p { margin: 0 0 .8em; color: var(--tf); font-size: .86rem; }
+  .path-card.preview { padding: 17px 20px; border-style: dashed; }
 
   .callout {
     border: 1px solid var(--e3); background: rgba(118,185,0,.07);
@@ -204,6 +209,18 @@
     course model gateway, so the cells just work. Inside edX the text reads fine, but the
     live cells there need your own API key, which each course page lets you set.
   </div>
+
+  <section class="preview-paths" aria-labelledby="preview-heading">
+    <h2 id="preview-heading">Internal course preview</h2>
+    <p>Available on this branch for review. Preview status does not imply release or licensing approval.</p>
+    <a class="path-card preview" href="/lab/static/cfx11/index.html">
+      <span class="label">Markdown + Python preview</span>
+      <h2>Building LLM Applications With Prompt Engineering</h2>
+      <span class="duration">30 lessons · browser Python</span>
+      <p>Run the imported notebook cells in a persistent Pyodide session and connect directly to NVIDIA models with your own API key.</p>
+      <span class="arrow">Open the preview →</span>
+    </a>
+  </section>
 
   <div class="switcher-grid">
     <section class="foyer-switcher" id="language-switcher" aria-live="polite">

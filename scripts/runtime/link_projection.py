@@ -50,6 +50,7 @@ SKIP_DIR = {"__pycache__", ".ipynb_checkpoints", "node_modules", "export", "stan
 
 # Release contract mirrored from engine.js for Python callers.
 RELEASED = ("nemoclaw",)
+PREVIEWS = ("cfx11",)
 
 # mats are course-scoped reference packets; match engine.js segment detection.
 MAT_REL = "web/nemoclaw/mats"

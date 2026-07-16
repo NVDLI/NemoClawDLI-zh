@@ -12,6 +12,7 @@ host, chat host, and assessment middleware that a static Pyodide page needs.
 from __future__ import annotations
 
 import base64
+import builtins as _course_builtins
 from concurrent.futures import Executor, Future
 import json
 import os
@@ -25,7 +26,7 @@ from urllib.parse import urlsplit
 import httpx
 import requests
 from IPython import display as ipython_display
-from js import courseHttpRequest
+from js import courseHttpRequest, courseInput
 from openai import OpenAI
 from pyodide.ffi import run_sync
 from requests import Request, Response
@@ -54,6 +55,17 @@ def _browser_fetch(method: str, url: str, headers: dict[str, str], body: bytes |
         status=int(result["status"]),
     )
     return result
+
+
+def _browser_input(prompt: object = "") -> str:
+    """Present Python input() inside the cell that requested it."""
+
+    answer = str(run_sync(courseInput(str(prompt))))
+    print(f"{prompt}{answer}")
+    return answer
+
+
+_course_builtins.input = _browser_input
 
 
 def _browser_requests_request(

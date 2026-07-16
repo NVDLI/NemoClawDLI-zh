@@ -330,6 +330,8 @@ def gen_task():
     # This beacon documents the whole ontology; the foyer ships a subset.
     rel_courses = [c for c in RELEASED if (TASK1 / "web" / c).is_dir()]
     actions = [("Open the release foyer →", "web/index.html", True)]
+    if (TASK1 / "web" / "cfx11" / "index.html").is_file():
+        actions.append(("Prompt Engineering preview", "web/cfx11/index.html", False))
     if (TASK1 / "web" / "nemoclaw" / "01a-loop.html").is_file():
         actions.append(("Securing Agents", "web/nemoclaw/01a-loop.html", False))
 

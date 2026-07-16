@@ -55,6 +55,14 @@ async function runCell(page, index, replacement = null) {
   return block;
 }
 
+async function waitForBlock(page, block) {
+  await page.waitForFunction(cellId => {
+    const element = document.querySelector(`.xblock[data-cell-id="${CSS.escape(cellId)}"]`);
+    return ["passed", "failed"].includes(element?.dataset.state);
+  }, await block.getAttribute("data-cell-id"), { timeout });
+  return block;
+}
+
 await listen();
 let browser;
 try {
@@ -83,7 +91,13 @@ try {
   await page.goto(url, { waitUntil: "domcontentloaded", timeout });
   await page.locator(".xblock").first().waitFor({ timeout });
   check(await page.locator(".xblock").count() === 23, "Runnable Functions must expose all 23 original code cells");
+  const fixedLogo = page.locator('.lesson-body img[src$="/nvidia.png"], .lesson-body img[src$="/nvidia-logo.png"]').first();
+  if (await fixedLogo.count()) {
+    check(await fixedLogo.evaluate(image => getComputedStyle(image).backgroundColor === "rgb(255, 255, 255)"), "fixed-color NVIDIA logo did not receive its dark-theme presentation plate");
+  }
   check(await page.locator("#api-key").inputValue() === "", "the learner API key must not be prefilled");
+  check(await page.locator("#api-key").isVisible(), "the learner API key field must be visible in the lesson flow");
+  check(await page.locator("#theme-toggle").isVisible(), "the course must expose an explicit theme control");
   for (const index of [7, 14, 16, 20, 21]) {
     const block = await runCell(page, index);
     const output = await block.locator(".cell-output").innerText();
@@ -101,6 +115,47 @@ try {
   const capabilityOutput = await capabilityBlock.locator(".cell-output").innerText();
   check(await capabilityBlock.getAttribute("data-state") === "passed", `Pyodide capability probe failed:\n${capabilityOutput}`);
   check(capabilityOutput.includes("false") && capabilityOutput.includes("ordered-browser-fallback"), `the runtime capability and selected scheduler disagree:\n${capabilityOutput}`);
+
+  const inputBlock = page.locator('.xblock[data-cell-id$=":21"]');
+  await inputBlock.locator(".CodeMirror").evaluate(element => element.CodeMirror.setValue('student_name = input("Your name: ")\nconnection_config = {"api_key": "nvapi-this-must-not-render"}\n{"student": student_name, "kept": True}'));
+  await inputBlock.getByRole("button", { name: "Run", exact: true }).click();
+  await inputBlock.locator(".python-input").waitFor({ timeout });
+  for (const theme of ["light", "dark"]) {
+    await page.evaluate(value => document.documentElement.dataset.theme = value, theme);
+    const inputPalette = await inputBlock.locator(".python-input").evaluate(form => {
+      const panel = getComputedStyle(form);
+      const field = getComputedStyle(form.querySelector("input"));
+      return { panel: panel.backgroundColor, field: field.backgroundColor, text: field.color };
+    });
+    check(inputPalette.panel !== "rgba(0, 0, 0, 0)" && inputPalette.field !== inputPalette.panel && inputPalette.text, `${theme} Python input was not visually separated`);
+  }
+  const queuedBlock = page.locator('.xblock[data-cell-id$=":20"]');
+  await queuedBlock.locator(".CodeMirror").evaluate(element => element.CodeMirror.setValue('queue_marker = "ran second"\nqueue_marker'));
+  await queuedBlock.getByRole("button", { name: "Run", exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('#queue-status')?.textContent.includes("waiting"), null, { timeout });
+  check(await queuedBlock.getAttribute("data-state") === "queued", "a second execution did not wait behind active input");
+  await inputBlock.locator(".python-input input").fill("Ada");
+  await inputBlock.locator(".python-input button").click();
+  await waitForBlock(page, inputBlock);
+  await waitForBlock(page, queuedBlock);
+  const inputOutput = await inputBlock.locator(".cell-output").innerText();
+  check(inputOutput.includes("Your name: Ada") && inputOutput.includes('"student": "Ada"'), `Python input did not return through the requesting cell:\n${inputOutput}`);
+  check((await queuedBlock.locator(".cell-output").innerText()).includes("ran second"), "queued execution did not run after input completed");
+  for (const theme of ["light", "dark"]) {
+    await page.evaluate(value => document.documentElement.dataset.theme = value, theme);
+    const stdoutPalette = await inputBlock.locator(".output-channel.stdout").evaluate(channel => {
+      const style = getComputedStyle(channel);
+      return { background: style.backgroundColor, color: style.color };
+    });
+    check(stdoutPalette.background !== "rgba(0, 0, 0, 0)" && stdoutPalette.color, `${theme} stdout had no readable presentation`);
+  }
+  check(await page.locator("#queue-status").innerText() === "Queue empty", "execution queue did not return to idle");
+
+  await page.getByRole("button", { name: "Inspect variables" }).click();
+  await page.waitForFunction(() => document.querySelector("#kernel-variables")?.textContent.includes("student_name"), null, { timeout });
+  check((await page.locator("#kernel-variables").innerText()).includes("queue_marker"), "variable inspector omitted persisted queue output");
+  check(!(await page.locator("#kernel-variables").innerText()).includes("this-must-not-render"), "variable inspector exposed a credential-shaped nested value");
+  check(!(await page.locator("#kernel-status").innerText()).includes("Not started"), "kernel session identity was not displayed");
 
   const errorBlock = await runCell(page, 21, "values = [1]\nvalues[9]");
   check(await errorBlock.getAttribute("data-state") === "failed", "runtime error did not fail the cell");
@@ -166,9 +221,9 @@ try {
       ].join("\n\n"),
     });
   });
-  await page.getByRole("button", { name: "Course settings" }).click();
   await page.locator("#api-key").fill("browser-test-key");
-  await page.getByRole("button", { name: "Close settings" }).click();
+  await page.getByRole("button", { name: "Test key" }).click();
+  await page.waitForFunction(() => document.querySelector("#api-status")?.textContent.startsWith("Connected."), null, { timeout });
   const modelSource = `from langchain_nvidia_ai_endpoints import ChatNVIDIA\n"".join(chunk.content for chunk in ChatNVIDIA(model="nvidia/test-model").stream("hello"))`;
   const modelBlock = await runCell(page, 21, modelSource);
   const modelOutput = await modelBlock.locator(".cell-output").innerText();
@@ -177,9 +232,8 @@ try {
   check(modelListingRequest?.headers.authorization === "Bearer browser-test-key", "learner key was not sent on the real package's model discovery request");
   check(modelRequest?.headers.authorization === "Bearer browser-test-key", "learner key was not sent only as the NVIDIA authorization header");
   check(modelRequest?.body?.stream === true && modelRequest?.body?.model === "nvidia/test-model", "streaming model request changed its source-cell parameters");
-  await page.getByRole("button", { name: "Course settings" }).click();
+  check(!Object.keys(modelRequest.headers).some(name => name.startsWith("x-stainless-")), "SDK metadata escaped the stable browser CORS header boundary");
   await page.locator("#api-key").fill("");
-  await page.getByRole("button", { name: "Close settings" }).click();
   await page.unroute("https://integrate.api.nvidia.com/v1/models");
   await page.unroute("https://integrate.api.nvidia.com/v1/chat/completions");
 
@@ -192,6 +246,39 @@ try {
   const airBlock = await runCell(page, 21, airSource);
   const airOutput = await airBlock.locator(".cell-output").innerText();
   check(airOutput.includes('"hourly": true'), `live Open-Meteo request did not return source data:\n${airOutput}`);
+
+  const stateBlock = await runCell(page, 21, 'cross_lesson_value = {"answer": 42}\ncross_lesson_value');
+  check(await stateBlock.getAttribute("data-state") === "passed", "cross-lesson state setup failed");
+  await page.locator('#course-nav a[data-lesson-id="2-Chains/23-Combining-Chains"]').click();
+  await page.waitForFunction(() => document.querySelector("#lesson-title")?.textContent.includes("Combining"), null, { timeout });
+  const carriedBlock = page.locator(".xblock").first();
+  await carriedBlock.locator(".CodeMirror").evaluate(element => element.CodeMirror.setValue("cross_lesson_value"));
+  await carriedBlock.getByRole("button", { name: "Run", exact: true }).click();
+  await waitForBlock(page, carriedBlock);
+  check((await carriedBlock.locator(".cell-output").innerText()).includes('"answer": 42'), "Python variables did not persist across in-tab lesson navigation");
+  await page.getByRole("button", { name: "Inspect variables" }).click();
+  await page.waitForFunction(() => document.querySelector("#kernel-variables")?.textContent.includes("cross_lesson_value"), null, { timeout });
+
+  for (const expectedTheme of ["light", "dark"]) {
+    if (await page.locator("html").getAttribute("data-theme") !== expectedTheme) await page.locator("#theme-toggle").click();
+    check(await page.locator("html").getAttribute("data-theme") === expectedTheme, `${expectedTheme} theme was not selectable`);
+    const palette = await page.evaluate(() => {
+      const key = getComputedStyle(document.querySelector("#api-key"));
+      const editor = getComputedStyle(document.querySelector(".CodeMirror"));
+      const body = getComputedStyle(document.body);
+      return { keyBackground: key.backgroundColor, keyColor: key.color, editorBackground: editor.backgroundColor, bodyBackground: body.backgroundColor };
+    });
+    check(palette.keyBackground !== "rgba(0, 0, 0, 0)" && palette.keyColor, `${expectedTheme} API input had no readable palette`);
+    check(palette.editorBackground !== palette.bodyBackground, `${expectedTheme} editor lost its visual boundary`);
+    if (process.env.CFX11_SCREENSHOT_DIR) {
+      fs.mkdirSync(process.env.CFX11_SCREENSHOT_DIR, { recursive: true });
+      await page.screenshot({ path: path.join(process.env.CFX11_SCREENSHOT_DIR, `cfx11-${expectedTheme}.png`), fullPage: true });
+    }
+  }
+  await page.getByRole("button", { name: "Restart Python" }).click();
+  await page.getByRole("button", { name: "Inspect variables" }).click();
+  await page.waitForFunction(() => document.querySelector("#kernel-status")?.textContent !== "Not started", null, { timeout });
+  check(!(await page.locator("#kernel-variables").innerText()).includes("cross_lesson_value"), "restart did not clear the Python namespace");
 
   await page.goto(`http://127.0.0.1:${port}/web/cfx11/index.html?lesson=3-Prompting-With-Messages%2F36-Chatbots`, { waitUntil: "domcontentloaded", timeout });
   const helperLink = page.getByRole("link", { name: "chat_helpers/gradio_interface.py" });
@@ -216,7 +303,7 @@ run_assessment(InputSensitiveChain())`;
   check(assessmentOutput.includes("Assessment passed"), "assessment did not return its learner-facing pass evidence");
   check(errors.length === 0, `page errors: ${JSON.stringify(errors)}`);
   check(failures.length === 0, `request failures: ${JSON.stringify(failures)}`);
-  console.log(`cfx11_browser_audit: PASS (${manifest.lessons.length} lessons, source-cell order, theme-safe Markdown, persistent Pyodide, error line, chat widget, real LangChain graph PNG, direct NVIDIA streaming contract, live public APIs, upstream helper link, assessment middleware)`);
+  console.log(`cfx11_browser_audit: PASS (${manifest.lessons.length} lessons, source-cell order, explicit themes, visible learner key, serialized queue, in-cell input, cross-lesson kernel state, variable inspection, restart, error line, chat widget, real LangChain graph PNG, direct NVIDIA streaming contract, live public APIs, upstream helper link, assessment middleware)`);
 } finally {
   await browser?.close();
   server.close();
