@@ -20,9 +20,9 @@ async function handle(request) {
       headers: {
         "Access-Control-Allow-Origin":  origin,
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        // X-BILLING-SOURCE attributes usage to the course.
+        // X-BILLING-INVOKE-ORIGIN attributes usage to the course.
         // The browser requires preflight approval; the worker forwards the value unchanged.
-        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-BILLING-SOURCE",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-BILLING-INVOKE-ORIGIN",
         "Access-Control-Max-Age":       "86400",
       },
     });

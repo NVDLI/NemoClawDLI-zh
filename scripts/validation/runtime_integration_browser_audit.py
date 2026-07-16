@@ -26,6 +26,7 @@ const { chromium } = require('playwright-core');
 const root = process.env.SITE_ROOT || '/site';
 const port = Number(process.env.SITE_PORT || 4198);
 const timeoutMs = Number(process.env.AUDIT_TIMEOUT_MS || 120000);
+const retiredBillingHeader = 'x-billing-' + 'source';
 const mime = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.json':'application/json; charset=utf-8', '.svg':'image/svg+xml', '.png':'image/png', '.woff2':'font/woff2' };
 
 function safeJoin(base, urlPath) {
@@ -265,14 +266,18 @@ async function open(browser, pageName, init) {
         results.modelRoutes.embedding.model !== 'nvidia/llama-nemotron-embed-1b-v2' ||
         results.modelRoutes.customEmbedding.model !== 'embedding/provider-model' ||
         !/Jupyter \/lab URL is not a model API/.test(results.modelRoutes.jupyterError) ||
-        custom.some(item => item.credentials !== 'include' || 'x-billing-source' in item.headers) ||
+        custom.some(item => item.credentials !== 'include' ||
+          'x-billing-invoke-origin' in item.headers || retiredBillingHeader in item.headers) ||
         chats.some(item => JSON.parse(item.body).model !== 'nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-FP8') ||
         !embedding || embedding.credentials !== 'same-origin' ||
         embedding.headers.authorization !== 'Bearer nvapi-embedding-audit' ||
+        embedding.headers['x-billing-invoke-origin'] !== 'dli-nemoclaw-web' ||
+        retiredBillingHeader in embedding.headers ||
         !customEmbedding || customEmbedding.credentials !== 'include' ||
         customEmbedding.headers.authorization !== 'Bearer EMPTY-EMBEDDING' ||
         JSON.parse(customEmbedding.body).model !== 'embedding/provider-model' ||
-        'x-billing-source' in customEmbedding.headers) {
+        'x-billing-invoke-origin' in customEmbedding.headers ||
+        retiredBillingHeader in customEmbedding.headers) {
       fail('persistent model route handoff failed: ' + JSON.stringify(results.modelRoutes));
     }
     if (errors.length) fail('model route browser errors: ' + JSON.stringify(errors));
@@ -330,7 +335,8 @@ async function open(browser, pageName, init) {
     if (!request || request.url !== 'https://skill-model.example.test/v1/chat/completions' ||
         request.model !== 'model/skill-registry' || request.messageCount !== 2 ||
         request.headers.authorization !== 'Bearer EMPTY' ||
-        'x-billing-source' in request.headers || results.skillExplorer.answer !== 'registry-ok') {
+        'x-billing-invoke-origin' in request.headers || retiredBillingHeader in request.headers ||
+        results.skillExplorer.answer !== 'registry-ok') {
       fail('SKILL explorer model registry handoff failed: ' + JSON.stringify(results.skillExplorer));
     }
     if (errors.length) fail('SKILL explorer browser errors: ' + JSON.stringify(errors));
