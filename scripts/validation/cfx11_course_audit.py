@@ -212,6 +212,8 @@ def audit(course: Path = COURSE) -> list[str]:
     compatibility = (course / "runtime/course_compat.py").read_text(encoding="utf-8")
     learner_shell = (course / "index.html").read_text(encoding="utf-8")
     styles = (course / "course.css").read_text(encoding="utf-8")
+    shared_workbench = (ROOT / "web/shared/runtime-workbench.js").read_text(encoding="utf-8")
+    shared_workbench_styles = (ROOT / "web/shared/runtime-workbench.css").read_text(encoding="utf-8")
     boundary = runtime + runner + operations + client + compatibility + learner_shell
     if boundary.count("https://integrate.api.nvidia.com/v1") < 2:
         findings.append("direct NVIDIA API boundary is not explicit in both runtime and learner settings")
@@ -252,7 +254,13 @@ def audit(course: Path = COURSE) -> list[str]:
         "explicit theme control": (learner_shell, 'id="theme-toggle"'),
         "focus-aware kernel variable panel": (learner_shell + client + compatibility, 'data-variable-view="focused"'),
         "complete kernel namespace option": (learner_shell, 'data-variable-view="all"'),
-        "floating runtime controls": (learner_shell + styles, 'class="runtime-dock"'),
+        "shared runtime workbench": (learner_shell + client + shared_workbench, "mountRuntimeWorkbench"),
+        "accessible runtime disclosure": (learner_shell + shared_workbench, "data-workbench-view"),
+        "runtime disclosure title target": (learner_shell, "data-workbench-title"),
+        "runtime disclosure close control": (learner_shell, "data-workbench-close"),
+        "runtime focus return": (shared_workbench, "returnFocus"),
+        "code and evidence workspace": (client + shared_workbench_styles, "wb-cell-workspace"),
+        "in-cell runtime inspection": (client, "Inspect the runtime behind this cell"),
         "bounded runtime stream view": (client, "state.streams.length > 160"),
         "NVIDIA-backed runtime guide": (client + runtime, "state.runner.assistant"),
         "serialized execution queue": (client, 'addEventListener("queue-change"'),

@@ -6,6 +6,7 @@
 <title>Pyodide code cookbook</title>
 <link rel="stylesheet" href="../../web/nemoclaw/styles/_style.css"/>
 <link rel="stylesheet" href="../../web/nemoclaw/vendor/codemirror-5.65.21.css"/>
+<link rel="stylesheet" href="../../web/shared/runtime-workbench.css"/>
 <script src="../../web/nemoclaw/vendor/codemirror-5.65.21.js"></script>
 <script src="../../web/nemoclaw/vendor/codemirror-mode-xml-5.65.21.js"></script>
 <script src="../../web/nemoclaw/vendor/codemirror-mode-javascript-5.65.21.js"></script>
@@ -40,6 +41,7 @@
     {"name": "Notebook editor", "entry": "scripts/pyodide/examples/notebook-editor.js", "style": "Add a Python-aware CodeMirror mode, line numbers, source-line error markers, indentation, and Jupyter keyboard controls."},
     {"name": "Progressive cells", "entry": "scripts/pyodide/examples/cell-examples.js", "style": "Keep every supplied-cookbook use case mapped to an editable Python cell."},
     {"name": "Runnable notebook", "entry": "scripts/pyodide/examples/live-playground.js", "style": "Mount a shared REPL namespace, highlighted editors, safe Markdown and HTML displays, build.nvidia.com SSE streaming, optional WebSockets, traceback line markers, Stop, Reset, and run-all controls."},
+    {"name": "Course workbench", "entry": "scripts/pyodide/SKILL.html", "style": "Run the canonical Pyodide cells in a code, artifact, activity, and runtime-tool interface shared with browser courses."},
     {"name": "Network boundary", "entry": "scripts/pyodide/examples/network-fetch.js", "style": "Use a named origin allowlist and an injected course relay only when a lesson needs network access."}
   ],
   "tests": [
@@ -88,6 +90,8 @@
   .py-runtime-status{margin-left:auto;color:var(--td);font-size:.85rem}.py-runtime-status[data-state="ok"],.py-cell-status[data-state="ok"]{color:var(--gs)}.py-runtime-status[data-state="error"],.py-cell-status[data-state="error"]{color:var(--err)}
   .py-network-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;padding:1rem;border-bottom:1px solid var(--bd);background:var(--bg)}.py-network-settings h3,.py-network-settings p{grid-column:1/-1}.py-network-settings p{margin:0;font-size:.86rem}.py-network-settings label{display:grid;gap:.3rem;color:var(--td);font-size:.76rem;font-weight:700}.py-network-settings input,.py-network-settings select{width:100%;min-width:0;border:1px solid var(--bd);border-radius:6px;background:var(--e1);color:var(--tx);padding:.55rem .65rem;font:13px/1.4 var(--mono)}.py-live-toggle{display:flex!important;grid-column:1/-1;grid-template-columns:none!important;align-items:center;gap:.5rem!important}.py-live-toggle input{width:auto}.py-transport-note{grid-column:1/-1;border-left:3px solid var(--acc);padding:.55rem .75rem;background:var(--e1)}
   .py-diagnostic{margin:0;border:0;border-bottom:1px solid var(--bd);border-radius:0;max-height:12rem;white-space:pre-wrap}
+  .reference-activity{display:grid;gap:.4rem;padding:0;list-style:none}.reference-activity li{padding:.5rem .6rem;border-left:3px solid var(--bd);background:var(--bg);color:var(--td);font-size:.8rem}.reference-activity li[data-state="running"]{border-left-color:var(--acc)}.reference-activity li[data-state="ok"]{border-left-color:var(--g)}.reference-activity li[data-state="error"]{border-left-color:var(--err)}
+  .reference-facts{display:grid;gap:.5rem}.reference-facts>div{display:grid;grid-template-columns:6rem 1fr;gap:.7rem;padding:.5rem;border:1px solid var(--bd);border-radius:6px}.reference-facts dd{margin:0;color:var(--td)}
   .py-repl{border-bottom:1px solid var(--bd);background:var(--bg)}.py-repl-head{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;padding:.8rem 1rem;border-bottom:1px solid var(--bd)}.py-repl-head p{margin:0;font-size:.82rem}.py-repl-editor{display:grid;grid-template-columns:4.8rem minmax(0,1fr);align-items:stretch}.py-repl-prompt,.py-cell-prompt{padding:.7rem .65rem;color:var(--acc);font:700 12px/1.55 var(--mono);text-align:right;white-space:nowrap}.py-repl-editor textarea{min-height:7rem;width:100%;border:0;background:var(--code-surface);color:var(--tx);padding:.7rem;font:14px/1.55 var(--mono);resize:vertical}.py-repl-actions{display:flex;align-items:center;gap:.5rem;padding:.65rem 1rem;border-top:1px solid var(--bd)}.py-repl-actions button:first-child{background:var(--g);border-color:var(--g);color:#0a0a0a;font-weight:700}.py-shortcuts{margin-left:auto;color:var(--tf);font:12px/1.4 var(--mono)}.py-repl-transcript{border-top:1px solid var(--bd)}.py-repl-entry{display:grid;grid-template-columns:4.8rem minmax(0,1fr);border-bottom:1px solid var(--bd)}.py-repl-entry:last-child{border-bottom:0}.py-repl-entry pre{padding:.65rem .8rem;white-space:pre-wrap}.py-repl-entry[data-stream="error"] .py-cell-prompt,.py-repl-entry[data-stream="error"] pre{color:var(--err)}
   .py-playground .CodeMirror{background:var(--code-surface);color:var(--tx)}
   .py-helpers{border-bottom:1px solid var(--bd);background:var(--e1)}.py-helpers>summary{display:flex;align-items:center;gap:.7rem;padding:.8rem 1rem;cursor:pointer;list-style:none}.py-helpers>summary::-webkit-details-marker,.py-helpers>summary::marker{display:none;content:""}.py-helpers>summary::before{content:"";width:6px;height:6px;border-right:1.5px solid var(--gs);border-bottom:1.5px solid var(--gs);transform:rotate(-45deg);transition:transform .18s}.py-helpers[open]>summary::before{transform:rotate(45deg)}.py-helper-chip{border:1px solid color-mix(in srgb,var(--g) 45%,var(--bd));border-radius:4px;background:color-mix(in srgb,var(--g) 14%,transparent);color:var(--gs);padding:.18rem .5rem;font:700 11px/1.3 var(--mono);text-transform:uppercase;letter-spacing:.08em}.py-helper-summary{color:var(--td);font-size:.82rem}.py-helper-meta{margin-left:auto;color:var(--tf);font-size:.74rem}.py-helper-scroll{overflow-x:auto}.py-helper-table{margin:0;min-width:650px;table-layout:auto;border-top:1px solid var(--bd)}.py-helper-table td{padding:.55rem .8rem}.py-helper-table td:first-child{width:19rem;color:var(--gs);font-family:var(--mono);white-space:nowrap}.py-helper-row{cursor:pointer}.py-helper-row:hover,.py-helper-row.selected{background:color-mix(in srgb,var(--g) 9%,transparent)}.py-helper-row.selected td:first-child{box-shadow:inset 3px 0 var(--g)}.py-helper-source>td{padding:0!important;background:var(--bg)}.py-helper-source-head{display:flex;align-items:center;gap:.45rem;padding:.55rem .8rem;border-bottom:1px solid var(--bd);color:var(--tf);font:11px/1.4 var(--mono);text-transform:uppercase;letter-spacing:.06em}.py-helper-source-head code{color:var(--gs);text-transform:none;letter-spacing:0}.py-helper-source-head button{border:1px solid var(--bd);border-radius:5px;background:var(--e2);color:var(--tx);padding:.25rem .5rem;font:11px/1.3 var(--mono);cursor:pointer}.py-helper-source-head button:first-of-type{margin-left:auto}.py-helper-source-head button:hover{border-color:var(--g)}.py-helper-status{min-width:8rem;color:var(--td);text-transform:none;letter-spacing:0}.py-helper-status[data-state="ok"]{color:var(--gs)}.py-helper-status[data-state="error"]{color:var(--err)}.py-helper-editor{width:100%;min-height:8rem;border:0;background:var(--code-surface);color:var(--tx);padding:.7rem;font:13px/1.55 var(--mono);resize:vertical}.py-helper-source .CodeMirror{height:auto;min-height:8rem;border:0;background:var(--code-surface);color:var(--tx);font:13px/1.55 var(--mono)}.py-helper-source .CodeMirror-scroll{min-height:8rem;max-height:22rem;overflow-y:auto!important}.py-helper-source .CodeMirror-gutters{background:var(--e1);border-right:1px solid var(--bd)}
@@ -114,6 +118,7 @@
 <main>
   <h1>Pyodide code cookbook</h1>
   <p>This page runs a persistent Python kernel in a Web Worker. One namespace backs the Scratch REPL and twelve syntax-highlighted cells with Jupyter-style execution prompts. The progression includes highlighted data and code, editable display helpers, named background tasks, downloadable artifacts, chat streaming, and source-mapped errors.</p>
+  <p>The runnable reference below uses the same code-and-evidence workspace and floating runtime tools as browser-hosted course work.</p>
   <div class="note">The first run downloads the pinned Pyodide 0.27.7 core runtime. <strong>Shift+Enter</strong> runs a cell and selects the next one. <strong>Ctrl/Cmd+Enter</strong> runs without changing focus. Use <strong>Run all 12 cells</strong> for the complete progression.</div>
 
   <h2>Progressive Python cells</h2>
@@ -151,12 +156,33 @@ course_topic.upper()</textarea>
       </div>
       <div class="py-repl-transcript" data-repl-transcript aria-live="polite"></div>
     </section>
-    <details class="py-helpers" data-python-helpers>
-      <summary><span class="py-helper-chip">helpers</span><span class="py-helper-summary">inspect and override the display, artifact, and background-task functions available in every cell</span><span class="py-helper-meta">select a row to edit its real source</span></summary>
-      <div class="py-helper-scroll"><table class="py-helper-table"><tbody data-helper-rows></tbody></table></div>
-    </details>
-    <pre class="py-diagnostic" data-python-diagnostic aria-live="polite">Loading progressive cell definitions…</pre>
     <div class="py-cell-list" data-python-cells></div>
+    <aside class="wb-dock" data-reference-workbench aria-label="Pyodide runtime tools">
+      <nav class="wb-tools" aria-label="Runtime views">
+        <button class="wb-tool" type="button" data-workbench-view="activity" aria-controls="reference-panel" aria-pressed="false"><span class="wb-tool-icon" aria-hidden="true">ACT</span><span class="wb-tool-copy"><span>Activity</span><span>live status</span></span></button>
+        <button class="wb-tool" type="button" data-workbench-view="session" aria-controls="reference-panel" aria-pressed="false"><span class="wb-tool-icon" aria-hidden="true">PY</span><span class="wb-tool-copy"><span>Session</span><span>kernel rules</span></span></button>
+        <button class="wb-tool" type="button" data-workbench-view="helpers" aria-controls="reference-panel" aria-pressed="false"><span class="wb-tool-icon" aria-hidden="true">API</span><span class="wb-tool-copy"><span>Helpers</span><span>inspect + edit</span></span></button>
+      </nav>
+      <section id="reference-panel" class="wb-panel" data-workbench-panel hidden tabindex="-1">
+        <header><div><span class="eyebrow">Live Pyodide runtime</span><h2 data-workbench-title>Activity</h2></div><button type="button" data-workbench-close>Close</button></header>
+        <section data-workbench-content="activity" hidden>
+          <p>State changes stay visible here while code runs.</p>
+          <ol id="reference-activity" class="reference-activity"><li>No activity yet.</li></ol>
+          <pre class="py-diagnostic" data-python-diagnostic aria-live="polite">Loading progressive cell definitions…</pre>
+        </section>
+        <section data-workbench-content="session" hidden>
+          <p id="reference-session-status">The first run downloads the pinned runtime.</p>
+          <dl class="reference-facts"><div><dt>Kernel</dt><dd>One Web Worker</dd></div><div><dt>Namespace</dt><dd>Shared by the REPL and cells</dd></div><div><dt>Stop</dt><dd>Replaces the worker and cancels active work</dd></div></dl>
+        </section>
+        <section data-workbench-content="helpers" hidden>
+          <p>Inspect a helper's real Python source, edit it, and apply the override to this kernel.</p>
+          <details class="py-helpers" data-python-helpers open>
+            <summary><span class="py-helper-chip">helpers</span><span class="py-helper-summary">display, artifact, and background-task functions</span><span class="py-helper-meta">select a row to edit its real source</span></summary>
+            <div class="py-helper-scroll"><table class="py-helper-table"><tbody data-helper-rows></tbody></table></div>
+          </details>
+        </section>
+      </section>
+    </aside>
   </section>
 
   <h2>Notebook interaction primitives</h2>
@@ -347,6 +373,7 @@ export function createCourseFetch({ fetchImpl = fetch, relayUrl, allowedOrigins 
       <tr><td><a href="examples/learner-cell.py">examples/learner-cell.py</a></td><td>Demonstrates separate progress output and a notebook-style final value.</td></tr>
       <tr><td><a href="examples/cell-examples.js">examples/cell-examples.js</a></td><td>Defines twelve progressively improving Python cells and their cookbook-coverage labels.</td></tr>
       <tr><td><a href="examples/live-playground.js">examples/live-playground.js</a></td><td>Runs the cells in a worker and renders user input, values, stdout, stderr, Stop, and Reset.</td></tr>
+      <tr><td><a href="../../web/shared/runtime-workbench.js">web/shared/runtime-workbench.js</a></td><td>Owns accessible view selection, focus return, and disclosure for the shared runtime tool palette.</td></tr>
       <tr><td><a href="runtime_smoke.mjs">runtime_smoke.mjs</a></td><td>Downloads or accepts exact core assets, verifies hashes, runs every cell, and asserts traceback behavior.</td></tr>
       <tr><td><a href="cookbook-use-cases.json">cookbook-use-cases.json</a></td><td>Maps every reviewed cookbook group and shared runtime behavior to executable cells or implementation code.</td></tr>
       <tr><td><a href="integration-blueprint.md">integration-blueprint.md</a></td><td>Short implementation notes, acquisition steps, and test checklist.</td></tr>
@@ -405,6 +432,25 @@ if (targetByFile[requested]) document.getElementById(targetByFile[requested])?.s
 <script src="examples/cell-examples.js"></script>
 <script src="examples/execution-contract.js"></script>
 <script src="examples/live-playground.js"></script>
+<script type="module">
+import { mountRuntimeWorkbench } from "../../web/shared/runtime-workbench.js";
+
+const root = document.querySelector("[data-reference-workbench]");
+mountRuntimeWorkbench(root, {
+  labels: { activity: "Activity", session: "Session", helpers: "Editable helpers" },
+});
+const activity = document.getElementById("reference-activity");
+const sessionStatus = document.getElementById("reference-session-status");
+document.getElementById("pyodide-playground").addEventListener("pyodide:status", event => {
+  sessionStatus.textContent = event.detail.text;
+  if (activity.firstElementChild?.textContent === "No activity yet.") activity.replaceChildren();
+  const item = document.createElement("li");
+  item.dataset.state = event.detail.state || "info";
+  item.textContent = event.detail.text;
+  activity.prepend(item);
+  while (activity.children.length > 20) activity.lastElementChild.remove();
+});
+</script>
 <script src="../../web/_skill_explorer.js"></script>
 </body>
 </html>

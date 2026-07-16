@@ -185,6 +185,15 @@ main { min-width: 0; padding: clamp(1rem, 3vw, 3rem) clamp(1rem, 5vw, 5rem) 6rem
 .xblock > header span { margin-right: auto; color: var(--quiet); font-size: .73rem; }
 .xblock > header button { padding: .35rem .58rem; font-size: .75rem; }
 .xblock > header button:last-child { border-color: var(--green); }
+.xblock.wb-cell > header .wb-cell-heading span { margin-right: 0; color: var(--quiet); }
+.xblock.wb-cell > header .wb-cell-state { margin-right: 0; }
+.xblock.wb-cell[data-state="running"] .wb-cell-state { border-color: var(--blue); color: var(--blue); }
+.xblock.wb-cell[data-state="queued"] .wb-cell-state { color: var(--muted); }
+.xblock.wb-cell[data-state="passed"] .wb-cell-state { border-color: var(--success); color: var(--success); }
+.xblock.wb-cell[data-state="failed"] .wb-cell-state { border-color: var(--error); color: var(--error); }
+.wb-cell-source .CodeMirror, .wb-cell-source .CodeMirror-scroll { min-height: 9rem; }
+.wb-cell-artifact .cell-output { flex: 1; border-top: 0; }
+.wb-cell-artifact .model-stream { min-height: 2.5rem; }
 .CodeMirror { height: auto; min-height: 3.5rem; max-height: 38rem; background: var(--code-bg); color: var(--code-text); font: .86rem/1.55 var(--mono); }
 .CodeMirror-scroll { min-height: 3.5rem; max-height: 38rem; }
 .CodeMirror-gutters { background: var(--code-gutter); border-right-color: var(--line); }
@@ -254,11 +263,6 @@ dialog input { width: 100%; padding: .7rem .8rem; border: 1px solid var(--line);
 dialog p { color: var(--muted); font-size: .9rem; }
 .fatal { padding: 1rem; border: 1px solid var(--error); color: var(--error); }
 
-.runtime-dock { position: fixed; z-index: 30; right: 1rem; bottom: 1rem; display: flex; align-items: end; gap: .6rem; pointer-events: none; }
-.runtime-dock-actions, .runtime-panel { pointer-events: auto; border: 1px solid var(--line); background: color-mix(in srgb, var(--panel) 96%, transparent); box-shadow: 0 1.2rem 3.5rem rgb(0 0 0 / .28); backdrop-filter: blur(14px); }
-.runtime-dock-actions { display: flex; flex-direction: column; gap: .3rem; padding: .4rem; border-radius: .75rem; }
-.runtime-dock-actions button { width: 6.2rem; padding: .45rem .35rem; font-size: .72rem; }
-.runtime-dock-actions button[aria-pressed="true"] { border-color: var(--green); background: color-mix(in srgb, var(--green) 15%, var(--panel)); }
 .operation-badge { display: block; margin-top: .18rem; color: var(--muted); font: .62rem/1.2 var(--mono); }
 .operation-badge[data-state="running"] { color: var(--blue); }
 .operation-badge[data-state="failed"] { color: var(--error); }
@@ -297,10 +301,6 @@ dialog p { color: var(--muted); font-size: .9rem; }
 .runtime-agent-form { display: grid; gap: .45rem; margin-top: .8rem; }
 .runtime-agent-form textarea { width: 100%; resize: vertical; padding: .65rem; border: 1px solid var(--line); border-radius: .45rem; background: var(--bg); color: var(--text); }
 
-@media (min-width: 1100px) {
-  body:has(.runtime-panel:not([hidden])) main { padding-right: 32rem; }
-}
-
 @media (max-width: 900px) {
   .course-shell { display: block; }
   .course-rail { position: relative; top: 0; width: 100%; height: auto; max-height: 26rem; border-right: 0; border-bottom: 1px solid var(--line); }
@@ -314,7 +314,7 @@ dialog p { color: var(--muted); font-size: .9rem; }
   .brand span:last-child, #runtime-status { display: none; }
   main { padding-inline: .75rem; }
   .xblock > header { flex-wrap: wrap; }
-  .xblock > header span { width: 100%; order: 3; }
+  .xblock > header > .wb-cell-state { order: 3; }
   .course-chat form { grid-template-columns: 1fr; }
   .output-channel { display: block; }
   .output-channel > strong { display: block; margin-bottom: .35rem; }
@@ -323,8 +323,5 @@ dialog p { color: var(--muted); font-size: .9rem; }
   .python-input { grid-template-columns: 1fr; }
   .lesson-pagination { flex-direction: column; }
   .lesson-pagination a { max-width: 100%; }
-  .runtime-dock { right: .5rem; bottom: .5rem; left: .5rem; display: flex; flex-direction: column; align-items: stretch; }
-  .runtime-dock-actions { order: 2; flex-direction: row; overflow-x: auto; }
-  .runtime-dock-actions button { flex: 1 0 5rem; }
   .runtime-panel { width: 100%; max-height: min(70vh, 38rem); }
 }

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { marked } from "../shared/vendor/marked-14.1.4.esm.js";
+import { mountRuntimeWorkbench } from "../shared/runtime-workbench.js";
 import { CoursePythonRunner } from "./runtime/runner.js";
 import { ObservableOperations, formatDuration } from "./runtime/operations.js";
 
@@ -556,6 +557,7 @@ function restartRuntime() {
 
 async function runBlock(block) {
   block.article.dataset.state = "queued";
+  block.article.setAttribute("aria-busy", "true");
   block.status.textContent = "Queued";
   block.output.replaceChildren();
   const stream = document.createElement("pre");
@@ -578,6 +580,7 @@ async function runBlock(block) {
     block.status.textContent = "Failed";
     return false;
   } finally {
+    block.article.setAttribute("aria-busy", "false");
     for (const [requestId, candidate] of state.requestBlocks) {
       if (candidate === block) state.requestBlocks.delete(requestId);
     }
@@ -598,13 +601,23 @@ function buildXBlocks() {
     if (!sourceNode?.matches("pre")) throw new Error(`Code cell ${marker.dataset.cellId} did not render a source block.`);
     const source = sourceNode.textContent.replace(/\n$/, "");
     const article = document.createElement("article");
-    article.className = "xblock";
+    article.className = "xblock wb-cell";
     article.dataset.cellId = marker.dataset.cellId;
     article.dataset.state = "ready";
+    article.setAttribute("aria-busy", "false");
     const header = document.createElement("header");
+    const heading = document.createElement("div");
+    heading.className = "wb-cell-heading";
     const prompt = document.createElement("strong");
     prompt.textContent = `In [ ] · cell ${Number(marker.dataset.cellIndex) + 1}`;
+    const priorHeading = [...elements["lesson-body"].querySelectorAll("h2, h3")]
+      .filter(candidate => Boolean(candidate.compareDocumentPosition(markerContainer) & Node.DOCUMENT_POSITION_FOLLOWING))
+      .at(-1);
+    const context = document.createElement("span");
+    context.textContent = priorHeading?.textContent.replace(/#$/, "").trim() || state.lesson?.title || "Python exercise";
+    heading.append(prompt, context);
     const status = document.createElement("span");
+    status.className = "wb-cell-state";
     status.textContent = "Ready";
     const run = document.createElement("button");
     run.type = "button";
@@ -612,13 +625,56 @@ function buildXBlocks() {
     const restore = document.createElement("button");
     restore.type = "button";
     restore.textContent = "Restore source";
-    header.append(prompt, status, restore, run);
+    header.append(heading, status, restore, run);
+
+    const workspace = document.createElement("div");
+    workspace.className = "wb-cell-workspace";
+    const sourcePane = document.createElement("section");
+    sourcePane.className = "wb-cell-source";
+    sourcePane.setAttribute("aria-label", "Editable Python source");
+    const sourceLabel = document.createElement("div");
+    sourceLabel.className = "wb-cell-pane-label";
+    sourceLabel.textContent = "Editable Python";
     const textarea = document.createElement("textarea");
     textarea.value = source;
     textarea.setAttribute("aria-label", `Python source for cell ${Number(marker.dataset.cellIndex) + 1}`);
+    sourcePane.append(sourceLabel, textarea);
+
+    const artifactPane = document.createElement("section");
+    artifactPane.className = "wb-cell-artifact";
+    artifactPane.setAttribute("aria-label", "Cell result");
+    const artifactLabel = document.createElement("div");
+    artifactLabel.className = "wb-cell-pane-label";
+    artifactLabel.textContent = "Result and evidence";
     const output = document.createElement("div");
     output.className = "cell-output";
-    article.append(header, textarea, output);
+    const emptyOutput = document.createElement("p");
+    emptyOutput.className = "wb-cell-empty";
+    emptyOutput.textContent = "Run the cell to see its value, progress, model stream, or error here.";
+    output.append(emptyOutput);
+    artifactPane.append(artifactLabel, output);
+    workspace.append(sourcePane, artifactPane);
+
+    const tools = document.createElement("details");
+    tools.className = "wb-cell-tools";
+    const toolsSummary = document.createElement("summary");
+    toolsSummary.textContent = "Inspect the runtime behind this cell";
+    const toolsBody = document.createElement("div");
+    toolsBody.className = "wb-cell-tools-body";
+    for (const [label, panelName] of [
+      ["Cell activity", "activity"],
+      ["Variables", "variables"],
+      ["Output streams", "streams"],
+      ["Environment", "environment"],
+    ]) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = label;
+      button.addEventListener("click", () => openRuntimePanel(panelName));
+      toolsBody.append(button);
+    }
+    tools.append(toolsSummary, toolsBody);
+    article.append(header, workspace, tools);
     markerContainer.replaceWith(article);
     sourceNode.remove();
     const editor = globalThis.CodeMirror.fromTextArea(textarea, {
@@ -732,6 +788,7 @@ state.runner.addEventListener("job-start", event => {
   const block = state.requestBlocks.get(event.detail.id);
   if (!block) return;
   block.article.dataset.state = "running";
+  block.article.setAttribute("aria-busy", "true");
   block.status.textContent = "Running";
 });
 
@@ -834,14 +891,23 @@ function applyTheme(theme) {
   });
 }
 
+const runtimeWorkbench = mountRuntimeWorkbench(document.querySelector("[data-runtime-workbench]"), {
+  labels: {
+    session: "Session",
+    activity: "Activity",
+    variables: "Variables",
+    streams: "Streams",
+    environment: "Environment",
+    agent: "Runtime guide",
+  },
+  onOpen(name) {
+    if (name === "environment") renderEnvironment();
+    if (name === "variables" && state.latestKernel) renderKernel(state.latestKernel);
+  },
+});
+
 function openRuntimePanel(name) {
-  const titles = { session: "Session", activity: "Activity", variables: "Variables", streams: "Streams", environment: "Environment", agent: "Runtime guide" };
-  elements["runtime-panel"].hidden = false;
-  elements["runtime-panel-title"].textContent = titles[name] || "Runtime";
-  document.querySelectorAll("[data-panel-view]").forEach(view => { view.hidden = view.dataset.panelView !== name; });
-  document.querySelectorAll("[data-runtime-panel]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.runtimePanel === name)));
-  if (name === "environment") renderEnvironment();
-  if (name === "variables" && state.latestKernel) renderKernel(state.latestKernel);
+  runtimeWorkbench.open(name);
 }
 
 function addAgentMessage(role, text, pending = false) {
@@ -1022,11 +1088,6 @@ elements["inspect-runtime"].addEventListener("click", async () => {
     elements["inspect-runtime"].textContent = "Refresh";
     elements["kernel-variables"].removeAttribute("aria-busy");
   }
-});
-document.querySelectorAll("[data-runtime-panel]").forEach(button => button.addEventListener("click", () => openRuntimePanel(button.dataset.runtimePanel)));
-elements["close-runtime-panel"].addEventListener("click", () => {
-  elements["runtime-panel"].hidden = true;
-  document.querySelectorAll("[data-runtime-panel]").forEach(button => button.setAttribute("aria-pressed", "false"));
 });
 document.querySelectorAll("[data-variable-view]").forEach(button => button.addEventListener("click", () => {
   state.variableView = button.dataset.variableView;

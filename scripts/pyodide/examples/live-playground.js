@@ -59,7 +59,7 @@ self.courseStreamChat = async (requestJson, apiKey, requestId) => {
     headers: {
       "Authorization": "Bearer " + String(apiKey),
       "Content-Type": "application/json",
-      "X-BILLING-INVOKE-ORIGIN": "dli-nemoclaw-web",
+      "X-BILLING-INVOKE-ORIGIN": "dli-pyodide-reference",
     },
     body: JSON.stringify({
       model: request.model,
@@ -323,10 +323,11 @@ self.addEventListener("message", async ({ data }) => {
     const setStatus = (text, state = "") => {
       status.textContent = text;
       status.dataset.state = state;
+      root.dispatchEvent(new CustomEvent("pyodide:status", { detail: { text, state } }));
     };
     const setBusy = (busy) => {
       root.querySelectorAll("button").forEach((button) => {
-        if (button.dataset.action === "stop") return;
+        if (button.dataset.action === "stop" || button.matches("[data-workbench-view], [data-workbench-close]")) return;
         button.disabled = busy;
       });
     };
@@ -339,9 +340,15 @@ self.addEventListener("message", async ({ data }) => {
         artifactUrls.delete(node.dataset.artifactUrl);
       });
       cell.output.replaceChildren();
+      const empty = document.createElement("p");
+      empty.className = "wb-cell-empty";
+      empty.textContent = "Run this cell to see its value, streams, generated artifact, or traceback.";
+      cell.output.append(empty);
       cell.lastReply = null;
       cell.status.textContent = "Ready";
       cell.status.dataset.state = "ready";
+      cell.section.dataset.state = "ready";
+      cell.section.setAttribute("aria-busy", "false");
     }
 
     function makeDisplayNode(text, displayType = "text/plain", language = "") {
@@ -629,11 +636,13 @@ self.addEventListener("message", async ({ data }) => {
 
     function createCell(example) {
       const section = document.createElement("section");
-      section.className = "py-example";
+      section.className = "py-example wb-cell";
       section.dataset.exampleId = example.id;
 
-      const heading = document.createElement("div");
+      const heading = document.createElement("header");
       heading.className = "py-example-heading";
+      const headingCopy = document.createElement("div");
+      headingCopy.className = "wb-cell-heading";
       const title = document.createElement("h3");
       title.textContent = example.title;
       const purpose = document.createElement("p");
@@ -645,7 +654,8 @@ self.addEventListener("message", async ({ data }) => {
         tag.textContent = item;
         tags.append(tag);
       }
-      heading.append(title, purpose, tags);
+      headingCopy.append(title, purpose, tags);
+      heading.append(headingCopy);
 
       let transcript = null;
       if (example.chat) {
@@ -708,9 +718,24 @@ self.addEventListener("message", async ({ data }) => {
       output.dataset.outputFor = example.id;
       output.setAttribute("aria-live", "polite");
 
-      section.append(heading);
-      if (transcript) section.append(transcript);
-      section.append(inputLabel, editorShell, actions, output);
+      const workspace = document.createElement("div");
+      workspace.className = "wb-cell-workspace";
+      const sourcePane = document.createElement("section");
+      sourcePane.className = "wb-cell-source";
+      const sourceLabel = document.createElement("div");
+      sourceLabel.className = "wb-cell-pane-label";
+      sourceLabel.textContent = "Editable Python";
+      sourcePane.append(sourceLabel, inputLabel, editorShell, actions);
+      const artifactPane = document.createElement("section");
+      artifactPane.className = "wb-cell-artifact";
+      const artifactLabel = document.createElement("div");
+      artifactLabel.className = "wb-cell-pane-label";
+      artifactLabel.textContent = "Result and evidence";
+      artifactPane.append(artifactLabel);
+      if (transcript) artifactPane.append(transcript);
+      artifactPane.append(output);
+      workspace.append(sourcePane, artifactPane);
+      section.append(heading, workspace);
       list.append(section);
       const cell = { example, section, input, editor: null, inputPrompt, output, status: cellStatus, transcript, history: [] };
       cells.set(example.id, cell);
@@ -733,6 +758,8 @@ self.addEventListener("message", async ({ data }) => {
       cell.inputPrompt.textContent = "In [*]:";
       cell.status.textContent = "Running…";
       cell.status.dataset.state = "running";
+      cell.section.dataset.state = "running";
+      cell.section.setAttribute("aria-busy", "true");
       setStatus(`Running ${cell.example.title} with Pyodide ${PYODIDE_VERSION}…`, "running");
       try {
         const reply = await runner.run(cell.editor.getValue(), {
@@ -752,6 +779,7 @@ self.addEventListener("message", async ({ data }) => {
         }
         cell.status.textContent = reply.ok ? "Passed" : "Python error";
         cell.status.dataset.state = reply.ok ? "ok" : "error";
+        cell.section.dataset.state = reply.ok ? "passed" : "failed";
         setStatus(reply.ok ? `${cell.example.title} finished.` : `${cell.example.title} raised an exception.`, reply.ok ? "ok" : "error");
         return reply;
       } catch (error) {
@@ -764,9 +792,11 @@ self.addEventListener("message", async ({ data }) => {
         });
         cell.status.textContent = "Runtime error";
         cell.status.dataset.state = "error";
+        cell.section.dataset.state = "failed";
         setStatus("Python did not finish.", "error");
         return { ok: false };
       } finally {
+        cell.section.setAttribute("aria-busy", "false");
         if (manageBusy) setBusy(false);
       }
     }

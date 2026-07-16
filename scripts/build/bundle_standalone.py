@@ -789,9 +789,14 @@ def _copy_pyodide_review(out: Path) -> None:
     """Ship the complete declared Pyodide review surface and keep its local assets in-bounds."""
     destination = out / "pyodide"
     shutil.copytree(TASK1 / "scripts" / "pyodide", destination, dirs_exist_ok=True)
+    shared_destination = destination / "shared"
+    shared_destination.mkdir(parents=True, exist_ok=True)
+    for name in ("runtime-workbench.css", "runtime-workbench.js"):
+        shutil.copy2(TASK1 / "web" / "shared" / name, shared_destination / name)
     page = destination / "SKILL.html"
     source = page.read_text(encoding="utf-8")
     source = source.replace("../../web/nemoclaw/", "../")
+    source = source.replace("../../web/shared/", "shared/")
     page.write_text(source, encoding="utf-8")
 
 

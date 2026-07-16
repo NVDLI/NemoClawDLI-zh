@@ -27,6 +27,7 @@ EXECUTION_CONTRACT = ROOT / "scripts/pyodide/examples/execution-contract.js"
 RUNTIME_SMOKE = ROOT / "scripts/pyodide/runtime_smoke.mjs"
 USE_CASES = ROOT / "scripts/pyodide/cookbook-use-cases.json"
 COURSE_WHEEL_LOCK = ROOT / "web/cfx11/runtime/wheels.lock.json"
+SHARED_WORKBENCH = ROOT / "web/shared/runtime-workbench.js"
 
 # These are the only core filenames evaluated from Pyodide's npm release.
 # A new filename changes the browser artifact even when the version does not.
@@ -80,7 +81,8 @@ EXAMPLE_MARKERS = {
         "PYODIDE_NOTEBOOK_EDITOR", "__course_scope", "execution_count", "courseStreamChat",
         "courseWebSocketRoundTrip", "sanitizeRichOutput", "BLOCKED_RICH_TAGS", "makeDisplayNode",
         "application/json", "highlightElement", "applyHelper", "helperEditors", "py-artifact-output",
-        "data-artifact-url", "error_line",
+        "data-artifact-url", "error_line", "wb-cell-workspace", "pyodide:status",
+        "dli-pyodide-reference",
     ),
 }
 
@@ -338,7 +340,7 @@ def audit(
         "display_code()", "display_table()", "display_artifact()", "register_background()",
         "select a row to edit its real source",
         "runtime-loader.js", "python-worker.js", "worker-client.js",
-        "network-fetch.js", "learner-cell.py",
+        "network-fetch.js", "learner-cell.py", "data-reference-workbench",
     ):
         if phrase not in skill:
             findings.append(f"Pyodide SKILL page is missing its code-first contract: {phrase}")
@@ -362,6 +364,8 @@ def audit(
                 "playground": LIVE_PLAYGROUND.read_text(encoding="utf-8"),
                 "contract": EXECUTION_CONTRACT.read_text(encoding="utf-8"),
                 "smoke": RUNTIME_SMOKE.read_text(encoding="utf-8"),
+                "workbench": skill,
+                "workbench_controller": SHARED_WORKBENCH.read_text(encoding="utf-8"),
             }
         except OSError as exc:
             findings.append(f"cannot read executable Pyodide contract: {exc}")
@@ -371,6 +375,8 @@ def audit(
     playground_source = implementation_texts.get("playground", "")
     contract_source = implementation_texts.get("contract", "")
     smoke_source = implementation_texts.get("smoke", "")
+    workbench_source = implementation_texts.get("workbench", "")
+    workbench_controller = implementation_texts.get("workbench_controller", "")
     example_ids = re.findall(r'^\s+id:\s+"([a-z0-9-]+)"', cells_source, re.M)
     if len(example_ids) < 8 or len(example_ids) != len(set(example_ids)):
         findings.append("Pyodide cookbook needs at least eight uniquely identified progressive cells")
@@ -441,6 +447,19 @@ def audit(
     ):
         if marker not in smoke_source:
             findings.append(f"Pyodide runtime verifier lost an assertion: {marker}")
+    for marker in (
+        "pyodide-playground", "data-python-cells", "data-reference-workbench",
+        "data-workbench-view", "data-workbench-content", "data-python-diagnostic",
+        "examples/live-playground.js", "runtime-workbench.js",
+    ):
+        if marker not in workbench_source:
+            findings.append(f"Pyodide course workbench reference lost executable behavior: {marker}")
+    for marker in (
+        "mountRuntimeWorkbench", "setSelection", "returnFocus", 'event.key !== "Escape"',
+        "workbench:viewchange",
+    ):
+        if marker not in workbench_controller:
+            findings.append(f"shared runtime workbench lost accessible behavior: {marker}")
 
     # Path scans reject copied runtime binaries except the exact course wheel lock.
     paths = source_paths() if paths is None else paths
@@ -492,6 +511,8 @@ def self_test() -> list[str]:
         "playground": LIVE_PLAYGROUND.read_text(encoding="utf-8"),
         "contract": EXECUTION_CONTRACT.read_text(encoding="utf-8"),
         "smoke": RUNTIME_SMOKE.read_text(encoding="utf-8"),
+        "workbench": skill,
+        "workbench_controller": SHARED_WORKBENCH.read_text(encoding="utf-8"),
     }
 
     use_cases = read_json(USE_CASES)
@@ -553,6 +574,9 @@ def self_test() -> list[str]:
     broken = dict(implementation)
     broken["contract"] = broken["contract"].replace("register_background", "removed_background_helper")
     cases.append(("missing background helper", base, blueprint, skill, [], {}, broken, use_cases))
+    broken = dict(implementation)
+    broken["workbench"] = broken["workbench"].replace("data-workbench-view", "removed-workbench-view")
+    cases.append(("missing course workbench controls", base, blueprint, skill, [], {}, broken, use_cases))
 
     changed_cases = copy.deepcopy(use_cases)
     changed_cases["cases"][0]["examples"].append("missing-cell")

@@ -45,6 +45,13 @@ const server = http.createServer((request, response) => {
 function check(value, message) { if (!value) throw new Error(message); }
 function listen() { return new Promise(resolve => server.listen(port, "127.0.0.1", resolve)); }
 
+async function waitForCourseReady(page, label) {
+  console.log(`cfx11_browser_audit: loading ${label}`);
+  await page.locator(".xblock, .fatal").first().waitFor({ timeout: Math.min(timeout, 30_000) });
+  const fatal = page.locator(".fatal");
+  if (await fatal.count()) throw new Error(`${label} failed before its first runnable cell:\n${await fatal.innerText()}`);
+}
+
 async function runCell(page, index, replacement = null) {
   const block = page.locator(`.xblock[data-cell-id$=":${index}"]`);
   await block.waitFor();
@@ -87,9 +94,10 @@ try {
   });
   const url = `http://127.0.0.1:${port}/web/cfx11/index.html?lesson=2-Chains%2F22-Runnable-Functions`;
   await page.goto(url, { waitUntil: "domcontentloaded", timeout });
-  await page.locator(".xblock").first().waitFor({ timeout });
+  await waitForCourseReady(page, "Runnable Functions");
   const manifest = await page.evaluate(() => fetch("course.json").then(response => response.json()));
   for (const lesson of manifest.lessons) {
+    console.log(`cfx11_browser_audit: checking lesson ${lesson.id}`);
     const lessonUrl = `http://127.0.0.1:${port}/web/cfx11/index.html?lesson=${encodeURIComponent(lesson.id)}`;
     await page.goto(lessonUrl, { waitUntil: "domcontentloaded", timeout });
     await page.waitForFunction(expected => document.querySelector("#lesson-title")?.textContent === expected, lesson.title, { timeout });
@@ -103,8 +111,32 @@ try {
   }
   check(mermaidRequests > 0, "Mermaid source fences were not upgraded to rendered diagrams during full lesson traversal");
   await page.goto(url, { waitUntil: "domcontentloaded", timeout });
-  await page.locator(".xblock").first().waitFor({ timeout });
+  await waitForCourseReady(page, "Runnable Functions interaction audit");
   check(await page.locator(".xblock").count() === 23, "Runnable Functions must expose all 23 original code cells");
+  check(await page.locator(".xblock .wb-cell-workspace").count() === 23, "every Python cell must expose the shared code-and-evidence workspace");
+  check(await page.locator(".xblock .wb-cell-artifact .wb-cell-empty").count() === 23, "cell evidence panes must explain their pre-run state");
+  check(await page.locator("#runtime-dock").getAttribute("data-workbench-ready") === "true", "runtime workbench did not mount");
+  const activityTool = page.getByRole("button", { name: "Activity", exact: false });
+  await activityTool.click();
+  check(await page.locator("#runtime-panel").isVisible(), "runtime activity view did not open");
+  const workspaceGeometry = await page.locator(".xblock .wb-cell-workspace").first().evaluate(workspace => {
+    const source = workspace.querySelector(".wb-cell-source").getBoundingClientRect();
+    const artifact = workspace.querySelector(".wb-cell-artifact").getBoundingClientRect();
+    return {
+      sourceWidth: source.width,
+      artifactWidth: artifact.width,
+      artifactRight: artifact.right,
+      viewportWidth: innerWidth,
+      documentWidth: document.documentElement.scrollWidth,
+    };
+  });
+  check(workspaceGeometry.sourceWidth > 250 && workspaceGeometry.artifactWidth > 220,
+    `runtime panel crushed the code-and-evidence workspace: ${JSON.stringify(workspaceGeometry)}`);
+  check(workspaceGeometry.artifactRight <= workspaceGeometry.documentWidth && workspaceGeometry.documentWidth <= workspaceGeometry.viewportWidth,
+    `runtime panel pushed cell evidence outside the viewport: ${JSON.stringify(workspaceGeometry)}`);
+  await page.keyboard.press("Escape");
+  check(await page.locator("#runtime-panel").isHidden(), "Escape did not close the runtime workbench");
+  check(await activityTool.evaluate(button => document.activeElement === button), "runtime workbench did not return focus to its opening tool");
   const fixedLogo = page.locator('.lesson-body img[src$="/nvidia.png"], .lesson-body img[src$="/nvidia-logo.png"]').first();
   if (await fixedLogo.count()) {
     check(await fixedLogo.evaluate(image => getComputedStyle(image).backgroundColor === "rgb(255, 255, 255)"), "fixed-color NVIDIA logo did not receive its dark-theme presentation plate");
@@ -114,6 +146,7 @@ try {
   check(await page.locator("#theme-toggle").isVisible(), "the course must expose an explicit theme control");
   await page.getByRole("button", { name: "Test key" }).click();
   check(await page.locator("#api-status").innerText() === "Paste a key before testing the connection.", "the visible API-key action was not usable at a 1280x720 learner viewport");
+  console.log("cfx11_browser_audit: starting persistent Python kernel and queue checks");
   for (const index of [7, 14, 16, 20, 21]) {
     const block = await runCell(page, index);
     const output = await block.locator(".cell-output").innerText();
@@ -168,7 +201,7 @@ try {
   check(await page.locator("#queue-status").innerText() === "Queue empty", "execution queue did not return to idle");
 
   await runCell(page, 21, "focused_value = 41\nif False:\n    never_created = focused_value\nfocused_value + 1");
-  await page.getByRole("button", { name: "Variables", exact: true }).click();
+  await page.locator('[data-workbench-view="variables"]').click();
   await page.waitForFunction(() => document.querySelector("#kernel-variables")?.textContent.includes("focused_value"), null, { timeout });
   check(!(await page.locator("#kernel-variables").innerText()).includes("student_name"), "focused variable view dumped unrelated persistent state");
   await page.getByRole("button", { name: "All variables", exact: true }).click();
@@ -191,6 +224,7 @@ try {
   await page.waitForFunction(() => document.querySelector(".chat-message.assistant")?.textContent.includes("echo: hello browser"), null, { timeout });
 
   const graphSource = `from IPython.display import Image, display\ngraph_chain = RunnableLambda(lambda value: value) | RunnableLambda(lambda value: value)\ndisplay(Image(graph_chain.get_graph().draw_mermaid_png()))`;
+  console.log("cfx11_browser_audit: checking widgets, errors, and rendered artifacts");
   const graphBlock = await runCell(page, 21, graphSource);
   const graphImage = graphBlock.locator(".graph-output img");
   check(await graphImage.count() === 1, "the real LangChain graph did not render as a PNG");
@@ -229,6 +263,7 @@ try {
       body: JSON.stringify({ object: "list", data: [{ id: "nvidia/test-model", object: "model", created: 0, owned_by: "nvidia" }] }),
     });
   });
+  console.log("cfx11_browser_audit: checking bounded model fallback and streaming transport");
   await page.evaluate(() => {
     window.__cfx11OriginalFetch = window.fetch.bind(window);
     window.__cfx11KeyTestRequests = [];
@@ -295,7 +330,7 @@ try {
   check(!(retiredBillingHeader in modelRequest.headers), "Python model request restored the retired billing header");
   check(modelRequest?.body?.stream === true && modelRequest?.body?.model === "nvidia/test-model", "streaming model request changed its source-cell parameters");
   check(!Object.keys(modelRequest.headers).some(name => name.startsWith("x-stainless-")), "SDK metadata escaped the stable browser CORS header boundary");
-  await page.getByRole("button", { name: "Agent", exact: true }).click();
+  await page.locator('[data-workbench-view="agent"]').click();
   await page.locator("#runtime-agent-input").fill("What remains in this runtime?");
   await page.locator("#runtime-agent-form").getByRole("button", { name: "Ask runtime guide" }).click();
   await page.waitForFunction(() => document.querySelector("#runtime-agent-history")?.textContent.includes("browser stream"), null, { timeout });
@@ -320,6 +355,7 @@ try {
   await page.unroute("https://integrate.api.nvidia.com/v1/chat/completions");
 
   const wikipediaSource = `import wikipediaapi\npage = wikipediaapi.Wikipedia(user_agent="DLI-course-test/1.0").page("Paris")\n{"exists": page.exists(), "mentions_france": "France" in page.summary}`;
+  console.log("cfx11_browser_audit: checking live public-data adapters and cross-lesson state");
   const wikipediaBlock = await runCell(page, 21, wikipediaSource);
   const wikipediaOutput = await wikipediaBlock.locator(".cell-output").innerText();
   check(wikipediaOutput.includes('"mentions_france": true'), `live Wikipedia compatibility request did not return source data:\n${wikipediaOutput}`);
@@ -338,7 +374,7 @@ try {
   await carriedBlock.getByRole("button", { name: "Run", exact: true }).click();
   await waitForBlock(page, carriedBlock);
   check((await carriedBlock.locator(".cell-output").innerText()).includes('"answer": 42'), "Python variables did not persist across in-tab lesson navigation");
-  await page.getByRole("button", { name: "Variables", exact: true }).click();
+  await page.locator('[data-workbench-view="variables"]').click();
   await page.getByRole("button", { name: "All variables", exact: true }).click();
   await page.waitForFunction(() => document.querySelector("#kernel-variables")?.textContent.includes("cross_lesson_value"), null, { timeout });
 
@@ -358,20 +394,24 @@ try {
       await page.screenshot({ path: path.join(process.env.CFX11_SCREENSHOT_DIR, `cfx11-${expectedTheme}.png`), fullPage: true });
     }
   }
-  await page.getByRole("button", { name: "Session", exact: true }).click();
+  await page.locator('[data-workbench-view="session"]').click();
   await page.getByRole("button", { name: "Restart Python" }).click();
-  await page.getByRole("button", { name: "Variables", exact: true }).click();
+  await page.locator('[data-workbench-view="variables"]').click();
   await page.getByRole("button", { name: "All variables", exact: true }).click();
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
   await page.waitForFunction(() => document.querySelector("#kernel-status")?.textContent !== "Not started", null, { timeout });
   check(!(await page.locator("#kernel-variables").innerText()).includes("cross_lesson_value"), "restart did not clear the Python namespace");
+  await page.locator("#close-runtime-panel").click();
 
-  await page.goto(`http://127.0.0.1:${port}/web/cfx11/index.html?lesson=3-Prompting-With-Messages%2F36-Chatbots`, { waitUntil: "domcontentloaded", timeout });
+  await page.locator('#course-nav a[data-lesson-id="3-Prompting-With-Messages/36-Chatbots"]').click();
+  await page.waitForFunction(() => document.querySelector("#lesson-title")?.textContent === "Chatbots", null, { timeout });
   const helperLink = page.getByRole("link", { name: "chat_helpers/gradio_interface.py" });
   await helperLink.waitFor();
   check((await helperLink.getAttribute("href")).startsWith("https://gitlab.com/nvidia/dli/content/c-fx-11-v1/"), "unlicensed helper source must remain an upstream link");
 
-  await page.goto(`http://127.0.0.1:${port}/web/cfx11/index.html?lesson=6-Assessment%2F61-Assessment`, { waitUntil: "domcontentloaded", timeout });
+  await page.locator('#course-nav a[data-lesson-id="6-Assessment/61-Assessment"]').click();
+  await page.waitForFunction(() => document.querySelector("#lesson-title")?.textContent === "Assessment", null, { timeout });
+  console.log("cfx11_browser_audit: checking assessment middleware in the retained kernel");
   const assessmentSource = `from assessment_helper import run_assessment
 
 class InputSensitiveChain:
@@ -387,9 +427,33 @@ run_assessment(InputSensitiveChain())`;
   const assessmentOutput = await assessmentBlock.locator(".cell-output").innerText();
   check(assessmentOutput.includes('"input sensitivity": true'), "assessment output omitted the counterfactual sensitivity check");
   check(assessmentOutput.includes("Assessment passed"), "assessment did not return its learner-facing pass evidence");
+
+  await page.goto(`http://127.0.0.1:${port}/scripts/pyodide/SKILL.html`, { waitUntil: "domcontentloaded", timeout });
+  console.log("cfx11_browser_audit: checking canonical Pyodide workbench");
+  await page.waitForFunction(() => document.querySelector("#pyodide-playground")?.dataset.runtimeMounted === "true", null, { timeout });
+  check(await page.locator(".py-example.wb-cell").count() === 12, "canonical Pyodide workbench did not mount every real progressive cell");
+  check(await page.locator(".py-example .wb-cell-workspace").count() === 12, "canonical Pyodide cells did not use the shared code-and-evidence workspace");
+  check(await page.locator("[data-reference-workbench]").getAttribute("data-workbench-ready") === "true", "canonical Pyodide runtime tools did not mount");
+  const firstReferenceCell = page.locator('[data-example-id="compute"]');
+  await firstReferenceCell.getByRole("button", { name: "Run cell" }).click();
+  await page.waitForFunction(() => document.querySelector('[data-example-id="compute"]')?.dataset.state === "running", null, { timeout });
+  const helperTool = page.locator('[data-reference-workbench] [data-workbench-view="helpers"]');
+  check(!(await helperTool.isDisabled()), "canonical runtime tools became unavailable while Python was busy");
+  await helperTool.click();
+  await page.waitForFunction(() => ["passed", "failed"].includes(document.querySelector('[data-example-id="compute"]')?.dataset.state), null, { timeout });
+  check(await firstReferenceCell.getAttribute("data-state") === "passed", `canonical Pyodide compute cell failed:\n${await firstReferenceCell.innerText()}`);
+  check((await firstReferenceCell.locator(".py-notebook-output").innerText()).includes('"sum": 16'), "canonical Pyodide compute cell returned the wrong value");
+  check(await page.locator("[data-helper-row]").count() > 6, "canonical Pyodide helper inspector did not expose the real helper sources");
+  check(await page.locator("[data-workbench-content='helpers']").isVisible(), "canonical helper view did not open");
+  if (process.env.CFX11_SCREENSHOT_DIR) {
+    for (const theme of ["dark", "light"]) {
+      if (await page.locator("html").getAttribute("data-theme") !== theme) await page.locator("#reference-theme").click();
+      await page.screenshot({ path: path.join(process.env.CFX11_SCREENSHOT_DIR, `pyodide-workbench-${theme}.png`), fullPage: true });
+    }
+  }
   check(errors.length === 0, `page errors: ${JSON.stringify(errors)}`);
   check(failures.length === 0, `request failures: ${JSON.stringify(failures)}`);
-  console.log(`cfx11_browser_audit: PASS (${manifest.lessons.length} lessons, Pages-style Markdown 404, digest bundle, Mermaid, source-cell order, explicit themes, serialized queue, in-cell input, cross-lesson kernel state, focused/all variables, runtime guide, direct and relay billing headers, restart, error line, chat widget, real LangChain graph PNG, live public APIs, upstream helper link, assessment middleware)`);
+  console.log(`cfx11_browser_audit: PASS (${manifest.lessons.length} lessons, Pages-style Markdown 404, digest bundle, Mermaid, source-cell order, shared code-and-evidence workbench, accessible runtime tools, explicit themes, serialized queue, in-cell input, cross-lesson kernel state, focused/all variables, runtime guide, direct and relay billing headers, restart, error line, chat widget, real LangChain graph PNG, live public APIs, upstream helper link, assessment middleware, canonical Pyodide interface)`);
 } finally {
   await browser?.close();
   server.close();

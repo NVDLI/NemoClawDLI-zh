@@ -8,6 +8,7 @@
   <link rel="icon" href="../shared/favicon.ico">
   <link rel="stylesheet" href="../shared/vendor/codemirror-5.65.21.css">
   <link rel="stylesheet" href="../shared/vendor/highlight-github-dark-11.10.0.min.css">
+  <link rel="stylesheet" href="../shared/runtime-workbench.css">
   <link rel="stylesheet" href="course.css">
   <script>
     (function () {
@@ -93,27 +94,39 @@
     </main>
   </div>
 
-  <aside id="runtime-dock" class="runtime-dock" aria-label="Python runtime controls">
-    <nav class="runtime-dock-actions" aria-label="Runtime views">
-      <button type="button" data-runtime-panel="activity" aria-controls="runtime-panel" title="Activity">Activity <span id="operation-badge" class="operation-badge" data-state="idle">Idle</span></button>
-      <button type="button" data-runtime-panel="session" aria-controls="runtime-panel" title="Session">Session</button>
-      <button type="button" data-runtime-panel="variables" aria-controls="runtime-panel" title="Variables">Variables</button>
-      <button type="button" data-runtime-panel="streams" aria-controls="runtime-panel" title="Streams">Streams</button>
-      <button type="button" data-runtime-panel="environment" aria-controls="runtime-panel" title="Environment">Environment</button>
-      <button type="button" data-runtime-panel="agent" aria-controls="runtime-panel" title="Runtime guide">Agent</button>
+  <aside id="runtime-dock" class="wb-dock" data-runtime-workbench aria-label="Python runtime controls">
+    <nav class="wb-tools" aria-label="Runtime views">
+      <button class="wb-tool" type="button" data-runtime-panel="activity" data-workbench-view="activity" aria-controls="runtime-panel" aria-pressed="false">
+        <span class="wb-tool-icon" aria-hidden="true">ACT</span><span class="wb-tool-copy"><span>Activity</span><span id="operation-badge" class="operation-badge" data-state="idle">Idle</span></span>
+      </button>
+      <button class="wb-tool" type="button" data-runtime-panel="session" data-workbench-view="session" aria-controls="runtime-panel" aria-pressed="false">
+        <span class="wb-tool-icon" aria-hidden="true">PY</span><span class="wb-tool-copy"><span>Session</span><span>kernel + queue</span></span>
+      </button>
+      <button class="wb-tool" type="button" data-runtime-panel="variables" data-workbench-view="variables" aria-controls="runtime-panel" aria-pressed="false">
+        <span class="wb-tool-icon" aria-hidden="true">VAR</span><span class="wb-tool-copy"><span>Variables</span><span>focused + all</span></span>
+      </button>
+      <button class="wb-tool" type="button" data-runtime-panel="streams" data-workbench-view="streams" aria-controls="runtime-panel" aria-pressed="false">
+        <span class="wb-tool-icon" aria-hidden="true">IO</span><span class="wb-tool-copy"><span>Streams</span><span>stdout + errors</span></span>
+      </button>
+      <button class="wb-tool" type="button" data-runtime-panel="environment" data-workbench-view="environment" aria-controls="runtime-panel" aria-pressed="false">
+        <span class="wb-tool-icon" aria-hidden="true">ENV</span><span class="wb-tool-copy"><span>Environment</span><span>runtime facts</span></span>
+      </button>
+      <button class="wb-tool" type="button" data-runtime-panel="agent" data-workbench-view="agent" aria-controls="runtime-panel" aria-pressed="false">
+        <span class="wb-tool-icon" aria-hidden="true">AI</span><span class="wb-tool-copy"><span>Agent</span><span>lesson + runtime</span></span>
+      </button>
     </nav>
-    <section id="runtime-panel" class="runtime-panel" hidden>
+    <section id="runtime-panel" class="runtime-panel wb-panel" data-workbench-panel hidden tabindex="-1">
       <header>
-        <div><span class="eyebrow">Live Python runtime</span><h2 id="runtime-panel-title">Session</h2></div>
-        <button id="close-runtime-panel" type="button" aria-label="Close runtime panel">Close</button>
+        <div><span class="eyebrow">Live Python runtime</span><h2 id="runtime-panel-title" data-workbench-title>Session</h2></div>
+        <button id="close-runtime-panel" data-workbench-close type="button" aria-label="Close runtime panel">Close</button>
       </header>
-      <section data-panel-view="activity" hidden>
+      <section data-panel-view="activity" data-workbench-content="activity" hidden>
         <p id="operation-summary" class="operation-summary" aria-live="polite">No work is running.</p>
         <p>Every queued, running, completed, cancelled, failed, or timed-out course workflow appears here—even after you change lessons.</p>
         <div class="kernel-actions"><button id="clear-runtime-operations" type="button">Clear finished</button></div>
         <ol id="runtime-operations" class="runtime-operations"><li>No operations yet.</li></ol>
       </section>
-      <section data-panel-view="session">
+      <section data-panel-view="session" data-workbench-content="session">
         <p>Cells share one kernel across lessons in this tab. Reload or restart clears it.</p>
         <dl class="runtime-facts">
           <div><dt>Session</dt><dd id="kernel-status">Not started</dd></div>
@@ -126,7 +139,7 @@
           <button id="dock-stop-runtime" type="button">Stop</button>
         </div>
       </section>
-      <section data-panel-view="variables" hidden>
+      <section data-panel-view="variables" data-workbench-content="variables" hidden>
         <p>Focused shows names used by the last cell; All variables opens the complete namespace.</p>
         <div class="kernel-actions" role="group" aria-label="Variable scope">
           <button type="button" data-variable-view="focused" aria-pressed="true">Focused</button>
@@ -137,17 +150,17 @@
           <p>Run a cell to see the variables it touches.</p>
         </div>
       </section>
-      <section data-panel-view="streams" hidden>
+      <section data-panel-view="streams" data-workbench-content="streams" hidden>
         <p>Recent stdout, stderr, model tokens, input prompts, and queue events. The bounded buffer stays in this tab.</p>
         <div class="kernel-actions"><button id="clear-runtime-streams" type="button">Clear streams</button></div>
         <ol id="runtime-streams" class="runtime-streams" aria-live="polite"><li>No runtime events yet.</li></ol>
       </section>
-      <section data-panel-view="environment" hidden>
+      <section data-panel-view="environment" data-workbench-content="environment" hidden>
         <p>The environment view reports the active interpreter, lesson mount, scheduler, page origin, and model route.</p>
         <dl id="runtime-environment" class="runtime-facts"></dl>
         <div class="kernel-actions"><button id="environment-settings" type="button">Connection settings</button></div>
       </section>
-      <section data-panel-view="agent" hidden>
+      <section data-panel-view="agent" data-workbench-content="agent" hidden>
         <p>Ask the NVIDIA-backed runtime guide about the current lesson, session, focused variable names, or a recent error. It cannot run cells.</p>
         <div id="runtime-agent-history" class="runtime-agent-history" aria-live="polite"><p>Ready when you are.</p></div>
         <form id="runtime-agent-form" class="runtime-agent-form">
