@@ -28,6 +28,7 @@ RUNTIME_SMOKE = ROOT / "scripts/pyodide/runtime_smoke.mjs"
 USE_CASES = ROOT / "scripts/pyodide/cookbook-use-cases.json"
 COURSE_WHEEL_LOCK = ROOT / "web/cfx11/runtime/wheels.lock.json"
 SHARED_WORKBENCH = ROOT / "web/shared/runtime-workbench.js"
+SHARED_WORKBENCH_STYLES = ROOT / "web/shared/runtime-workbench.css"
 
 # These are the only core filenames evaluated from Pyodide's npm release.
 # A new filename changes the browser artifact even when the version does not.
@@ -366,6 +367,7 @@ def audit(
                 "smoke": RUNTIME_SMOKE.read_text(encoding="utf-8"),
                 "workbench": skill,
                 "workbench_controller": SHARED_WORKBENCH.read_text(encoding="utf-8"),
+                "workbench_styles": SHARED_WORKBENCH_STYLES.read_text(encoding="utf-8"),
             }
         except OSError as exc:
             findings.append(f"cannot read executable Pyodide contract: {exc}")
@@ -377,6 +379,7 @@ def audit(
     smoke_source = implementation_texts.get("smoke", "")
     workbench_source = implementation_texts.get("workbench", "")
     workbench_controller = implementation_texts.get("workbench_controller", "")
+    workbench_styles = implementation_texts.get("workbench_styles", "")
     example_ids = re.findall(r'^\s+id:\s+"([a-z0-9-]+)"', cells_source, re.M)
     if len(example_ids) < 8 or len(example_ids) != len(set(example_ids)):
         findings.append("Pyodide cookbook needs at least eight uniquely identified progressive cells")
@@ -460,6 +463,12 @@ def audit(
     ):
         if marker not in workbench_controller:
             findings.append(f"shared runtime workbench lost accessible behavior: {marker}")
+    for marker in ("--wb-panel: var(--panel, var(--e1", "--wb-text: var(--text, var(--tx", "color: var(--wb-muted)"):
+        if marker not in workbench_styles:
+            findings.append(f"shared runtime workbench lost cross-surface theme behavior: {marker}")
+    for marker in ('cell.output.dataset.state = "empty"', 'cell.output.dataset.state = "rendered"'):
+        if marker not in playground_source:
+            findings.append(f"Pyodide reset/output state lost its explicit contract: {marker}")
 
     # Path scans reject copied runtime binaries except the exact course wheel lock.
     paths = source_paths() if paths is None else paths
@@ -513,6 +522,7 @@ def self_test() -> list[str]:
         "smoke": RUNTIME_SMOKE.read_text(encoding="utf-8"),
         "workbench": skill,
         "workbench_controller": SHARED_WORKBENCH.read_text(encoding="utf-8"),
+        "workbench_styles": SHARED_WORKBENCH_STYLES.read_text(encoding="utf-8"),
     }
 
     use_cases = read_json(USE_CASES)

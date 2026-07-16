@@ -330,7 +330,8 @@ async function inspect(browser, file) {
             && document.querySelector('[data-python-status]').textContent.includes('line 3');
           document.querySelector('[data-action="reset"]').click();
           const resetReady = [...document.querySelectorAll('[data-cell-status]')].every(node => node.textContent === 'Ready')
-            && [...document.querySelectorAll('[data-output-for]')].every(node => !node.textContent.trim())
+            && [...document.querySelectorAll('[data-output-for]')].every(node => node.dataset.state === 'empty'
+              && node.querySelectorAll(':scope > *:not(.wb-cell-empty)').length === 0)
             && !document.querySelector('[data-repl-transcript]').textContent.trim();
           return {
             workerSyntax, count, editorCount, syntaxTokens, editorDark, editorLight, replFirst, replSecond, replRich, replOutput, replRichStrong,

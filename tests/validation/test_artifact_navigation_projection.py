@@ -197,8 +197,9 @@ class ArtifactNavigationProjectionTests(unittest.TestCase):
             self.assertIn('href="../styles/_style.css"', source)
             self.assertIn('src="../vendor/codemirror-5.65.21.js"', source)
             self.assertIn('src="../vendor/codemirror-mode-python-5.65.21.js"', source)
-            self.assertIn('href="shared/runtime-workbench.css"', source)
-            self.assertIn('from "shared/runtime-workbench.js"', source)
+            self.assertIn('href="./shared/runtime-workbench.css"', source)
+            self.assertIn('from "./shared/runtime-workbench.js"', source)
+            self.assertNotIn('from "shared/runtime-workbench.js"', source)
             self.assertNotIn("../../web/nemoclaw/", source)
             self.assertNotIn("../../web/shared/", source)
 

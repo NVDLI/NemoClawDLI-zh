@@ -340,6 +340,7 @@ self.addEventListener("message", async ({ data }) => {
         artifactUrls.delete(node.dataset.artifactUrl);
       });
       cell.output.replaceChildren();
+      cell.output.dataset.state = "empty";
       const empty = document.createElement("p");
       empty.className = "wb-cell-empty";
       empty.textContent = "Run this cell to see its value, streams, generated artifact, or traceback.";
@@ -430,6 +431,7 @@ self.addEventListener("message", async ({ data }) => {
         artifactUrls.delete(node.dataset.artifactUrl);
       });
       cell.output.replaceChildren();
+      cell.output.dataset.state = "rendered";
       cell.editor.clearError();
       appendOutput(cell.output, { text: reply.stdout, stream: "stdout" });
       for (const display of reply.displays || []) {
@@ -448,6 +450,7 @@ self.addEventListener("message", async ({ data }) => {
     function renderStreamEvent(cell, event) {
       let row = cell.output.querySelector(`[data-live-channel="${event.channel}"]`);
       if (!row) {
+        cell.output.dataset.state = "streaming";
         row = document.createElement("div");
         row.className = "py-output-row py-live-stream";
         row.dataset.liveChannel = event.channel;

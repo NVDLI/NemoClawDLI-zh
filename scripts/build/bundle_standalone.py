@@ -796,7 +796,7 @@ def _copy_pyodide_review(out: Path) -> None:
     page = destination / "SKILL.html"
     source = page.read_text(encoding="utf-8")
     source = source.replace("../../web/nemoclaw/", "../")
-    source = source.replace("../../web/shared/", "shared/")
+    source = source.replace("../../web/shared/", "./shared/")
     page.write_text(source, encoding="utf-8")
 
 
