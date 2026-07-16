@@ -15,7 +15,7 @@ const EMBEDDING_API_BASE_URL_KEY = "nemoclaw_embedding_api_base_url_v1";
 const EMBEDDING_MODEL_ID_KEY = "nemoclaw_embedding_model_id_v1";
 const EMBEDDING_API_KEY = "nemoclaw_embedding_api_key_v1";
 // Billing attribution is sent on direct and iframe-proxy calls.
-const BILLING_SOURCE = "dli-nemoclaw-web";
+const BILLING_INVOKE_ORIGIN = "dli-nemoclaw-web";
 // Web-cell model contract. DEFAULT_MODEL is chat() fallback; REASONING_MODEL is explicit.
 
 // Keep DEFAULT_MODEL / REASONING_MODEL in sync with the skill-meta models in SKILL.html.
@@ -297,14 +297,14 @@ export function modelRequestCredentials(url) {
 export function browserChatFetch() {
   /* @doc <code>helpers.browserChatFetch()</code> ::
        Returns a <code>fetch</code> that strips the OpenAI SDK's <code>x-stainless-*</code>
-       headers. NVIDIA model routes also receive the <code>X-BILLING-SOURCE</code> tracking tag.
+       headers. NVIDIA model routes also receive the <code>X-BILLING-INVOKE-ORIGIN</code> tracking tag.
        Custom routes include their browser session credentials. Pass it as
        <code>configuration.fetch</code> when constructing a browser <code>ChatOpenAI</code>. */
   return async (url, init = {}) => {
     const h = init.headers instanceof Headers ? init.headers : new Headers(init.headers || {});
     for (const k of [...h.keys()]) { if (k.startsWith("x-stainless")) h.delete(k); }
-    if (billingAttributionEnabled(url)) h.set("X-BILLING-SOURCE", BILLING_SOURCE);
-    else h.delete("X-BILLING-SOURCE");
+    if (billingAttributionEnabled(url)) h.set("X-BILLING-INVOKE-ORIGIN", BILLING_INVOKE_ORIGIN);
+    else h.delete("X-BILLING-INVOKE-ORIGIN");
     const r = await fetchRetry(url, { ...init, headers: h, credentials: modelRequestCredentials(url) },
       { retries: 2, backoffMs: 250, timeoutMs: 60000 });
     // Wrap non-JSON HTTP errors so the SDK surfaces the real status and body.
@@ -373,7 +373,7 @@ export { fetchRetry };
 // compatible endpoint receives only standard content and authorization headers.
 export function _apiHeaders(cfg, keyOverride = null) {
   const h = { "Content-Type": "application/json" };
-  if (billingAttributionEnabled(cfg.url)) h["X-BILLING-SOURCE"] = BILLING_SOURCE;
+  if (billingAttributionEnabled(cfg.url)) h["X-BILLING-INVOKE-ORIGIN"] = BILLING_INVOKE_ORIGIN;
   if (cfg.needsKey) h["Authorization"] = `Bearer ${keyOverride || getKey()}`;
   return h;
 }

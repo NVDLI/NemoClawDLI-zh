@@ -59,7 +59,7 @@ self.courseStreamChat = async (requestJson, apiKey, requestId) => {
     headers: {
       "Authorization": "Bearer " + String(apiKey),
       "Content-Type": "application/json",
-      "X-BILLING-SOURCE": "dli-nemoclaw-web",
+      "X-BILLING-INVOKE-ORIGIN": "dli-nemoclaw-web",
     },
     body: JSON.stringify({
       model: request.model,

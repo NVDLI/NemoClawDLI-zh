@@ -138,7 +138,7 @@ async function inspect(browser, file) {
     await page.route('https://integrate.api.nvidia.com/v1/chat/completions', async route => {
       const cors = {
         'access-control-allow-origin': '*',
-        'access-control-allow-headers': 'authorization,content-type,x-billing-source',
+        'access-control-allow-headers': 'authorization,content-type,x-billing-invoke-origin',
         'access-control-allow-methods': 'POST,OPTIONS',
       };
       if (route.request().method() === 'OPTIONS') {
