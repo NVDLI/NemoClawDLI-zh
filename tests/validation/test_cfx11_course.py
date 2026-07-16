@@ -19,6 +19,11 @@ SPEC = importlib.util.spec_from_file_location("notebook_course_importer", IMPORT
 IMPORTER = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader
 SPEC.loader.exec_module(IMPORTER)
+BUNDLE_PATH = ROOT / "scripts/notebook-import/build_content_bundle.py"
+BUNDLE_SPEC = importlib.util.spec_from_file_location("notebook_content_bundle", BUNDLE_PATH)
+BUNDLE = importlib.util.module_from_spec(BUNDLE_SPEC)
+assert BUNDLE_SPEC.loader
+BUNDLE_SPEC.loader.exec_module(BUNDLE)
 
 
 class NotebookCourseImporterTests(unittest.TestCase):
@@ -27,6 +32,7 @@ class NotebookCourseImporterTests(unittest.TestCase):
         for relative in ("index.html", "course.css", "course.js", "SOURCE_PROVENANCE.md"):
             shutil.copy2(source / relative, destination / relative)
         shutil.copytree(source / "runtime", destination / "runtime", dirs_exist_ok=True)
+        (destination / "content-bundle.json").write_text(BUNDLE.encoded(BUNDLE.build(destination)), encoding="utf-8")
 
     def fixture(self, root: Path) -> Path:
         source = root / "source"
@@ -122,6 +128,24 @@ class CommittedCourseTests(unittest.TestCase):
             client.write_text(client.read_text(encoding="utf-8").replace('addEventListener("input-request"', 'addEventListener("removed-input"'), encoding="utf-8")
             findings = cfx11_course_audit.audit(course)
             self.assertTrue(any("in-cell Python input" in finding for finding in findings), findings)
+
+    def test_pages_delivery_bundle_and_runtime_controls_fail_closed(self):
+        mutations = [
+            ("content-bundle.json", '"schema":"dli-markdown-delivery/1.0"', '"schema":"removed"', "schema"),
+            ("index.html", 'data-variable-view="focused"', 'data-variable-view="removed"', "focus-aware"),
+            ("course.js", '"X-BILLING-INVOKE-ORIGIN"', '"X-REMOVED-INVOKE-ORIGIN"', "billing origin"),
+            ("course.js", "function mermaidImageUrl", "function removedMermaidImageUrl", "Mermaid"),
+        ]
+        for relative, before, after, expected in mutations:
+            with self.subTest(relative=relative, expected=expected), tempfile.TemporaryDirectory() as temporary:
+                course = Path(temporary) / "cfx11"
+                shutil.copytree(ROOT / "web/cfx11", course)
+                path = course / relative
+                source = path.read_text(encoding="utf-8")
+                self.assertIn(before, source)
+                path.write_text(source.replace(before, after), encoding="utf-8")
+                findings = cfx11_course_audit.audit(course)
+                self.assertTrue(any(expected in finding for finding in findings), findings)
 
     def test_dynamic_content_keeps_a_strict_url_and_theme_boundary(self):
         client = (ROOT / "web/cfx11/course.js").read_text(encoding="utf-8")

@@ -305,6 +305,11 @@ export function browserChatFetch() {
     for (const k of [...h.keys()]) { if (k.startsWith("x-stainless")) h.delete(k); }
     if (billingAttributionEnabled(url)) h.set("X-BILLING-SOURCE", BILLING_SOURCE);
     else h.delete("X-BILLING-SOURCE");
+    // Direct NVIDIA CORS accepts page-origin billing attribution. The iframe
+    // relay derives the same value from request Origin server-side.
+    if (new URL(url, location.href).hostname === "integrate.api.nvidia.com" && location.origin !== "null") {
+      h.set("X-BILLING-INVOKE-ORIGIN", location.origin);
+    } else h.delete("X-BILLING-INVOKE-ORIGIN");
     const r = await fetchRetry(url, { ...init, headers: h, credentials: modelRequestCredentials(url) },
       { retries: 2, backoffMs: 250, timeoutMs: 60000 });
     // Wrap non-JSON HTTP errors so the SDK surfaces the real status and body.
@@ -374,6 +379,9 @@ export { fetchRetry };
 export function _apiHeaders(cfg, keyOverride = null) {
   const h = { "Content-Type": "application/json" };
   if (billingAttributionEnabled(cfg.url)) h["X-BILLING-SOURCE"] = BILLING_SOURCE;
+  if (new URL(cfg.url, location.href).hostname === "integrate.api.nvidia.com" && location.origin !== "null") {
+    h["X-BILLING-INVOKE-ORIGIN"] = location.origin;
+  }
   if (cfg.needsKey) h["Authorization"] = `Bearer ${keyOverride || getKey()}`;
   return h;
 }

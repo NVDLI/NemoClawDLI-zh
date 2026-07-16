@@ -43,7 +43,7 @@ CHECKS = [
     (
         "billing header stays on NVIDIA direct and iframe-proxy paths",
         "web/nemoclaw/scripts/_shared.js",
-        ['billingAttributionEnabled(url)', 'billingAttributionEnabled(cfg.url)', 'host === "integrate.api.nvidia.com"', 'host === "nvidia-api-cors-proxy.experiments.courses.nvidia.com"'],
+        ['billingAttributionEnabled(url)', 'billingAttributionEnabled(cfg.url)', 'host === "integrate.api.nvidia.com"', 'host === "nvidia-api-cors-proxy.experiments.courses.nvidia.com"', 'X-BILLING-INVOKE-ORIGIN', 'hostname === "integrate.api.nvidia.com"', 'h["X-BILLING-INVOKE-ORIGIN"] = location.origin'],
         [r'if\s*\(cfg\.iframeProxy\).*X-BILLING-SOURCE', r'if\s*\(iframeProxyModeEnabled\(\)\).*X-BILLING-SOURCE'],
     ),
     (
@@ -101,7 +101,7 @@ WORKER_FINDINGS = [
     (
         "build worker reflects page origins; review exact origin allowlist before deployment changes",
         "scripts/cors-proxy/cors-proxy-worker-build.js",
-        ["Access-Control-Allow-Origin", "origin"],
+        ["Access-Control-Allow-Origin", "billingInvokeOrigin", 'fwd.delete("X-BILLING-INVOKE-ORIGIN")', 'fwd.set("X-BILLING-INVOKE-ORIGIN", invokeOrigin)'],
     ),
     (
         "launchable worker keeps upstream host allowlist but still reflects page origins",
@@ -206,6 +206,7 @@ def self_test() -> list[str]:
         ("explicit setup field", "web/nemoclaw/scripts/_keypanel.js", '<input type="url" class="model-api-base-url"', '<input type="url" class="removed-endpoint-field"'),
         ("custom endpoint bypasses iframe relay", "web/nemoclaw/scripts/_keypanel.js", "setIframeProxyMode(defaultEndpoint &&", "setIframeProxyMode(true &&"),
         ("custom endpoint omits NVIDIA attribution", "web/nemoclaw/scripts/_shared.js", "if (billingAttributionEnabled(cfg.url))", "if (true)"),
+        ("direct billing invoke origin", "web/nemoclaw/scripts/_shared.js", 'h["X-BILLING-INVOKE-ORIGIN"] = location.origin', 'h["X-REMOVED-INVOKE-ORIGIN"] = location.origin'),
         ("credential destination warning", "web/nemoclaw/index.html", "selected endpoint", "configured service"),
         ("OpenClaw excludes model billing attribution", "scripts/cors-proxy/cors-proxy-worker-openclaw.js", "x-openclaw-session-key, Accept", "x-openclaw-session-key, X-BILLING-SOURCE, Accept"),
         ("OpenClaw relay toggle", "web/nemoclaw/scripts/_connection.js", 'params.get("openclaw_proxy")', 'params.get("removed_openclaw_proxy")'),

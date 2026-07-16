@@ -21,6 +21,7 @@ from scripts.pyodide.verify_cfx11_wheels import audit as audit_wheels
 
 COURSE = ROOT / "web/cfx11"
 SCHEMA = "dli-markdown-course/1.0"
+DELIVERY_SCHEMA = "dli-markdown-delivery/1.0"
 MARKER = re.compile(
     r"<!-- dli-course-cell (?P<meta>\{[^\n]+\}) -->\n(?P<body>.*?)<!-- /dli-course-cell -->",
     re.DOTALL,
@@ -80,7 +81,7 @@ def audit_discovery(root: Path = ROOT) -> list[str]:
 def audit(course: Path = COURSE) -> list[str]:
     findings: list[str] = []
     required = [
-        "index.html", "course.css", "course.js", "course.json", "SOURCE_PROVENANCE.md",
+        "index.html", "course.css", "course.js", "course.json", "content-bundle.json", "SOURCE_PROVENANCE.md",
         "runtime/runner.js", "runtime/worker.js", "runtime/course_compat.py",
     ]
     for relative in required:
@@ -104,6 +105,14 @@ def audit(course: Path = COURSE) -> list[str]:
         findings.append("source archive SHA-256 is missing or malformed")
 
     lessons = manifest.get("lessons", [])
+    try:
+        delivery = json.loads((course / "content-bundle.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        delivery = {}
+        findings.append(f"cannot load content-bundle.json: {error}")
+    if delivery.get("schema") != DELIVERY_SCHEMA:
+        findings.append(f"content-bundle.json schema must be {DELIVERY_SCHEMA}")
+    delivered = delivery.get("lessons", {})
     if not lessons:
         findings.append("course manifest has no lessons")
     lesson_ids: set[str] = set()
@@ -124,6 +133,11 @@ def audit(course: Path = COURSE) -> list[str]:
             continue
         if digest_text(raw) != lesson.get("markdown_sha256"):
             findings.append(f"{relative}: Markdown digest differs from course.json")
+        bundled = delivered.get(relative)
+        if not isinstance(bundled, dict):
+            findings.append(f"{relative}: missing from the Pages-safe content bundle")
+        elif bundled.get("markdown") != raw or bundled.get("sha256") != lesson.get("markdown_sha256"):
+            findings.append(f"{relative}: content bundle differs from the reviewed Markdown and manifest digest")
         blocks = list(MARKER.finditer(raw))
         cells = lesson.get("cells", [])
         if len(blocks) != len(cells):
@@ -187,6 +201,9 @@ def audit(course: Path = COURSE) -> list[str]:
     for field, actual in counted.items():
         if manifest.get("totals", {}).get(field) != actual:
             findings.append(f"manifest total {field} is {manifest.get('totals', {}).get(field)!r}; reconstructed {actual}")
+    expected_delivery = {lesson.get("markdown_path") for lesson in lessons}
+    if set(delivered) != expected_delivery:
+        findings.append("content bundle lesson paths do not exactly match course.json")
 
     runtime = (course / "runtime/worker.js").read_text(encoding="utf-8")
     client = (course / "course.js").read_text(encoding="utf-8")
@@ -196,7 +213,7 @@ def audit(course: Path = COURSE) -> list[str]:
     boundary = runtime + client + compatibility + learner_shell
     if boundary.count("https://integrate.api.nvidia.com/v1") < 2:
         findings.append("direct NVIDIA API boundary is not explicit in both runtime and learner settings")
-    forbidden = ["openclaw-cors-proxy", "nvidia-api-cors-proxy", "CF_Authorization", "_pomerium"]
+    forbidden = ["openclaw-cors-proxy", "CF_Authorization", "_pomerium"]
     for token in forbidden:
         if token in boundary:
             findings.append(f"course runtime must not depend on unrelated proxy or launchable credential: {token}")
@@ -216,19 +233,25 @@ def audit(course: Path = COURSE) -> list[str]:
             findings.append(f"real upstream model transport contract is missing: {contract}")
     if "new CoursePythonRunner" not in client or "buildXBlocks" not in client:
         findings.append("Markdown code cells are not upgraded through the shared executable XBlock path")
+    if "fetch(markdownUrl" in client or "content-bundle.json" not in client or "crypto.subtle.digest" not in client:
+        findings.append("lesson delivery must use the digest-checked Pages-safe content bundle rather than runtime Markdown fetches")
     if course == COURSE:
         findings.extend(audit_discovery())
     runtime_contracts = {
         "visible learner key entry": (learner_shell, 'id="api-key"'),
         "visible model connection test": (learner_shell + client, 'id="test-api-key"'),
-        "auth-sensitive model connection test": (client, '"https://integrate.api.nvidia.com/v1/chat/completions"'),
+        "auth-sensitive model connection test": (client, '`${selectedModelBase()}/chat/completions`'),
         "one-token model connection test": (client, "max_tokens: 1"),
         "explicit theme control": (learner_shell, 'id="theme-toggle"'),
-        "kernel variable panel": (learner_shell, 'id="kernel-variables"'),
+        "focus-aware kernel variable panel": (learner_shell + client + compatibility, 'data-variable-view="focused"'),
+        "complete kernel namespace option": (learner_shell, 'data-variable-view="all"'),
+        "floating runtime controls": (learner_shell + styles, 'class="runtime-dock"'),
+        "bounded runtime stream view": (client, "state.streams.length > 160"),
+        "NVIDIA-backed runtime guide": (client + runtime, "state.runner.assistant"),
         "serialized execution queue": (client, 'addEventListener("queue-change"'),
         "in-cell Python input": (client + runtime + compatibility, 'addEventListener("input-request"'),
         "kernel inspection": (client + runtime, 'state.runner.inspect()'),
-        "cross-lesson kernel configuration": (client, "state.runner.configure(configuration)"),
+        "cross-lesson kernel configuration": (client, "state.runner.configure(runnerConfiguration"),
         "stable NVIDIA request headers": (runtime, '["accept", "authorization", "content-type"]'),
         "origin-specific transport error": (runtime, "published HTTPS course"),
         "concise transport error presentation": (client, 'summary.textContent = "Full Python traceback"'),
@@ -236,6 +259,13 @@ def audit(course: Path = COURSE) -> list[str]:
         "theme-specific input palette": (styles, "--input-bg: #f2f8e9;"),
         "theme-specific code palette": (styles, "--code-bg: #f6f8fa;"),
         "fixed-color logo presentation": (styles, 'img[src$="/nvidia.png"]'),
+        "Mermaid presentation": (client, "function mermaidImageUrl"),
+        "opinionated Markdown anchors": (client + styles, "heading-anchor"),
+        "client direct billing source": (client, "X-BILLING-SOURCE"),
+        "runtime direct billing source": (runtime, "X-BILLING-SOURCE"),
+        "client direct billing origin": (client, "X-BILLING-INVOKE-ORIGIN"),
+        "runtime direct billing origin": (runtime, "X-BILLING-INVOKE-ORIGIN"),
+        "bounded NVIDIA relay": (runtime, '"nvidia-api-cors-proxy.experiments.courses.nvidia.com"'),
     }
     for label, (source, marker) in runtime_contracts.items():
         if marker not in source:

@@ -80,6 +80,10 @@ export class CoursePythonRunner extends EventTarget {
     return this.request("chat", { chatId, prompt, apiKey });
   }
 
+  assistant(prompt, context, apiKey) {
+    return this.request("assistant", { prompt, context, apiKey });
+  }
+
   inspect() {
     return this.request("inspect");
   }

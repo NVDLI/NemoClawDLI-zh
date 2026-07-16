@@ -5,7 +5,10 @@ import "../../../scripts/pyodide/examples/execution-contract.js";
 
 const PYODIDE_VERSION = "314.0.2";
 const PYODIDE_ROOT = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`;
-const NVIDIA_BASE = "https://integrate.api.nvidia.com/v1";
+const NVIDIA_DIRECT_BASE = "https://integrate.api.nvidia.com/v1";
+const NVIDIA_PROXY_BASE = "https://nvidia-api-cors-proxy.experiments.courses.nvidia.com/v1";
+const NVIDIA_BASES = Object.freeze(new Set([NVIDIA_DIRECT_BASE, NVIDIA_PROXY_BASE]));
+const BILLING_SOURCE = "dli-cfx11-web";
 const EXECUTE_CELL = globalThis.PYODIDE_EXECUTION_CONTRACT.source;
 const BUILTIN_PACKAGES = Object.freeze([
   "aiohttp", "anyio", "click", "distro", "httpx", "ipython", "jiter",
@@ -44,6 +47,7 @@ let activeRequestId = null;
 let kernelStartedAt = null;
 let kernelSessionId = null;
 let mountedConfiguration = "";
+let activeModelBase = NVIDIA_DIRECT_BASE;
 let nextPromptId = 1;
 const inputWaiters = new Map();
 
@@ -51,7 +55,7 @@ function safeJson(value) {
   return JSON.stringify(value, (_, item) => typeof item === "bigint" ? String(item) : item);
 }
 
-function applyEventBlock(block, state) {
+function applyEventBlock(block, state, emit = true) {
     const payload = block.split(/\r?\n/)
       .filter(line => line.startsWith("data:"))
       .map(line => line.slice(5).trim())
@@ -64,7 +68,7 @@ function applyEventBlock(block, state) {
     if (typeof delta.content === "string" && delta.content) {
       state.chunks.push({ content: delta.content });
       state.message.content += delta.content;
-      self.postMessage({ type: "model-stream", requestId: activeRequestId, text: delta.content });
+      if (emit) self.postMessage({ type: "model-stream", requestId: activeRequestId, text: delta.content });
     }
     const reasoning = delta.reasoning_content || delta.reasoning;
     if (typeof reasoning === "string" && reasoning) {
@@ -84,6 +88,7 @@ function applyEventBlock(block, state) {
 
 const NETWORK_RULES = Object.freeze(new Map([
   ["integrate.api.nvidia.com", { paths: ["/v1/"], headers: ["accept", "authorization", "content-type"] }],
+  ["nvidia-api-cors-proxy.experiments.courses.nvidia.com", { paths: ["/v1/"], headers: ["accept", "authorization", "content-type"] }],
   ["en.wikipedia.org", { paths: ["/w/api.php"], headers: ["accept", "content-type"] }],
   ["air-quality-api.open-meteo.com", { paths: ["/v1/air-quality"], headers: ["accept", "content-type"] }],
   ["mermaid.ink", { paths: ["/"], headers: ["accept", "content-type"] }],
@@ -96,6 +101,28 @@ function checkedNetworkUrl(rawUrl) {
     throw new Error(`This lesson does not permit a request to ${url.origin}${url.pathname}.`);
   }
   return { url, rule };
+}
+
+function selectedModelBase(configuration = {}) {
+  const value = String(configuration.modelBaseUrl || NVIDIA_DIRECT_BASE).replace(/\/$/, "");
+  if (!NVIDIA_BASES.has(value)) throw new Error("The selected NVIDIA model route is not allowed by this course.");
+  return value;
+}
+
+function isNvidiaModelUrl(url) {
+  return NVIDIA_BASES.has(`${url.origin}/v1`);
+}
+
+function applyBillingHeaders(headers, url) {
+  if (!isNvidiaModelUrl(url)) return;
+  headers.set("X-BILLING-SOURCE", BILLING_SOURCE);
+  // Direct CORS accepts the page origin. The relay derives this header from its
+  // trusted request Origin server-side so a caller cannot choose the value.
+  if (url.hostname === "integrate.api.nvidia.com" && self.location.origin !== "null") {
+    headers.set("X-BILLING-INVOKE-ORIGIN", self.location.origin);
+  } else {
+    headers.delete("X-BILLING-INVOKE-ORIGIN");
+  }
 }
 
 function bytesToBase64(bytes) {
@@ -162,6 +189,7 @@ globalThis.courseHttpRequest = async function courseHttpRequest(requestJson) {
     if (!rule.headers.includes(normalized)) continue;
     headers.set(name, String(value));
   }
+  applyBillingHeaders(headers, url);
   const method = String(request.method || "GET").toUpperCase();
   const requestBody = ["GET", "HEAD"].includes(method) || request.body == null || request.body === ""
     ? undefined
@@ -174,7 +202,7 @@ globalThis.courseHttpRequest = async function courseHttpRequest(requestJson) {
     throw new Error(`The browser could not reach ${url.origin} from ${origin}. Open the published HTTPS course instead of a local file or unregistered origin, then retry. ${error instanceof Error ? error.message : String(error)}`);
   }
   const stream = headers.get("accept")?.includes("text/event-stream") || false;
-  const responseBytes = await readResponseBytes(response, stream && url.hostname === "integrate.api.nvidia.com");
+  const responseBytes = await readResponseBytes(response, stream && isNvidiaModelUrl(url));
   return safeJson({
     status: response.status,
     reason: response.statusText,
@@ -226,6 +254,7 @@ function batchMode(pyodide) {
 }
 
 async function prepareKernel(configuration = {}) {
+  activeModelBase = selectedModelBase(configuration);
   const pyodide = await runtime();
   if (!kernelReady) {
     pyodide.runPython('__course_scope = {"__name__": "__main__"}');
@@ -266,10 +295,13 @@ async function prepareKernel(configuration = {}) {
 function kernelSnapshot(pyodide) {
   const raw = pyodide.runPython(`
 import json as __course_json
+import os as __course_os
+import platform as __course_platform
 import re as __course_re
 import types as __course_types
 __course_hidden = {"COURSE_EXECUTION_TRACE", "COURSE_BATCH_MODE"}
 __course_secret = __course_re.compile(r"key|token|secret|password|authorization|credential", __course_re.I)
+__course_activity = __course_scope.get("_COURSE_VARIABLE_ACTIVITY", {})
 __course_rows = []
 for __course_name, __course_value in sorted(__course_scope.items()):
     if __course_name.startswith("_") or __course_name in __course_hidden or isinstance(__course_value, __course_types.ModuleType):
@@ -285,14 +317,38 @@ for __course_name, __course_value in sorted(__course_scope.items()):
             __course_preview = __course_preview[:177] + "..."
         __course_preview = __course_re.sub(r"nvapi-[A-Za-z0-9_-]{6,}", "nvapi-[hidden]", __course_preview)
         __course_preview = __course_re.sub(r"(?i)(bearer\\s+)[A-Za-z0-9._-]{8,}", r"\\1[hidden]", __course_preview)
-    __course_rows.append({"name": __course_name, "type": type(__course_value).__name__, "preview": __course_preview})
-__course_json.dumps(__course_rows)
+    __course_focus = __course_activity.get(__course_name, {})
+    __course_rows.append({
+        "name": __course_name,
+        "type": type(__course_value).__name__,
+        "preview": __course_preview,
+        "reads": int(__course_focus.get("reads", 0)),
+        "writes": int(__course_focus.get("writes", 0)),
+        "last_read": int(__course_focus.get("last_read", 0)),
+        "last_write": int(__course_focus.get("last_write", 0)),
+    })
+__course_json.dumps({
+    "variables": __course_rows,
+    "environment": {
+        "python": __course_platform.python_version(),
+        "cwd": __course_os.getcwd(),
+        "batch_mode": __course_scope.get("COURSE_BATCH_MODE", "unknown"),
+    },
+})
 `);
+  const snapshot = JSON.parse(String(raw));
+  for (const row of snapshot.variables) {
+    const last = Math.max(row.last_read || 0, row.last_write || 0);
+    row.focused = last === executionCount && last > 0;
+    row.focus_reason = row.last_read === executionCount && row.last_write === executionCount
+      ? "read and changed" : row.last_write === executionCount ? "changed" : "read";
+  }
   return {
     session_id: kernelSessionId,
     started_at: kernelStartedAt,
     execution_count: executionCount,
-    variables: JSON.parse(String(raw)),
+    variables: snapshot.variables,
+    environment: { ...snapshot.environment, pyodide: PYODIDE_VERSION, model_base_url: activeModelBase },
     batch_mode: batchMode(pyodide),
   };
 }
@@ -320,7 +376,8 @@ async function runCell(message) {
   activeRequestId = message.id;
   const key = String(message.apiKey || "");
   pyodide.globals.set("__course_api_key", key);
-  pyodide.runPython(`import os\nos.environ["NVIDIA_BASE_URL"] = ${JSON.stringify(NVIDIA_BASE)}\nos.environ["NVIDIA_API_KEY"] = str(__course_api_key)`);
+  const modelBaseUrl = selectedModelBase(message.configuration);
+  pyodide.runPython(`import os\nos.environ["NVIDIA_BASE_URL"] = ${JSON.stringify(modelBaseUrl)}\nos.environ["NVIDIA_API_KEY"] = str(__course_api_key)`);
   const normalized = normalizeMagic(String(message.source || ""));
   try {
     const reply = await executeRaw(pyodide, normalized.source, {}, executionCount);
@@ -346,7 +403,8 @@ async function runChat(message) {
   pyodide.globals.set("__course_api_key", key);
   pyodide.globals.set("__course_chat_id", String(message.chatId || ""));
   pyodide.globals.set("__course_chat_prompt", String(message.prompt || ""));
-  pyodide.runPython(`import os\nos.environ["NVIDIA_BASE_URL"] = ${JSON.stringify(NVIDIA_BASE)}\nos.environ["NVIDIA_API_KEY"] = str(__course_api_key)\n__course_scope["__course_chat_id"] = str(__course_chat_id)\n__course_scope["__course_chat_prompt"] = str(__course_chat_prompt)`);
+  const modelBaseUrl = selectedModelBase(message.configuration);
+  pyodide.runPython(`import os\nos.environ["NVIDIA_BASE_URL"] = ${JSON.stringify(modelBaseUrl)}\nos.environ["NVIDIA_API_KEY"] = str(__course_api_key)\n__course_scope["__course_chat_id"] = str(__course_chat_id)\n__course_scope["__course_chat_prompt"] = str(__course_chat_prompt)`);
   try {
     const reply = await executeRaw(pyodide, "__course_chatbots[__course_chat_id].chat(__course_chat_prompt)", {}, ++executionCount);
     reply.batch_mode = batchMode(pyodide);
@@ -356,6 +414,50 @@ async function runChat(message) {
     pyodide.runPython('import os\nos.environ.pop("NVIDIA_API_KEY", None)');
     pyodide.runPython('__course_scope.pop("__course_chat_id", None)\n__course_scope.pop("__course_chat_prompt", None)');
     for (const name of ["__course_api_key", "__course_chat_id", "__course_chat_prompt"]) pyodide.globals.delete(name);
+    activeRequestId = null;
+  }
+}
+
+function collectModelText(bytes) {
+  const state = { chunks: [], message: { role: "assistant", content: "", tool_calls: [] } };
+  const text = new TextDecoder().decode(bytes);
+  for (const block of text.split(/\r?\n\r?\n/)) applyEventBlock(block, state, false);
+  return state.message.content;
+}
+
+async function runAssistant(message) {
+  const key = String(message.apiKey || "").trim();
+  if (!key) throw new Error("Paste an NVIDIA API key before asking the runtime guide.");
+  const modelBaseUrl = selectedModelBase(message.configuration);
+  activeModelBase = modelBaseUrl;
+  const url = new URL(`${modelBaseUrl}/chat/completions`);
+  const headers = new Headers({
+    Accept: "text/event-stream",
+    Authorization: `Bearer ${key}`,
+    "Content-Type": "application/json",
+  });
+  applyBillingHeaders(headers, url);
+  activeRequestId = message.id;
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      credentials: "omit",
+      headers,
+      body: JSON.stringify({
+        model: "nvidia/nemotron-3-nano-30b-a3b",
+        messages: [
+          { role: "system", content: "You are a concise course runtime guide. Explain the active lesson, Python session, errors, and variables from the supplied context. Never claim to run a cell or reveal a credential." },
+          { role: "user", content: String(message.context || "").slice(0, 9000) + "\n\nQuestion: " + String(message.prompt || "").slice(0, 2000) },
+        ],
+        max_tokens: 384,
+        stream: true,
+        temperature: 0.1,
+      }),
+    });
+    const bytes = await readResponseBytes(response, response.ok);
+    if (!response.ok) throw new Error(`NVIDIA rejected the runtime-guide request (${response.status}).`);
+    return { ok: true, value: collectModelText(bytes), execution_count: executionCount };
+  } finally {
     activeRequestId = null;
   }
 }
@@ -384,7 +486,8 @@ self.addEventListener("message", async ({ data }) => {
     const result = data.type === "preload"
       ? await preload(data)
       : data.type === "inspect" ? await inspectKernel(data)
-      : data.type === "chat" ? await runChat(data) : await runCell(data);
+      : data.type === "chat" ? await runChat(data)
+      : data.type === "assistant" ? await runAssistant(data) : await runCell(data);
     self.postMessage({ type: "result", id: data.id, ...result });
   } catch (error) {
     self.postMessage({

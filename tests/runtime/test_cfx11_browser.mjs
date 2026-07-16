@@ -30,6 +30,9 @@ const server = http.createServer((request, response) => {
   const relative = decodeURIComponent(new URL(request.url, "http://localhost").pathname).replace(/^\/+/, "");
   let file = path.resolve(root, relative || "web/cfx11/index.html");
   if (file !== root && !file.startsWith(root + path.sep)) return response.writeHead(403).end("forbidden");
+  // GitLab Pages keeps raw Markdown in the artifact but does not reliably serve it.
+  // The course must work against that deployed constraint, not only a source server.
+  if (path.extname(file) === ".md") return response.writeHead(404).end("raw Markdown is not served");
   if (fs.existsSync(file) && fs.statSync(file).isDirectory()) file = path.join(file, "index.html");
   fs.readFile(file, (error, body) => {
     if (error) return response.writeHead(404).end("not found");
@@ -70,8 +73,17 @@ try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, colorScheme: "dark" });
   const errors = [];
   const failures = [];
+  let mermaidRequests = 0;
   page.on("pageerror", error => errors.push(error.message));
   page.on("requestfailed", request => failures.push(`${request.url()}: ${request.failure()?.errorText}`));
+  await page.route("https://mermaid.ink/img/**", async route => {
+    mermaidRequests += 1;
+    await route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAUAAAAC0CAIAAABqhmJGAAABjUlEQVR42u3TQQkAAAACMfv39W8OYYtwcClwKxKAgQEDAwYGAwMGBgwMGBgMDBgYMDAYGDAwYGDAwGBgwMCAgQEDg4EBAwMGBgMDBgYMDBgYDAwYGDAwYGAwMGBgwMBgYMDAgIEBA4OBAQMDBgYDAwYGDAwYGAwMGBgwMGBgMDBgYMDAYGDAwICBAQODgQEDAwYGDAwGBgwMGBgMDBgYMDBgYDAwYGDAwICBwcCAgQEDg4EBAwMGBgwMBgYMDBgYDAwYGDAwYGAwMGBgwMCAgcHAgIEBA4OBAQMDBgYMDAYGDAwYGDAwGBgwMGBgMDBgYMDAgIHBwICBAQMDBgYDAwYGDAwGBgwMGBgwMBgYMDBgYDAwYGDAwICBwcCAgQEDAwYGAwMGBgwMBgYMDBgYMDAYGDAwYGDAwGBgwMCAgcHAgIEBAwMGBgMDBgYMDAYGDAwYGDAwGBgwMGBgwMBgYMDAgIHBwICBAQMDBgYDAwYGDAwYGAwMGBgwMBgYMDBgYMDAYGDAwICBAQPDtwHZISTbeVhHAAAAAABJRU5ErkJggg==", "base64"),
+    });
+  });
   const url = `http://127.0.0.1:${port}/web/cfx11/index.html?lesson=2-Chains%2F22-Runnable-Functions`;
   await page.goto(url, { waitUntil: "domcontentloaded", timeout });
   await page.locator(".xblock").first().waitFor({ timeout });
@@ -88,6 +100,7 @@ try {
       .evaluateAll(nodes => nodes.filter(node => !node.closest(".xblock")).length);
     check(sourceThemeOverrides === 0, `${lesson.id} retained a source-controlled theme override`);
   }
+  check(mermaidRequests > 0, "Mermaid source fences were not upgraded to rendered diagrams during full lesson traversal");
   await page.goto(url, { waitUntil: "domcontentloaded", timeout });
   await page.locator(".xblock").first().waitFor({ timeout });
   check(await page.locator(".xblock").count() === 23, "Runnable Functions must expose all 23 original code cells");
@@ -153,11 +166,16 @@ try {
   }
   check(await page.locator("#queue-status").innerText() === "Queue empty", "execution queue did not return to idle");
 
-  await page.getByRole("button", { name: "Inspect variables" }).click();
+  await runCell(page, 21, "focused_value = 41\nif False:\n    never_created = focused_value\nfocused_value + 1");
+  await page.getByRole("button", { name: "Variables", exact: true }).click();
+  await page.waitForFunction(() => document.querySelector("#kernel-variables")?.textContent.includes("focused_value"), null, { timeout });
+  check(!(await page.locator("#kernel-variables").innerText()).includes("student_name"), "focused variable view dumped unrelated persistent state");
+  await page.getByRole("button", { name: "All variables", exact: true }).click();
   await page.waitForFunction(() => document.querySelector("#kernel-variables")?.textContent.includes("student_name"), null, { timeout });
-  check((await page.locator("#kernel-variables").innerText()).includes("queue_marker"), "variable inspector omitted persisted queue output");
+  check((await page.locator("#kernel-variables").innerText()).includes("queue_marker"), "complete namespace omitted persisted queue output");
   check(!(await page.locator("#kernel-variables").innerText()).includes("this-must-not-render"), "variable inspector exposed a credential-shaped nested value");
   check(!(await page.locator("#kernel-status").innerText()).includes("Not started"), "kernel session identity was not displayed");
+  await page.locator("#close-runtime-panel").click();
 
   const errorBlock = await runCell(page, 21, "values = [1]\nvalues[9]");
   check(await errorBlock.getAttribute("data-state") === "failed", "runtime error did not fail the cell");
@@ -255,11 +273,34 @@ try {
   check(await modelBlock.getAttribute("data-state") === "passed", `direct NVIDIA streaming compatibility call failed:\n${modelOutput}`);
   check((await modelBlock.locator(".cell-output").innerText()).includes("browser stream"), "streaming model result was not returned to Python");
   check(keyTestRequest?.headers.authorization === "Bearer browser-test-key", "learner key was not sent on the auth-sensitive model test");
+  check(keyTestRequest?.headers["x-billing-source"] === "dli-cfx11-web", "key test omitted the stable billing source");
+  check(keyTestRequest?.headers["x-billing-invoke-origin"] === `http://127.0.0.1:${port}`, "direct key test omitted trusted page-origin attribution");
   check(keyTestRequest?.body?.max_tokens === 1 && keyTestRequest?.body?.stream === false, "key test was not bounded to one non-streaming output token");
   check(modelListingRequest?.headers.authorization === "Bearer browser-test-key", "learner key was not sent on the real package's model discovery request");
   check(modelRequest?.headers.authorization === "Bearer browser-test-key", "learner key was not sent only as the NVIDIA authorization header");
+  check(modelRequest?.headers["x-billing-source"] === "dli-cfx11-web", "Python model request omitted billing source");
+  check(modelRequest?.headers["x-billing-invoke-origin"] === `http://127.0.0.1:${port}`, "Python direct model request omitted page-origin attribution");
   check(modelRequest?.body?.stream === true && modelRequest?.body?.model === "nvidia/test-model", "streaming model request changed its source-cell parameters");
   check(!Object.keys(modelRequest.headers).some(name => name.startsWith("x-stainless-")), "SDK metadata escaped the stable browser CORS header boundary");
+  await page.getByRole("button", { name: "Agent", exact: true }).click();
+  await page.locator("#runtime-agent-input").fill("What remains in this runtime?");
+  await page.locator("#runtime-agent-form").getByRole("button", { name: "Ask runtime guide" }).click();
+  await page.waitForFunction(() => document.querySelector("#runtime-agent-history")?.textContent.includes("browser stream"), null, { timeout });
+  check((await page.locator("#runtime-streams").count()) === 1, "runtime stream surface is missing");
+  await page.locator("#close-runtime-panel").click();
+
+  let proxyKeyRequest = null;
+  await page.locator("#model-route").selectOption("proxy");
+  await page.route("https://nvidia-api-cors-proxy.experiments.courses.nvidia.com/v1/chat/completions", async route => {
+    proxyKeyRequest = { headers: route.request().headers(), body: route.request().postDataJSON() };
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ choices: [{ message: { content: "OK" } }] }) });
+  });
+  await page.getByRole("button", { name: "Test key" }).click();
+  await page.waitForFunction(() => document.querySelector("#api-status")?.textContent.startsWith("Connected."), null, { timeout });
+  check(proxyKeyRequest?.headers["x-billing-source"] === "dli-cfx11-web", "relay request omitted billing source");
+  check(!("x-billing-invoke-origin" in proxyKeyRequest.headers), "relay accepted caller-controlled billing-origin attribution");
+  await page.locator("#model-route").selectOption("direct");
+  await page.unroute("https://nvidia-api-cors-proxy.experiments.courses.nvidia.com/v1/chat/completions");
   await page.locator("#api-key").fill("");
   await page.unroute("https://integrate.api.nvidia.com/v1/models");
   await page.unroute("https://integrate.api.nvidia.com/v1/chat/completions");
@@ -283,7 +324,8 @@ try {
   await carriedBlock.getByRole("button", { name: "Run", exact: true }).click();
   await waitForBlock(page, carriedBlock);
   check((await carriedBlock.locator(".cell-output").innerText()).includes('"answer": 42'), "Python variables did not persist across in-tab lesson navigation");
-  await page.getByRole("button", { name: "Inspect variables" }).click();
+  await page.getByRole("button", { name: "Variables", exact: true }).click();
+  await page.getByRole("button", { name: "All variables", exact: true }).click();
   await page.waitForFunction(() => document.querySelector("#kernel-variables")?.textContent.includes("cross_lesson_value"), null, { timeout });
 
   for (const expectedTheme of ["light", "dark"]) {
@@ -302,8 +344,11 @@ try {
       await page.screenshot({ path: path.join(process.env.CFX11_SCREENSHOT_DIR, `cfx11-${expectedTheme}.png`), fullPage: true });
     }
   }
+  await page.getByRole("button", { name: "Session", exact: true }).click();
   await page.getByRole("button", { name: "Restart Python" }).click();
-  await page.getByRole("button", { name: "Inspect variables" }).click();
+  await page.getByRole("button", { name: "Variables", exact: true }).click();
+  await page.getByRole("button", { name: "All variables", exact: true }).click();
+  await page.getByRole("button", { name: "Refresh", exact: true }).click();
   await page.waitForFunction(() => document.querySelector("#kernel-status")?.textContent !== "Not started", null, { timeout });
   check(!(await page.locator("#kernel-variables").innerText()).includes("cross_lesson_value"), "restart did not clear the Python namespace");
 
@@ -330,7 +375,7 @@ run_assessment(InputSensitiveChain())`;
   check(assessmentOutput.includes("Assessment passed"), "assessment did not return its learner-facing pass evidence");
   check(errors.length === 0, `page errors: ${JSON.stringify(errors)}`);
   check(failures.length === 0, `request failures: ${JSON.stringify(failures)}`);
-  console.log(`cfx11_browser_audit: PASS (${manifest.lessons.length} lessons, source-cell order, explicit themes, visible learner key, serialized queue, in-cell input, cross-lesson kernel state, variable inspection, restart, error line, chat widget, real LangChain graph PNG, direct NVIDIA streaming contract, live public APIs, upstream helper link, assessment middleware)`);
+  console.log(`cfx11_browser_audit: PASS (${manifest.lessons.length} lessons, Pages-style Markdown 404, digest bundle, Mermaid, source-cell order, explicit themes, serialized queue, in-cell input, cross-lesson kernel state, focused/all variables, runtime guide, direct and relay billing headers, restart, error line, chat widget, real LangChain graph PNG, live public APIs, upstream helper link, assessment middleware)`);
 } finally {
   await browser?.close();
   server.close();

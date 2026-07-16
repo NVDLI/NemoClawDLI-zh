@@ -73,25 +73,15 @@
               <button id="clear-api-key" type="button">Clear</button>
             </div>
             <p id="api-status" class="connection-status">No key is stored in this browser tab.</p>
+            <label for="model-route">Model route</label>
+            <select id="model-route">
+              <option value="direct">Direct NVIDIA API</option>
+              <option value="proxy">DLI browser relay</option>
+            </select>
+            <p id="route-status" class="connection-status">Direct is recommended. The relay is available when an embedding host cannot use NVIDIA's direct CORS route.</p>
             <a href="https://build.nvidia.com/?ncid=ref-dli-146986" target="_blank" rel="noopener noreferrer">Create or manage a key</a>
           </div>
         </div>
-        <details class="kernel-card" open>
-          <summary>
-            <span><strong>Python session</strong> <span id="kernel-status">Not started</span></span>
-            <span id="queue-status">Queue empty</span>
-          </summary>
-          <div class="kernel-body">
-            <p>Cells share one kernel across lessons in this tab. Variables remain available until you restart Python or reload the page.</p>
-            <div class="kernel-actions">
-              <button id="inspect-runtime" type="button">Inspect variables</button>
-              <button id="restart-runtime" type="button">Restart Python</button>
-            </div>
-            <div id="kernel-variables" class="kernel-variables" aria-live="polite">
-              <p>Run a cell. Inspect the variables and their short previews.</p>
-            </div>
-          </div>
-        </details>
       </section>
       <article id="lesson-body" class="lesson-body" aria-live="polite">
         <p>Loading the reviewed Markdown source for this lesson…</p>
@@ -103,6 +93,65 @@
     </main>
   </div>
 
+  <aside id="runtime-dock" class="runtime-dock" aria-label="Python runtime controls">
+    <nav class="runtime-dock-actions" aria-label="Runtime views">
+      <button type="button" data-runtime-panel="session" aria-controls="runtime-panel" title="Session">Session</button>
+      <button type="button" data-runtime-panel="variables" aria-controls="runtime-panel" title="Variables">Variables</button>
+      <button type="button" data-runtime-panel="streams" aria-controls="runtime-panel" title="Streams">Streams</button>
+      <button type="button" data-runtime-panel="environment" aria-controls="runtime-panel" title="Environment">Environment</button>
+      <button type="button" data-runtime-panel="agent" aria-controls="runtime-panel" title="Runtime guide">Agent</button>
+    </nav>
+    <section id="runtime-panel" class="runtime-panel" hidden>
+      <header>
+        <div><span class="eyebrow">Live Python runtime</span><h2 id="runtime-panel-title">Session</h2></div>
+        <button id="close-runtime-panel" type="button" aria-label="Close runtime panel">Close</button>
+      </header>
+      <section data-panel-view="session">
+        <p>Cells share one kernel across lessons in this tab. Reload or restart clears it.</p>
+        <dl class="runtime-facts">
+          <div><dt>Session</dt><dd id="kernel-status">Not started</dd></div>
+          <div><dt>Queue</dt><dd id="queue-status">Queue empty</dd></div>
+          <div><dt>Started</dt><dd id="kernel-started">Not started</dd></div>
+        </dl>
+        <div class="kernel-actions">
+          <button id="start-runtime" type="button">Start Python</button>
+          <button id="restart-runtime" type="button">Restart Python</button>
+          <button id="dock-stop-runtime" type="button">Stop</button>
+        </div>
+      </section>
+      <section data-panel-view="variables" hidden>
+        <p>Focused shows names used by the last cell; All variables opens the complete namespace.</p>
+        <div class="kernel-actions" role="group" aria-label="Variable scope">
+          <button type="button" data-variable-view="focused" aria-pressed="true">Focused</button>
+          <button type="button" data-variable-view="all" aria-pressed="false">All variables</button>
+          <button id="inspect-runtime" type="button">Refresh</button>
+        </div>
+        <div id="kernel-variables" class="kernel-variables" aria-live="polite">
+          <p>Run a cell to see the variables it touches.</p>
+        </div>
+      </section>
+      <section data-panel-view="streams" hidden>
+        <p>Recent stdout, stderr, model tokens, input prompts, and queue events. The bounded buffer stays in this tab.</p>
+        <div class="kernel-actions"><button id="clear-runtime-streams" type="button">Clear streams</button></div>
+        <ol id="runtime-streams" class="runtime-streams" aria-live="polite"><li>No runtime events yet.</li></ol>
+      </section>
+      <section data-panel-view="environment" hidden>
+        <p>The environment view reports the active interpreter, lesson mount, scheduler, page origin, and model route.</p>
+        <dl id="runtime-environment" class="runtime-facts"></dl>
+        <div class="kernel-actions"><button id="environment-settings" type="button">Connection settings</button></div>
+      </section>
+      <section data-panel-view="agent" hidden>
+        <p>Ask the NVIDIA-backed runtime guide about the current lesson, session, focused variable names, or a recent error. It cannot run cells.</p>
+        <div id="runtime-agent-history" class="runtime-agent-history" aria-live="polite"><p>Ready when you are.</p></div>
+        <form id="runtime-agent-form" class="runtime-agent-form">
+          <label for="runtime-agent-input">Question</label>
+          <textarea id="runtime-agent-input" rows="3" required placeholder="Why is this variable still in memory?"></textarea>
+          <button type="submit">Ask runtime guide</button>
+        </form>
+      </section>
+    </section>
+  </aside>
+
   <dialog id="settings-dialog">
     <form method="dialog">
       <div class="dialog-heading">
@@ -112,7 +161,7 @@
         </div>
         <button value="close" aria-label="Close settings">Close</button>
       </div>
-      <p>Use the visible key field above the lesson. Python receives the value only for an active model call, and the course sends requests directly to <code>https://integrate.api.nvidia.com/v1</code>.</p>
+      <p>Use the visible key field above the lesson. Python receives the value only for an active model call. Direct mode calls <code>https://integrate.api.nvidia.com/v1</code>; relay mode uses the DLI browser relay without changing the learner-owned credential.</p>
       <p>Run buttons join a single ordered queue. Python <code>input()</code> opens an answer field in the requesting cell. The session panel shows what is running and which variables remain in memory.</p>
     </form>
   </dialog>

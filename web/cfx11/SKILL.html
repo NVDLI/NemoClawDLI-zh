@@ -11,11 +11,12 @@
   "node_type": "directory-explorer",
   "title": "web/cfx11",
   "source_dir": "web/cfx11/",
-  "summary": "Internal browser candidate for c-fx-11-v1, with reviewed Markdown source, executable XBlocks, and direct learner-owned NVIDIA API access.",
+  "summary": "Internal browser candidate for c-fx-11-v1, with digest-bound lesson delivery, executable XBlocks, and learner-owned NVIDIA API access.",
   "explorer": "../_skill_explorer.js",
   "source_contract": {
     "provenance": "SOURCE_PROVENANCE.md",
     "manifest": "course.json",
+    "delivery_bundle": "content-bundle.json",
     "importer": "scripts/notebook-import/import_course.py",
     "fidelity": "Every notebook, cell, and support file is digest-bound. Cell text is not formatted during import.",
     "license_state": "unresolved-in-source-archive",
@@ -25,17 +26,17 @@
     {
       "name": "Markdown course shell",
       "entry": "web/cfx11/index.html",
-      "contract": "Load one reviewed Markdown lesson, preserve source links, and upgrade each Python fence through the same XBlock path."
+      "contract": "Load one digest-checked lesson from the generated Pages-safe bundle, preserve source links, render Markdown and Mermaid coherently, and upgrade each Python fence through the same XBlock path."
     },
     {
       "name": "Browser Python",
       "entry": "web/cfx11/runtime/worker.js",
-      "contract": "Run original cells through one serialized queue in a persistent Pyodide worker. Keep input prompts, errors, stdout, rich values, model streams, traces, session identity, and bounded variable inspection visible. Preserve the kernel across in-tab lesson navigation; restart and reload clear it."
+      "contract": "Run original cells through one serialized queue in a persistent Pyodide worker. The floating runtime dock exposes the session, bounded streams, environment, a real NVIDIA-backed guide, variables read or changed by the last cell, and the complete namespace on demand. Preserve the kernel across in-tab lesson navigation; restart and reload clear it."
     },
     {
       "name": "NVIDIA model transport",
       "entry": "web/cfx11/runtime/course_compat.py",
-      "contract": "Use a learner-supplied key only for direct integrate.api.nvidia.com calls. Do not add a proxy or launchable credential."
+      "contract": "Use a learner-supplied key with either the allowlisted direct NVIDIA endpoint or the bounded DLI relay. Direct requests send billing source and page-origin attribution. Relay requests omit caller-controlled origin attribution so the relay can derive it from the trusted request Origin. Never use a launchable credential."
     },
     {
       "name": "Assessment middleware",
@@ -54,7 +55,7 @@
 <script type="application/json" id="explorer-config">
 {
   "title": "web/cfx11",
-  "summary": "Internal browser candidate for c-fx-11-v1, with reviewed Markdown source, executable XBlocks, and direct learner-owned NVIDIA API access.",
+  "summary": "Internal browser candidate for c-fx-11-v1, with digest-bound lesson delivery, executable XBlocks, and learner-owned NVIDIA API access.",
   "model": "nvidia/nemotron-3-nano-30b-a3b",
   "ties": [
     "build"
@@ -67,6 +68,11 @@
     }
   },
   "files": [
+    {
+      "path": "content-bundle.json",
+      "role": "generated lesson delivery",
+      "desc": "Digest-bound Markdown bundle used because Pages does not serve raw Markdown reliably."
+    },
     {
       "path": "SOURCE_PROVENANCE.md",
       "role": "documentation",
@@ -121,7 +127,7 @@
   <nav aria-label="Skill navigation"><a href="../index.html">Course home</a> · <a href="../SKILL.html">Parent contract</a> · <a data-skill-nav="map" href="../../SKILL.html">Repository map</a></nav>
   </header>
   <h1 id="skill-title">web/cfx11</h1>
-  <p>Internal browser candidate for c-fx-11-v1, with reviewed Markdown source, executable XBlocks, and direct learner-owned NVIDIA API access.</p>
+  <p>Internal browser candidate for c-fx-11-v1, with digest-bound lesson delivery, executable XBlocks, and learner-owned NVIDIA API access.</p>
   <p><strong><a href="index.html">Open the course preview</a>, then review <a href="SOURCE_PROVENANCE.md">source provenance</a> and <a href="course.json">the fidelity manifest</a>.</strong> The imported course is an internal review candidate until its source license is confirmed. Open <a href="runtime/SKILL.html">runtime/</a> for the browser implementation. The <a href="content/SKILL.html">content/</a> directory holds the original cells and support files; <a href="assets/SKILL.html">assets/</a> identifies the local portability asset.</p>
   <div class="skill-columns">
     <section><h2>Files</h2><ul>
@@ -129,6 +135,7 @@
       <li><a href="course.css"><code>course.css</code></a></li>
       <li><a href="course.js"><code>course.js</code></a></li>
       <li><a href="course.json"><code>course.json</code></a></li>
+      <li><a href="content-bundle.json"><code>content-bundle.json</code></a></li>
       <li><a href="index.html"><code>index.html</code></a></li>
     </ul></section>
     <section><h2>Child directories</h2><ul>

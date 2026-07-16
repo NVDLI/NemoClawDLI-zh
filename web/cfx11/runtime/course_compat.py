@@ -12,6 +12,7 @@ host, chat host, and assessment middleware that a static Pyodide page needs.
 from __future__ import annotations
 
 import base64
+import ast
 import builtins as _course_builtins
 from concurrent.futures import Executor, Future
 import json
@@ -66,6 +67,50 @@ def _browser_input(prompt: object = "") -> str:
 
 
 _course_builtins.input = _browser_input
+
+
+_COURSE_VARIABLE_ACTIVITY: dict[str, dict[str, int]] = {}
+_COURSE_ACTIVITY_EXECUTION = 0
+
+
+def __course_read__(name: str, value: Any) -> Any:
+    """Record a name only when Python actually evaluates its load expression."""
+
+    record = _COURSE_VARIABLE_ACTIVITY.setdefault(str(name), {})
+    record["reads"] = record.get("reads", 0) + 1
+    record["last_read"] = _COURSE_ACTIVITY_EXECUTION
+    return value
+
+
+class _CourseVariableReadTransformer(ast.NodeTransformer):
+    def visit_Name(self, node: ast.Name) -> ast.AST:
+        if isinstance(node.ctx, ast.Load) and not node.id.startswith("_"):
+            return ast.copy_location(
+                ast.Call(
+                    func=ast.Name(id="__course_read__", ctx=ast.Load()),
+                    args=[ast.Constant(node.id), node],
+                    keywords=[],
+                ),
+                node,
+            )
+        return node
+
+
+def __course_instrument_tree__(tree: ast.AST, execution_count: int) -> ast.AST:
+    global _COURSE_ACTIVITY_EXECUTION
+    _COURSE_ACTIVITY_EXECUTION = int(execution_count)
+    return _CourseVariableReadTransformer().visit(tree)
+
+
+def __course_record_namespace__(before: dict[str, int], after: dict[str, Any], execution_count: int) -> None:
+    """Record names whose values were created or replaced by the executed cell."""
+
+    for name, value in after.items():
+        if name.startswith("_") or before.get(name) == id(value):
+            continue
+        record = _COURSE_VARIABLE_ACTIVITY.setdefault(name, {})
+        record["writes"] = record.get("writes", 0) + 1
+        record["last_write"] = int(execution_count)
 
 
 def _browser_requests_request(

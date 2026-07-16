@@ -247,24 +247,34 @@ scope.update({
 
 async def run_course_cell():
     tree = ast.parse(__cell_source, filename="<course-cell>", mode="exec")
+    instrument_tree = scope.get("__course_instrument_tree__")
+    if callable(instrument_tree):
+        tree = instrument_tree(tree, __execution_count)
+        ast.fix_missing_locations(tree)
     final_expression = tree.body.pop() if tree.body and isinstance(tree.body[-1], ast.Expr) else None
     flags = ast.PyCF_ALLOW_TOP_LEVEL_AWAIT
-    with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-        statements = eval(compile(tree, "<course-cell>", "exec", flags=flags), scope, scope)
-        if inspect.isawaitable(statements):
-            await statements
-        if final_expression:
-            expression = ast.Expression(final_expression.value)
-            ast.fix_missing_locations(expression)
-            value = eval(compile(expression, "<course-cell>", "eval", flags=flags), scope, scope)
-            if inspect.isawaitable(value):
-                value = await value
-            record = _display_record(value)
-            reply["value"] = value
-            reply["display_type"] = record["type"]
-            reply["display"] = record["data"]
-            reply["display_language"] = record.get("language", "")
-            reply["has_value"] = value is not None
+    namespace_before = {name: id(value) for name, value in scope.items()}
+    try:
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            statements = eval(compile(tree, "<course-cell>", "exec", flags=flags), scope, scope)
+            if inspect.isawaitable(statements):
+                await statements
+            if final_expression:
+                expression = ast.Expression(final_expression.value)
+                ast.fix_missing_locations(expression)
+                value = eval(compile(expression, "<course-cell>", "eval", flags=flags), scope, scope)
+                if inspect.isawaitable(value):
+                    value = await value
+                record = _display_record(value)
+                reply["value"] = value
+                reply["display_type"] = record["type"]
+                reply["display"] = record["data"]
+                reply["display_language"] = record.get("language", "")
+                reply["has_value"] = value is not None
+    finally:
+        record_namespace = scope.get("__course_record_namespace__")
+        if callable(record_namespace):
+            record_namespace(namespace_before, scope, __execution_count)
 
 try:
     await run_course_cell()
