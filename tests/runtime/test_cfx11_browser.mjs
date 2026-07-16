@@ -200,6 +200,7 @@ try {
   }
 
   let modelRequest = null;
+  let keyTestRequest = null;
   let modelListingRequest = null;
   await page.route("https://integrate.api.nvidia.com/v1/models", async route => {
     modelListingRequest = { headers: route.request().headers() };
@@ -208,6 +209,31 @@ try {
       contentType: "application/json",
       body: JSON.stringify({ object: "list", data: [{ id: "nvidia/test-model", object: "model", created: 0, owned_by: "nvidia" }] }),
     });
+  });
+  await page.evaluate(() => {
+    window.__cfx11OriginalFetch = window.fetch.bind(window);
+    window.fetch = async (input, init = {}) => {
+      if (String(input) === "https://integrate.api.nvidia.com/v1/chat/completions") {
+        window.__cfx11KeyTestRequest = {
+          headers: Object.fromEntries(new Headers(init.headers || {}).entries()),
+          body: JSON.parse(String(init.body || "{}")),
+        };
+        return new Response(JSON.stringify({ choices: [{ message: { role: "assistant", content: "OK" }, finish_reason: "stop" }] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return window.__cfx11OriginalFetch(input, init);
+    };
+  });
+  await page.locator("#api-key").fill("browser-test-key");
+  await page.getByRole("button", { name: "Test key" }).click();
+  await page.waitForFunction(() => document.querySelector("#api-status")?.textContent.startsWith("Connected."), null, { timeout });
+  keyTestRequest = await page.evaluate(() => window.__cfx11KeyTestRequest);
+  await page.evaluate(() => {
+    window.fetch = window.__cfx11OriginalFetch;
+    delete window.__cfx11OriginalFetch;
+    delete window.__cfx11KeyTestRequest;
   });
   await page.route("https://integrate.api.nvidia.com/v1/chat/completions", async route => {
     const request = route.request();
@@ -223,14 +249,13 @@ try {
       ].join("\n\n"),
     });
   });
-  await page.locator("#api-key").fill("browser-test-key");
-  await page.getByRole("button", { name: "Test key" }).click();
-  await page.waitForFunction(() => document.querySelector("#api-status")?.textContent.startsWith("Connected."), null, { timeout });
   const modelSource = `from langchain_nvidia_ai_endpoints import ChatNVIDIA\n"".join(chunk.content for chunk in ChatNVIDIA(model="nvidia/test-model").stream("hello"))`;
   const modelBlock = await runCell(page, 21, modelSource);
   const modelOutput = await modelBlock.locator(".cell-output").innerText();
   check(await modelBlock.getAttribute("data-state") === "passed", `direct NVIDIA streaming compatibility call failed:\n${modelOutput}`);
   check((await modelBlock.locator(".cell-output").innerText()).includes("browser stream"), "streaming model result was not returned to Python");
+  check(keyTestRequest?.headers.authorization === "Bearer browser-test-key", "learner key was not sent on the auth-sensitive model test");
+  check(keyTestRequest?.body?.max_tokens === 1 && keyTestRequest?.body?.stream === false, "key test was not bounded to one non-streaming output token");
   check(modelListingRequest?.headers.authorization === "Bearer browser-test-key", "learner key was not sent on the real package's model discovery request");
   check(modelRequest?.headers.authorization === "Bearer browser-test-key", "learner key was not sent only as the NVIDIA authorization header");
   check(modelRequest?.body?.stream === true && modelRequest?.body?.model === "nvidia/test-model", "streaming model request changed its source-cell parameters");

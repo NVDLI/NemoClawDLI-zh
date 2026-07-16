@@ -605,13 +605,23 @@ elements["test-api-key"].addEventListener("click", async () => {
   elements["test-api-key"].disabled = true;
   elements["api-status"].textContent = "Checking NVIDIA API access…";
   try {
-    const response = await fetch("https://integrate.api.nvidia.com/v1/models", {
+    const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+      method: "POST",
       credentials: "omit",
-      headers: { Accept: "application/json", Authorization: `Bearer ${key}` },
+      headers: { Accept: "application/json", Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "nvidia/nemotron-nano-12b-v2-vl",
+        messages: [{ role: "user", content: "Reply OK." }],
+        max_tokens: 1,
+        stream: false,
+        temperature: 0,
+      }),
     });
     elements["api-status"].textContent = response.ok
       ? "Connected. Model cells can use this key."
-      : `NVIDIA rejected this key (${response.status}). Check or replace it.`;
+      : [401, 403].includes(response.status)
+        ? `NVIDIA rejected this key (${response.status}). Check or replace it.`
+        : `NVIDIA rejected the test request (${response.status}). Check the course model or try again.`;
   } catch (error) {
     const origin = location.origin === "null" ? "a local file" : location.origin;
     elements["api-status"].textContent = `This origin (${origin}) cannot reach NVIDIA's API. Open the published HTTPS course.`;

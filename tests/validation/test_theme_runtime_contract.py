@@ -113,6 +113,9 @@ class ThemeRuntimeContractTests(unittest.TestCase):
         self.assertIn('"../../scripts/runtime/node_modules/playwright-core"', source)
         self.assertIn("require(repositoryPlaywright)", source)
         self.assertNotIn('require("playwright-core")', source)
+        self.assertIn('viewport: { width: 1280, height: 720 }', source)
+        self.assertIn("the visible API-key action was not usable", source)
+        self.assertIn("key test was not bounded to one non-streaming output token", source)
 
     def test_declared_course_previews_are_projected_with_their_runtime_assets(self) -> None:
         build = (ROOT / "scripts/build/build_pages.sh").read_text(encoding="utf-8")

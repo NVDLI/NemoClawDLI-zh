@@ -221,6 +221,8 @@ def audit(course: Path = COURSE) -> list[str]:
     runtime_contracts = {
         "visible learner key entry": (learner_shell, 'id="api-key"'),
         "visible model connection test": (learner_shell + client, 'id="test-api-key"'),
+        "auth-sensitive model connection test": (client, '"https://integrate.api.nvidia.com/v1/chat/completions"'),
+        "one-token model connection test": (client, "max_tokens: 1"),
         "explicit theme control": (learner_shell, 'id="theme-toggle"'),
         "kernel variable panel": (learner_shell, 'id="kernel-variables"'),
         "serialized execution queue": (client, 'addEventListener("queue-change"'),
