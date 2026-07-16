@@ -10,16 +10,6 @@ addEventListener("fetch", event => {
 
 const NVIDIA_API_ORIGIN = "https://integrate.api.nvidia.com";
 
-function billingInvokeOrigin(raw) {
-  try {
-    const value = new URL(raw);
-    if (value.protocol === "https:" || (value.protocol === "http:" && ["localhost", "127.0.0.1"].includes(value.hostname))) {
-      return value.origin;
-    }
-  } catch (_) {}
-  return "";
-}
-
 async function handle(request) {
   const origin = request.headers.get("Origin") || "*";
 
@@ -30,9 +20,9 @@ async function handle(request) {
       headers: {
         "Access-Control-Allow-Origin":  origin,
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        // X-BILLING-SOURCE is caller-selected course attribution. Invoke-origin is
-        // deliberately absent: the worker derives it from the browser Origin.
-        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-BILLING-SOURCE",
+        // X-BILLING-INVOKE-ORIGIN attributes usage to the course.
+        // The browser requires preflight approval; the worker forwards the value unchanged.
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-BILLING-INVOKE-ORIGIN",
         "Access-Control-Max-Age":       "86400",
       },
     });
@@ -44,9 +34,6 @@ async function handle(request) {
 
   const fwd = new Headers(request.headers);
   fwd.delete("host");
-  fwd.delete("X-BILLING-INVOKE-ORIGIN");
-  const invokeOrigin = billingInvokeOrigin(origin);
-  if (invokeOrigin) fwd.set("X-BILLING-INVOKE-ORIGIN", invokeOrigin);
 
   let resp;
   try {

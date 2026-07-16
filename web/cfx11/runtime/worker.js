@@ -8,7 +8,7 @@ const PYODIDE_ROOT = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/
 const NVIDIA_DIRECT_BASE = "https://integrate.api.nvidia.com/v1";
 const NVIDIA_PROXY_BASE = "https://nvidia-api-cors-proxy.experiments.courses.nvidia.com/v1";
 const NVIDIA_BASES = Object.freeze(new Set([NVIDIA_DIRECT_BASE, NVIDIA_PROXY_BASE]));
-const BILLING_SOURCE = "dli-cfx11-web";
+const BILLING_INVOKE_ORIGIN = "dli-cfx11-web";
 const EXECUTE_CELL = globalThis.PYODIDE_EXECUTION_CONTRACT.source;
 const BUILTIN_PACKAGES = Object.freeze([
   "aiohttp", "anyio", "click", "distro", "httpx", "ipython", "jiter",
@@ -115,14 +115,7 @@ function isNvidiaModelUrl(url) {
 
 function applyBillingHeaders(headers, url) {
   if (!isNvidiaModelUrl(url)) return;
-  headers.set("X-BILLING-SOURCE", BILLING_SOURCE);
-  // Direct CORS accepts the page origin. The relay derives this header from its
-  // trusted request Origin server-side so a caller cannot choose the value.
-  if (url.hostname === "integrate.api.nvidia.com" && self.location.origin !== "null") {
-    headers.set("X-BILLING-INVOKE-ORIGIN", self.location.origin);
-  } else {
-    headers.delete("X-BILLING-INVOKE-ORIGIN");
-  }
+  headers.set("X-BILLING-INVOKE-ORIGIN", BILLING_INVOKE_ORIGIN);
 }
 
 function bytesToBase64(bytes) {

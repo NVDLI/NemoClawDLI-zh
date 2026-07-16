@@ -274,10 +274,8 @@ def audit(course: Path = COURSE) -> list[str]:
         "fixed-color logo presentation": (styles, 'img[src$="/nvidia.png"]'),
         "Mermaid presentation": (client, "function mermaidImageUrl"),
         "opinionated Markdown anchors": (client + styles, "heading-anchor"),
-        "client direct billing source": (client, "X-BILLING-SOURCE"),
-        "runtime direct billing source": (runtime, "X-BILLING-SOURCE"),
-        "client direct billing origin": (client, "X-BILLING-INVOKE-ORIGIN"),
-        "runtime direct billing origin": (runtime, "X-BILLING-INVOKE-ORIGIN"),
+        "client billing attribution": (client, '"X-BILLING-INVOKE-ORIGIN": BILLING_INVOKE_ORIGIN'),
+        "runtime billing attribution": (runtime, 'headers.set("X-BILLING-INVOKE-ORIGIN", BILLING_INVOKE_ORIGIN)'),
         "bounded NVIDIA relay": (runtime, '"nvidia-api-cors-proxy.experiments.courses.nvidia.com"'),
     }
     for label, (source, marker) in runtime_contracts.items():

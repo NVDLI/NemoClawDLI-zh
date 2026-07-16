@@ -9,7 +9,7 @@ const MODEL_BASES = Object.freeze({
   direct: "https://integrate.api.nvidia.com/v1",
   proxy: "https://nvidia-api-cors-proxy.experiments.courses.nvidia.com/v1",
 });
-const BILLING_SOURCE = "dli-cfx11-web";
+const BILLING_INVOKE_ORIGIN = "dli-cfx11-web";
 const MODEL_PROBE_CANDIDATES = Object.freeze([
   "nvidia/nemotron-nano-12b-v2-vl",
   "nvidia/nemotron-3-nano-30b-a3b",
@@ -69,15 +69,13 @@ function runnerConfiguration(lesson = state.lesson) {
   };
 }
 
-function modelHeaders(key, route = elements["model-route"]?.value || "direct") {
-  const headers = {
+function modelHeaders(key) {
+  return {
     Accept: "application/json",
     Authorization: `Bearer ${key}`,
     "Content-Type": "application/json",
-    "X-BILLING-SOURCE": BILLING_SOURCE,
+    "X-BILLING-INVOKE-ORIGIN": BILLING_INVOKE_ORIGIN,
   };
-  if (route === "direct" && location.origin !== "null") headers["X-BILLING-INVOKE-ORIGIN"] = location.origin;
-  return headers;
 }
 
 function escapeHtml(value) {
@@ -879,8 +877,8 @@ elements["model-route"].value = sessionStorage.getItem("cfx11-model-route") === 
 elements["model-route"].addEventListener("change", () => {
   sessionStorage.setItem("cfx11-model-route", elements["model-route"].value);
   elements["route-status"].textContent = elements["model-route"].value === "direct"
-    ? "Direct mode sends requests to NVIDIA from this page and includes this page origin for billing attribution."
-    : "Relay mode is for embedding hosts that cannot use the direct CORS route. The relay derives the page origin server-side.";
+    ? "Direct mode sends requests to NVIDIA with the course billing attribution header."
+    : "Relay mode is for embedding hosts that cannot use the direct CORS route and preserves the same course attribution.";
   if (state.lesson) state.runner.configure(runnerConfiguration());
   renderEnvironment();
 });

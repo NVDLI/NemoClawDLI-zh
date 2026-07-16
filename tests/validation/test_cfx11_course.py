@@ -133,7 +133,7 @@ class CommittedCourseTests(unittest.TestCase):
         mutations = [
             ("content-bundle.json", '"schema":"dli-markdown-delivery/1.0"', '"schema":"removed"', "schema"),
             ("index.html", 'data-variable-view="focused"', 'data-variable-view="removed"', "focus-aware"),
-            ("course.js", '"X-BILLING-INVOKE-ORIGIN"', '"X-REMOVED-INVOKE-ORIGIN"', "billing origin"),
+            ("course.js", '"X-BILLING-INVOKE-ORIGIN"', '"X-REMOVED-INVOKE-ORIGIN"', "client billing attribution"),
             ("course.js", "function mermaidImageUrl", "function removedMermaidImageUrl", "Mermaid"),
         ]
         for relative, before, after, expected in mutations:

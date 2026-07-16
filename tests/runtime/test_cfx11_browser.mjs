@@ -25,6 +25,7 @@ const mime = {
   ".json": "application/json; charset=utf-8", ".md": "text/markdown; charset=utf-8",
   ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".ico": "image/x-icon",
 };
+const retiredBillingHeader = "x-billing-" + "source";
 
 const server = http.createServer((request, response) => {
   const relative = decodeURIComponent(new URL(request.url, "http://localhost").pathname).replace(/^\/+/, "");
@@ -281,8 +282,8 @@ try {
   check(keyTestRequests?.length === 2, `connection test did not fall back once after a model outage: ${JSON.stringify(keyTestRequests)}`);
   check(keyTestRequests[0].body.model !== keyTestRequests[1].body.model, "connection-test fallback retried the same model");
   check(keyTestRequests[1]?.headers.authorization === "Bearer browser-test-key", "learner key was not sent on the auth-sensitive model test");
-  check(keyTestRequests[1]?.headers["x-billing-source"] === "dli-cfx11-web", "key test omitted the stable billing source");
-  check(keyTestRequests[1]?.headers["x-billing-invoke-origin"] === `http://127.0.0.1:${port}`, "direct key test omitted trusted page-origin attribution");
+  check(keyTestRequests[1]?.headers["x-billing-invoke-origin"] === "dli-cfx11-web", "direct key test omitted stable course attribution");
+  check(!(retiredBillingHeader in keyTestRequests[1].headers), "direct key test restored the retired billing header");
   check(keyTestRequests.every(request => request.body?.max_tokens === 1 && request.body?.stream === false), "key test fallback was not bounded to one non-streaming output token per candidate");
   await page.getByRole("button", { name: "Activity", exact: false }).click();
   check((await page.locator("#runtime-operations").innerText()).includes("Test NVIDIA model connection"), "connection fallback was absent from workflow activity");
@@ -290,8 +291,8 @@ try {
   await page.locator("#close-runtime-panel").click();
   check(modelListingRequest?.headers.authorization === "Bearer browser-test-key", "learner key was not sent on the real package's model discovery request");
   check(modelRequest?.headers.authorization === "Bearer browser-test-key", "learner key was not sent only as the NVIDIA authorization header");
-  check(modelRequest?.headers["x-billing-source"] === "dli-cfx11-web", "Python model request omitted billing source");
-  check(modelRequest?.headers["x-billing-invoke-origin"] === `http://127.0.0.1:${port}`, "Python direct model request omitted page-origin attribution");
+  check(modelRequest?.headers["x-billing-invoke-origin"] === "dli-cfx11-web", "Python direct model request omitted stable course attribution");
+  check(!(retiredBillingHeader in modelRequest.headers), "Python model request restored the retired billing header");
   check(modelRequest?.body?.stream === true && modelRequest?.body?.model === "nvidia/test-model", "streaming model request changed its source-cell parameters");
   check(!Object.keys(modelRequest.headers).some(name => name.startsWith("x-stainless-")), "SDK metadata escaped the stable browser CORS header boundary");
   await page.getByRole("button", { name: "Agent", exact: true }).click();
@@ -310,8 +311,8 @@ try {
   await page.getByRole("button", { name: "Test key" }).click();
   await page.waitForFunction(() => !document.querySelector("#test-api-key")?.disabled, null, { timeout: 35_000 });
   check((await page.locator("#api-status").innerText()).startsWith("Connected"), "relay connection test did not settle successfully");
-  check(proxyKeyRequest?.headers["x-billing-source"] === "dli-cfx11-web", "relay request omitted billing source");
-  check(!("x-billing-invoke-origin" in proxyKeyRequest.headers), "relay accepted caller-controlled billing-origin attribution");
+  check(proxyKeyRequest?.headers["x-billing-invoke-origin"] === "dli-cfx11-web", "relay request omitted stable course attribution");
+  check(!(retiredBillingHeader in proxyKeyRequest.headers), "relay request restored the retired billing header");
   await page.locator("#model-route").selectOption("direct");
   await page.unroute("https://nvidia-api-cors-proxy.experiments.courses.nvidia.com/v1/chat/completions");
   await page.locator("#api-key").fill("");

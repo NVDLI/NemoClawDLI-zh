@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 import re
+import subprocess
 import sys
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -20,6 +21,7 @@ from urllib.request import Request, urlopen
 ROOT = Path(__file__).resolve().parents[2]
 BUILD_PROXY = "https://nvidia-api-cors-proxy.experiments.courses.nvidia.com"
 OPENCLAW_PROXY = "https://openclaw-cors-proxy.experiments.courses.nvidia.com"
+LEGACY_BILLING_HEADER = "X-BILLING-" + "SOURCE"
 
 CHECKS = [
     (
@@ -43,8 +45,8 @@ CHECKS = [
     (
         "billing header stays on NVIDIA direct and iframe-proxy paths",
         "web/nemoclaw/scripts/_shared.js",
-        ['billingAttributionEnabled(url)', 'billingAttributionEnabled(cfg.url)', 'host === "integrate.api.nvidia.com"', 'host === "nvidia-api-cors-proxy.experiments.courses.nvidia.com"', 'X-BILLING-INVOKE-ORIGIN', 'hostname === "integrate.api.nvidia.com"', 'h["X-BILLING-INVOKE-ORIGIN"] = location.origin'],
-        [r'if\s*\(cfg\.iframeProxy\).*X-BILLING-SOURCE', r'if\s*\(iframeProxyModeEnabled\(\)\).*X-BILLING-SOURCE'],
+        ['billingAttributionEnabled(url)', 'billingAttributionEnabled(cfg.url)', 'host === "integrate.api.nvidia.com"', 'host === "nvidia-api-cors-proxy.experiments.courses.nvidia.com"', "X-BILLING-INVOKE-ORIGIN"],
+        [r'if\s*\(cfg\.iframeProxy\).*X-BILLING-INVOKE-ORIGIN', r'if\s*\(iframeProxyModeEnabled\(\)\).*X-BILLING-INVOKE-ORIGIN'],
     ),
     (
         "key panel exposes independent routes and iframe controls",
@@ -67,14 +69,14 @@ CHECKS = [
     (
         "reference implementation findings are documented",
         "scripts/security/iframe_proxy_worker_findings.md",
-        ["reference implementations", "X-BILLING-SOURCE", "ALLOWED_ORIGINS", "deployment repository"],
+        ["reference implementations", "X-BILLING-INVOKE-ORIGIN", "ALLOWED_ORIGINS", "deployment repository"],
         [],
     ),
     (
         "OpenClaw relay excludes model billing attribution",
         "scripts/cors-proxy/cors-proxy-worker-openclaw.js",
         ["x-openclaw-session-key", "CF-Access-Jwt-Assertion"],
-        [r"X-BILLING-SOURCE"],
+        [r"X-BILLING-INVOKE-ORIGIN"],
     ),
     (
         "OpenClaw relay is centralized, persistent, and optional",
@@ -101,7 +103,7 @@ WORKER_FINDINGS = [
     (
         "build worker reflects page origins; review exact origin allowlist before deployment changes",
         "scripts/cors-proxy/cors-proxy-worker-build.js",
-        ["Access-Control-Allow-Origin", "billingInvokeOrigin", 'fwd.delete("X-BILLING-INVOKE-ORIGIN")', 'fwd.set("X-BILLING-INVOKE-ORIGIN", invokeOrigin)'],
+        ["Access-Control-Allow-Origin", "origin"],
     ),
     (
         "launchable worker keeps upstream host allowlist but still reflects page origins",
@@ -135,10 +137,10 @@ def live_findings() -> list[str]:
                 headers={
                     "Origin": origin,
                     "Access-Control-Request-Method": "POST",
-                    "Access-Control-Request-Headers": "authorization,content-type,x-billing-source",
+                    "Access-Control-Request-Headers": "authorization,content-type,x-billing-invoke-origin",
                 },
             ),
-            ("authorization", "content-type", "x-billing-source"),
+            ("authorization", "content-type", "x-billing-invoke-origin"),
         ),
         (
             "OpenClaw relay preflight",
@@ -178,7 +180,12 @@ def live_findings() -> list[str]:
     return findings
 
 
-def source_findings(root: Path = ROOT, replacements: dict[str, tuple[str, str]] | None = None) -> list[str]:
+def source_findings(
+    root: Path = ROOT,
+    replacements: dict[str, tuple[str, str]] | None = None,
+    *,
+    scan_retired: bool = True,
+) -> list[str]:
     replacements = replacements or {}
     failures: list[str] = []
     for label, rel, required, forbidden in CHECKS:
@@ -195,6 +202,22 @@ def source_findings(root: Path = ROOT, replacements: dict[str, tuple[str, str]] 
             if bad:
                 parts.append("forbidden " + ", ".join(bad))
             failures.append(f"FAIL {label} ({rel}): " + "; ".join(parts))
+    if scan_retired:
+        tracked = subprocess.run(
+            ["git", "-C", str(root), "ls-files", "-z"],
+            check=True,
+            capture_output=True,
+        ).stdout.decode("utf-8").split("\0")
+        for rel in filter(None, tracked):
+            try:
+                text = (root / rel).read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):
+                continue
+            if rel in replacements:
+                old, new = replacements[rel]
+                text = text.replace(old, new, 1)
+            if LEGACY_BILLING_HEADER.casefold() in text.casefold():
+                failures.append(f"FAIL retired billing header remains in {rel}")
     return failures
 
 
@@ -206,9 +229,8 @@ def self_test() -> list[str]:
         ("explicit setup field", "web/nemoclaw/scripts/_keypanel.js", '<input type="url" class="model-api-base-url"', '<input type="url" class="removed-endpoint-field"'),
         ("custom endpoint bypasses iframe relay", "web/nemoclaw/scripts/_keypanel.js", "setIframeProxyMode(defaultEndpoint &&", "setIframeProxyMode(true &&"),
         ("custom endpoint omits NVIDIA attribution", "web/nemoclaw/scripts/_shared.js", "if (billingAttributionEnabled(cfg.url))", "if (true)"),
-        ("direct billing invoke origin", "web/nemoclaw/scripts/_shared.js", 'h["X-BILLING-INVOKE-ORIGIN"] = location.origin', 'h["X-REMOVED-INVOKE-ORIGIN"] = location.origin'),
         ("credential destination warning", "web/nemoclaw/index.html", "selected endpoint", "configured service"),
-        ("OpenClaw excludes model billing attribution", "scripts/cors-proxy/cors-proxy-worker-openclaw.js", "x-openclaw-session-key, Accept", "x-openclaw-session-key, X-BILLING-SOURCE, Accept"),
+        ("OpenClaw excludes model billing attribution", "scripts/cors-proxy/cors-proxy-worker-openclaw.js", "x-openclaw-session-key, Accept", "x-openclaw-session-key, X-BILLING-INVOKE-ORIGIN, Accept"),
         ("OpenClaw relay toggle", "web/nemoclaw/scripts/_connection.js", 'params.get("openclaw_proxy")', 'params.get("removed_openclaw_proxy")'),
         ("OpenClaw same-origin bypass", "web/nemoclaw/scripts/_connection.js", "upstream.origin !== loc.origin", "true"),
         ("OpenClaw probe controls", "web/nemoclaw/03a-kickstart.html", "proxyControls: true", "proxyControls: false"),
@@ -216,8 +238,13 @@ def self_test() -> list[str]:
         ("OpenShell direct terminal fallback", "web/nemoclaw/scripts/_openshell.js", '[direct.url, routed.url]', '[routed.url]'),
     )
     for label, rel, old, new in cases:
-        if not source_findings(replacements={rel: (old, new)}):
+        if not source_findings(replacements={rel: (old, new)}, scan_retired=False):
             failures.append(f"mutation escaped: {label}")
+    legacy_mutation = {
+        "web/nemoclaw/scripts/_shared.js": ("X-BILLING-INVOKE-ORIGIN", LEGACY_BILLING_HEADER),
+    }
+    if not source_findings(replacements=legacy_mutation):
+        failures.append("mutation escaped: retired billing header")
     return failures
 
 

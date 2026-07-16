@@ -36,7 +36,7 @@
     {
       "name": "NVIDIA model transport",
       "entry": "web/cfx11/runtime/course_compat.py",
-      "contract": "Use a learner-supplied key with either the allowlisted direct NVIDIA endpoint or the bounded DLI relay. Direct requests send billing source and page-origin attribution. Relay requests omit caller-controlled origin attribution so the relay can derive it from the trusted request Origin. Never use a launchable credential."
+      "contract": "Use a learner-supplied key with either the allowlisted direct NVIDIA endpoint or the bounded DLI relay. Both routes send the stable course attribution through X-BILLING-INVOKE-ORIGIN. Never use a launchable credential."
     },
     {
       "name": "Assessment middleware",
