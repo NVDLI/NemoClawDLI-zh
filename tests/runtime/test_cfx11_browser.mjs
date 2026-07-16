@@ -142,10 +142,40 @@ try {
     check(await fixedLogo.evaluate(image => getComputedStyle(image).backgroundColor === "rgb(255, 255, 255)"), "fixed-color NVIDIA logo did not receive its dark-theme presentation plate");
   }
   check(await page.locator("#api-key").inputValue() === "", "the learner API key must not be prefilled");
+  check(await page.locator("#connection-details").getAttribute("open") !== null, "an unset model connection did not expose its key editor");
   check(await page.locator("#api-key").isVisible(), "the learner API key field must be visible in the lesson flow");
   check(await page.locator("#theme-toggle").isVisible(), "the course must expose an explicit theme control");
+  await page.locator("#api-key").fill("saved-without-probing");
+  await page.getByRole("button", { name: "Save and close", exact: true }).click();
+  check(await page.locator("#connection-details").getAttribute("open") === null, "saving a learner key did not collapse the prominent editor");
+  check(await page.locator("#connection-summary-status").innerText() === "Key saved in this tab", "the collapsed key editor did not expose its non-secret state");
+  await page.locator("#connection-details > summary").click();
+  await page.getByRole("button", { name: "Clear", exact: true }).click();
+  check(await page.locator("#api-key").inputValue() === "" && await page.locator("#api-key").isVisible(), "clearing a key did not reopen an empty editor");
   await page.getByRole("button", { name: "Test key" }).click();
   check(await page.locator("#api-status").innerText() === "Paste a key before testing the connection.", "the visible API-key action was not usable at a 1280x720 learner viewport");
+  const keyboardBlock = page.locator(".xblock").first();
+  const originalKeyboardSource = await keyboardBlock.locator(".CodeMirror").evaluate(element => element.CodeMirror.getValue());
+  check(await keyboardBlock.locator(".CodeMirror").evaluate(element => element.CodeMirror.getOption("readOnly") === false), "the Python editor is read-only");
+  await keyboardBlock.locator(".CodeMirror").click();
+  await keyboardBlock.locator(".CodeMirror").evaluate(element => element.CodeMirror.execCommand("selectAll"));
+  await page.keyboard.type("student_keyboard_edit = 17\nstudent_keyboard_edit");
+  check(await keyboardBlock.locator(".CodeMirror").evaluate(element => element.CodeMirror.getValue()) === "student_keyboard_edit = 17\nstudent_keyboard_edit", "normal keyboard input did not edit the Python cell");
+  await keyboardBlock.getByRole("button", { name: "Restore source", exact: true }).click();
+  check(await keyboardBlock.locator(".CodeMirror").evaluate(element => element.CodeMirror.getValue()) === originalKeyboardSource, "Restore source did not recover the imported Python");
+
+  const layoutButton = keyboardBlock.getByRole("button", { name: "Output below", exact: true });
+  await layoutButton.click();
+  check(await keyboardBlock.getAttribute("data-output-layout") === "below", "the per-cell output control did not select the below layout");
+  const belowGeometry = await keyboardBlock.locator(".wb-cell-workspace").evaluate(workspace => {
+    const source = workspace.querySelector(".wb-cell-source").getBoundingClientRect();
+    const artifact = workspace.querySelector(".wb-cell-artifact").getBoundingClientRect();
+    return { sourceBottom: source.bottom, artifactTop: artifact.top, sourceWidth: source.width, artifactWidth: artifact.width };
+  });
+  check(belowGeometry.artifactTop >= belowGeometry.sourceBottom - 1 && Math.abs(belowGeometry.sourceWidth - belowGeometry.artifactWidth) < 2,
+    `the selected below layout did not stack the cell panes: ${JSON.stringify(belowGeometry)}`);
+  await keyboardBlock.getByRole("button", { name: "Output beside", exact: true }).click();
+  check(await keyboardBlock.getAttribute("data-output-layout") === "beside", "the per-cell output control did not restore the beside layout");
   console.log("cfx11_browser_audit: starting persistent Python kernel and queue checks");
   for (const index of [7, 14, 16, 20, 21]) {
     const block = await runCell(page, index);
@@ -164,6 +194,33 @@ try {
   const capabilityOutput = await capabilityBlock.locator(".cell-output").innerText();
   check(await capabilityBlock.getAttribute("data-state") === "passed", `Pyodide capability probe failed:\n${capabilityOutput}`);
   check(capabilityOutput.includes("false") && capabilityOutput.includes("ordered-browser-fallback"), `the runtime capability and selected scheduler disagree:\n${capabilityOutput}`);
+
+  const longResultBlock = await runCell(page, 21, `{
+    "nested": {"ready": True, "values": list(range(12))},
+    "long_text": "x" * 20000,
+  }`);
+  check(await longResultBlock.locator("pre.formatted-output code.language-json").count() === 1, "a returned dictionary did not use the highlighted JSON renderer");
+  const longResultGeometry = await longResultBlock.evaluate(block => {
+    const source = block.querySelector(".wb-cell-source").getBoundingClientRect();
+    const artifact = block.querySelector(".wb-cell-artifact").getBoundingClientRect();
+    const output = block.querySelector(".cell-output");
+    return {
+      sourceWidth: source.width,
+      artifactWidth: artifact.width,
+      outputClientHeight: output.clientHeight,
+      outputScrollHeight: output.scrollHeight,
+      outputScrollWidth: output.scrollWidth,
+      outputClientWidth: output.clientWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      viewportWidth: innerWidth,
+    };
+  });
+  check(longResultGeometry.sourceWidth > 250 && longResultGeometry.artifactWidth > 220,
+    `long output resized the code pane: ${JSON.stringify(longResultGeometry)}`);
+  check(longResultGeometry.outputClientHeight <= 610 && longResultGeometry.outputScrollHeight > longResultGeometry.outputClientHeight,
+    `long output was not contained in a bounded result viewport: ${JSON.stringify(longResultGeometry)}`);
+  check(longResultGeometry.outputScrollWidth <= longResultGeometry.outputClientWidth + 1 && longResultGeometry.documentWidth <= longResultGeometry.viewportWidth,
+    `long output escaped its cell or page width: ${JSON.stringify(longResultGeometry)}`);
 
   const inputBlock = page.locator('.xblock[data-cell-id$=":21"]');
   await inputBlock.locator(".CodeMirror").evaluate(element => element.CodeMirror.setValue('student_name = input("Your name: ")\nconnection_config = {"api_key": "nvapi-this-must-not-render"}\n{"student": student_name, "kept": True}'));
@@ -287,8 +344,10 @@ try {
   await page.locator("#api-key").fill("browser-test-key");
   await page.getByRole("button", { name: "Test key" }).click();
   await page.waitForFunction(() => !document.querySelector("#test-api-key")?.disabled, null, { timeout: 35_000 });
-  const keyStatus = await page.locator("#api-status").innerText();
+  const keyStatus = await page.locator("#api-status").textContent();
   check(keyStatus.startsWith("Connected"), `bounded connection test failed visibly: ${keyStatus}; page errors: ${JSON.stringify(errors)}`);
+  check(await page.locator("#connection-details").getAttribute("open") === null, "a verified model connection did not collapse to its compact summary");
+  check((await page.locator("#connection-summary-status").innerText()).startsWith("Connected"), "the compact model summary did not report verified state");
   keyTestRequests = await page.evaluate(() => window.__cfx11KeyTestRequests);
   await page.evaluate(() => {
     window.fetch = window.__cfx11OriginalFetch;
@@ -338,6 +397,7 @@ try {
   await page.locator("#close-runtime-panel").click();
 
   let proxyKeyRequest = null;
+  await page.locator("#connection-details > summary").click();
   await page.locator("#model-route").selectOption("proxy");
   await page.route("https://nvidia-api-cors-proxy.experiments.courses.nvidia.com/v1/chat/completions", async route => {
     proxyKeyRequest = { headers: route.request().headers(), body: route.request().postDataJSON() };
@@ -345,7 +405,8 @@ try {
   });
   await page.getByRole("button", { name: "Test key" }).click();
   await page.waitForFunction(() => !document.querySelector("#test-api-key")?.disabled, null, { timeout: 35_000 });
-  check((await page.locator("#api-status").innerText()).startsWith("Connected"), "relay connection test did not settle successfully");
+  check((await page.locator("#api-status").textContent()).startsWith("Connected"), "relay connection test did not settle successfully");
+  await page.locator("#connection-details > summary").click();
   check(proxyKeyRequest?.headers["x-billing-invoke-origin"] === "dli-cfx11-web", "relay request omitted stable course attribution");
   check(!(retiredBillingHeader in proxyKeyRequest.headers), "relay request restored the retired billing header");
   await page.locator("#model-route").selectOption("direct");
@@ -447,7 +508,8 @@ run_assessment(InputSensitiveChain())`;
   check(await page.locator("[data-workbench-content='helpers']").isVisible(), "canonical helper view did not open");
   if (process.env.CFX11_SCREENSHOT_DIR) {
     for (const theme of ["dark", "light"]) {
-      if (await page.locator("html").getAttribute("data-theme") !== theme) await page.locator("#reference-theme").click();
+      await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+      await page.waitForFunction(value => document.documentElement.dataset.theme === value, theme);
       await page.screenshot({ path: path.join(process.env.CFX11_SCREENSHOT_DIR, `pyodide-workbench-${theme}.png`), fullPage: true });
     }
   }

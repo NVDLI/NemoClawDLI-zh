@@ -59,30 +59,35 @@
           <button id="reset-runtime" type="button">Reset Python</button>
         </div>
       </div>
-      <section class="runtime-console" aria-labelledby="runtime-console-title">
-        <div class="connection-card">
-          <div>
-            <span class="eyebrow">Your model connection</span>
-            <h3 id="runtime-console-title">Connect to NVIDIA</h3>
-            <p>Paste your key here before a model cell; this tab sends it only to NVIDIA's API. Testing tries a short, bounded list of lightweight models and stops after the first one-token response. Lesson cells keep their explicit model choices.</p>
-          </div>
-          <div class="key-entry">
-            <label for="api-key">NVIDIA API key</label>
-            <div class="key-row">
-              <input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="nvapi-…">
-              <button id="test-api-key" type="button">Test key</button>
-              <button id="clear-api-key" type="button">Clear</button>
+      <section class="runtime-console" aria-label="NVIDIA model connection">
+        <details id="connection-details" class="connection-card">
+          <summary>
+            <span><span class="eyebrow">Model connection</span><strong id="runtime-console-title">Connect to NVIDIA</strong></span>
+            <span id="connection-summary-status">No key saved</span>
+          </summary>
+          <div class="connection-body">
+            <div>
+              <p>Model cells use a key that stays in this browser tab. A connection test tries a bounded list of lightweight models and stops after the first one-token response. Lesson cells keep their explicit model choices.</p>
             </div>
-            <p id="api-status" class="connection-status">No key is stored in this browser tab.</p>
-            <label for="model-route">Model route</label>
-            <select id="model-route">
-              <option value="direct">Direct NVIDIA API</option>
-              <option value="proxy">DLI browser relay</option>
-            </select>
-            <p id="route-status" class="connection-status">Direct is recommended. The relay is available when an embedding host cannot use NVIDIA's direct CORS route.</p>
-            <a href="https://build.nvidia.com/?ncid=ref-dli-146986" target="_blank" rel="noopener noreferrer">Create or manage a key</a>
+            <div class="key-entry">
+              <label for="api-key">NVIDIA API key</label>
+              <div class="key-row">
+                <input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="nvapi-…">
+                <button id="save-api-key" type="button">Save and close</button>
+                <button id="test-api-key" type="button">Test key</button>
+                <button id="clear-api-key" type="button">Clear</button>
+              </div>
+              <p id="api-status" class="connection-status">No key is stored in this browser tab.</p>
+              <label for="model-route">Model route</label>
+              <select id="model-route">
+                <option value="direct">Direct NVIDIA API</option>
+                <option value="proxy">DLI browser relay</option>
+              </select>
+              <p id="route-status" class="connection-status">Direct is recommended. The relay is available when an embedding host cannot use NVIDIA's direct CORS route.</p>
+              <a href="https://build.nvidia.com/?ncid=ref-dli-146986" target="_blank" rel="noopener noreferrer">Create or manage a key</a>
+            </div>
           </div>
-        </div>
+        </details>
       </section>
       <article id="lesson-body" class="lesson-body" aria-live="polite">
         <p>Loading the reviewed Markdown source for this lesson…</p>

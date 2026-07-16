@@ -48,7 +48,8 @@ const elements = Object.fromEntries([
   "stop-runtime", "reset-runtime", "settings-dialog", "api-key", "api-status", "open-settings",
   "previous-lesson", "next-lesson", "progress-value", "progress-label", "theme-toggle",
   "clear-api-key", "kernel-status", "queue-status", "kernel-variables", "inspect-runtime",
-  "restart-runtime", "test-api-key", "model-route", "route-status", "runtime-panel",
+  "restart-runtime", "test-api-key", "save-api-key", "model-route", "route-status", "runtime-panel",
+  "connection-details", "connection-summary-status",
   "runtime-panel-title", "close-runtime-panel", "kernel-started", "start-runtime",
   "dock-stop-runtime", "clear-runtime-streams", "runtime-streams", "runtime-environment",
   "environment-settings", "runtime-agent-form", "runtime-agent-input", "runtime-agent-history",
@@ -277,6 +278,7 @@ function renderDisplay(record) {
   }
   if (type === "application/json" || type === "text/x-code") {
     const pre = document.createElement("pre");
+    pre.className = "formatted-output";
     const code = document.createElement("code");
     code.className = `language-${record.language || (type === "application/json" ? "json" : "python")}`;
     code.textContent = record.data;
@@ -625,7 +627,20 @@ function buildXBlocks() {
     const restore = document.createElement("button");
     restore.type = "button";
     restore.textContent = "Restore source";
-    header.append(heading, status, restore, run);
+    const layout = document.createElement("button");
+    layout.type = "button";
+    layout.className = "cell-layout-toggle";
+    const layoutKey = `cfx11-output-layout:${marker.dataset.cellId}`;
+    const savedLayout = sessionStorage.getItem(layoutKey) === "below" ? "below" : "beside";
+    article.dataset.outputLayout = savedLayout;
+    const updateLayoutControl = () => {
+      const below = article.dataset.outputLayout === "below";
+      layout.textContent = below ? "Output beside" : "Output below";
+      layout.setAttribute("aria-pressed", String(below));
+      layout.title = below ? "Place this cell's result beside its code" : "Place this cell's result below its code";
+    };
+    updateLayoutControl();
+    header.append(heading, status, layout, restore, run);
 
     const workspace = document.createElement("div");
     workspace.className = "wb-cell-workspace";
@@ -634,7 +649,7 @@ function buildXBlocks() {
     sourcePane.setAttribute("aria-label", "Editable Python source");
     const sourceLabel = document.createElement("div");
     sourceLabel.className = "wb-cell-pane-label";
-    sourceLabel.textContent = "Editable Python";
+    sourceLabel.textContent = "Editable Python · click to type · Shift+Enter runs";
     const textarea = document.createElement("textarea");
     textarea.value = source;
     textarea.setAttribute("aria-label", `Python source for cell ${Number(marker.dataset.cellIndex) + 1}`);
@@ -679,12 +694,18 @@ function buildXBlocks() {
     sourceNode.remove();
     const editor = globalThis.CodeMirror.fromTextArea(textarea, {
       mode: "python", lineNumbers: true, indentUnit: 4, tabSize: 4,
-      lineWrapping: false, gutters: ["CodeMirror-linenumbers", "course-errors"],
+      lineWrapping: false, readOnly: false, gutters: ["CodeMirror-linenumbers", "course-errors"],
       extraKeys: { "Shift-Enter": () => run.click(), "Ctrl-Enter": () => run.click(), "Cmd-Enter": () => run.click() },
     });
     const block = { id: marker.dataset.cellId, article, status, output, editor, originalSource: source };
     run.addEventListener("click", () => runBlock(block));
     restore.addEventListener("click", () => editor.setValue(source));
+    layout.addEventListener("click", () => {
+      article.dataset.outputLayout = article.dataset.outputLayout === "below" ? "beside" : "below";
+      sessionStorage.setItem(layoutKey, article.dataset.outputLayout);
+      updateLayoutControl();
+      editor.refresh();
+    });
     state.blocks.push(block);
   }
   elements["lesson-body"].querySelectorAll("pre code").forEach(code => globalThis.hljs?.highlightElement(code));
@@ -950,15 +971,32 @@ elements["model-route"].addEventListener("change", () => {
 });
 elements["model-route"].dispatchEvent(new Event("change"));
 elements["api-key"].value = sessionStorage.getItem("cfx11-nvidia-key") || "";
+function updateConnectionSummary(status = "") {
+  const hasKey = Boolean(elements["api-key"].value.trim());
+  elements["connection-summary-status"].textContent = status || (hasKey ? "Key saved in this tab" : "No key saved");
+  if (!hasKey) elements["connection-details"].open = true;
+}
 elements["api-key"].addEventListener("input", () => {
   const value = elements["api-key"].value.trim();
   if (value) sessionStorage.setItem("cfx11-nvidia-key", value); else sessionStorage.removeItem("cfx11-nvidia-key");
   elements["api-status"].textContent = value ? "The key is held in this browser tab only." : "No key is stored in this browser tab.";
+  updateConnectionSummary();
 });
 elements["api-key"].dispatchEvent(new Event("input"));
+if (elements["api-key"].value.trim()) elements["connection-details"].open = false;
+elements["save-api-key"].addEventListener("click", () => {
+  if (!elements["api-key"].value.trim()) {
+    elements["api-status"].textContent = "Paste a key before saving the connection.";
+    elements["api-key"].focus();
+    return;
+  }
+  updateConnectionSummary();
+  elements["connection-details"].open = false;
+});
 elements["clear-api-key"].addEventListener("click", () => {
   elements["api-key"].value = "";
   elements["api-key"].dispatchEvent(new Event("input"));
+  elements["connection-details"].open = true;
   elements["api-key"].focus();
 });
 
@@ -1020,8 +1058,12 @@ elements["test-api-key"].addEventListener("click", async () => {
   try {
     const model = await probeModelConnection(key);
     elements["api-status"].textContent = `Connected with ${model}. Lesson cells keep their explicit model choices.`;
+    updateConnectionSummary(`Connected · ${model}`);
+    elements["connection-details"].open = false;
   } catch (error) {
     elements["api-status"].textContent = error.message;
+    updateConnectionSummary("Connection needs attention");
+    elements["connection-details"].open = true;
   } finally {
     elements["test-api-key"].disabled = false;
   }
