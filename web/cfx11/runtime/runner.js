@@ -58,6 +58,15 @@ export class CoursePythonRunner extends EventTarget {
     this.configuration = configuration;
   }
 
+  switchContext(configuration, reason = "Python runtime changed lessons.") {
+    if (!this.worker && this.pending.size === 0 && this.queue.length === 0) {
+      this.configure(configuration);
+      return false;
+    }
+    this.reset(configuration, reason);
+    return true;
+  }
+
   armTimeout(job, timeoutMs, phase) {
     clearTimeout(job.timer);
     job.timer = setTimeout(() => this.expire(job, phase, timeoutMs), timeoutMs);

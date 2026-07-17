@@ -74,6 +74,12 @@ async function waitForBlock(page, block) {
   return block;
 }
 
+async function openNavigationLesson(page, lessonId) {
+  const link = page.locator(`#course-nav a[data-lesson-id="${lessonId}"]`);
+  await link.evaluate(element => { element.closest("details").open = true; });
+  await link.click();
+}
+
 await listen();
 let browser;
 try {
@@ -142,6 +148,18 @@ try {
   check(mermaidRequests > 0, "Mermaid source fences were not upgraded to rendered diagrams during full lesson traversal");
   await page.goto(url, { waitUntil: "domcontentloaded", timeout });
   await waitForCourseReady(page, "Runnable Functions interaction audit");
+  check(await page.locator("#course-nav details").count() === 7, "course units were not rendered as collapsible sections");
+  check(await page.locator("#course-nav details[open]").count() === 1, "navigation did not keep only the current section open by default");
+  const currentLessonLink = page.locator('#course-nav a[aria-current="page"]');
+  check(await currentLessonLink.count() === 1 && await currentLessonLink.isVisible(), "navigation did not reveal and mark the current lesson");
+  check((await currentLessonLink.locator(".nav-lesson-number").innerText()) === "2.3", "current lesson did not receive its section.lesson number");
+  check(await page.locator("#previous-lesson").isVisible() && await page.locator("#next-lesson").isVisible(), "header omitted previous or next lesson navigation");
+  check((await page.locator("#next-lesson").getAttribute("title"))?.includes("2.4 Combining Chains"), "header next control did not identify its destination");
+  await page.locator("#next-lesson").click();
+  await page.waitForFunction(() => document.querySelector("#lesson-title")?.textContent === "Combining Chains", null, { timeout });
+  check(await page.locator('#course-nav a[aria-current="page"] .nav-lesson-number').innerText() === "2.4", "header navigation did not update the current lesson marker");
+  await page.locator("#previous-lesson").click();
+  await page.waitForFunction(() => document.querySelector("#lesson-title")?.textContent === "Runnable Functions", null, { timeout });
   check(await page.locator(".xblock").count() === 23, "Runnable Functions must expose all 23 original code cells");
   check(await page.locator(".xblock .wb-cell-workspace").count() === 23, "every Python cell must expose the shared code-and-evidence workspace");
   check(await page.locator(".xblock .wb-cell-artifact[hidden]").count() === 23, "pre-run cells must not reserve space for empty evidence panes");
@@ -553,7 +571,7 @@ try {
   await page.unroute("https://integrate.api.nvidia.com/v1/chat/completions");
 
   const wikipediaSource = `import wikipediaapi\npage = wikipediaapi.Wikipedia(user_agent="DLI-course-test/1.0").page("Paris")\n{"exists": page.exists(), "mentions_france": "France" in page.summary}`;
-  console.log("cfx11_browser_audit: checking live public-data adapters and cross-lesson state");
+  console.log("cfx11_browser_audit: checking live public-data adapters and lesson kernel scopes");
   const wikipediaBlock = await runCell(page, 21, wikipediaSource);
   const wikipediaOutput = await wikipediaBlock.locator(".cell-output").innerText();
   check(wikipediaOutput.includes('"mentions_france": true'), `live Wikipedia compatibility request did not return source data:\n${wikipediaOutput}`);
@@ -563,35 +581,144 @@ try {
   const airOutput = await airBlock.locator(".cell-output").innerText();
   check(airOutput.includes('"hourly": true'), `live Open-Meteo request did not return source data:\n${airOutput}`);
 
-  const stateBlock = await runCell(page, 21, 'cross_lesson_value = {"answer": 42}\ncross_lesson_value');
-  check(await stateBlock.getAttribute("data-state") === "passed", "cross-lesson state setup failed");
-  await page.locator('#course-nav a[data-lesson-id="2-Chains/23-Combining-Chains"]').click();
+  check(await page.locator("#kernel-scope").inputValue() === "lesson", "course did not default to one kernel per source notebook");
+  const stateBlock = await runCell(page, 21, 'isolated_lesson_value = {"answer": 42}\nisolated_lesson_value');
+  check(await stateBlock.getAttribute("data-state") === "passed", "per-lesson state setup failed");
+  await openNavigationLesson(page, "2-Chains/23-Combining-Chains");
   await page.waitForFunction(() => document.querySelector("#lesson-title")?.textContent.includes("Combining"), null, { timeout });
   const carriedBlock = page.locator(".xblock").first();
-  await carriedBlock.locator(".CodeMirror").evaluate(element => element.CodeMirror.setValue("cross_lesson_value"));
+  await carriedBlock.locator(".CodeMirror").evaluate(element => element.CodeMirror.setValue("isolated_lesson_value"));
   await carriedBlock.getByRole("button", { name: "Run", exact: true }).click();
   await waitForBlock(page, carriedBlock);
-  check((await carriedBlock.locator(".cell-output").innerText()).includes('"answer": 42'), "Python variables did not persist across in-tab lesson navigation");
+  check(await carriedBlock.getAttribute("data-state") === "failed", "a lesson unexpectedly inherited the previous notebook's namespace");
+  check((await carriedBlock.locator(".cell-output").innerText()).includes("NameError"), "isolated lesson state failed without a useful missing-variable error");
+
+  await page.locator('[data-workbench-view="session"]').click();
+  await page.locator("#kernel-scope").selectOption("shared");
+  check((await page.locator("#kernel-scope-status").innerText()).includes("keeps one kernel"), "shared-kernel mode was not explained after selection");
+  await page.locator("#close-runtime-panel").click();
+  const sharedStateBlock = await runCell(page, 7, 'shared_lesson_value = {"answer": 84}\nshared_lesson_value');
+  check(await sharedStateBlock.getAttribute("data-state") === "passed", "shared-kernel state setup failed");
+  await openNavigationLesson(page, "2-Chains/24-Parallel-Chains");
+  await page.waitForFunction(() => document.querySelector("#lesson-title")?.textContent.includes("Parallel"), null, { timeout });
+  const sharedCarriedBlock = page.locator(".xblock").first();
+  await sharedCarriedBlock.locator(".CodeMirror").evaluate(element => element.CodeMirror.setValue("shared_lesson_value"));
+  await sharedCarriedBlock.getByRole("button", { name: "Run", exact: true }).click();
+  await waitForBlock(page, sharedCarriedBlock);
+  check((await sharedCarriedBlock.locator(".cell-output").innerText()).includes('"answer": 84'), "explicit shared-kernel mode did not preserve state across lessons");
   await page.locator('[data-workbench-view="variables"]').click();
   await page.getByRole("button", { name: "All variables", exact: true }).click();
-  await page.waitForFunction(() => document.querySelector("#kernel-variables")?.textContent.includes("cross_lesson_value"), null, { timeout });
+  await page.waitForFunction(() => document.querySelector("#kernel-variables")?.textContent.includes("shared_lesson_value"), null, { timeout });
 
+  const themeBlock = page.locator(".xblock").first();
+  await themeBlock.locator(".CodeMirror").evaluate(element => {
+    element.CodeMirror.setValue("from typing import Dict\n\ndef sample(value: int = 3):\n    mapping = dict(count=value)\n    # Builtins and atoms must stay readable.\n    return str(mapping) if True else None");
+    element.CodeMirror.refresh();
+  });
   for (const expectedTheme of ["light", "dark"]) {
     if (await page.locator("html").getAttribute("data-theme") !== expectedTheme) await page.locator("#theme-toggle").click();
     check(await page.locator("html").getAttribute("data-theme") === expectedTheme, `${expectedTheme} theme was not selectable`);
     const palette = await page.evaluate(() => {
+      const rgb = value => (value.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+      const luminance = value => rgb(value).map(channel => {
+        const normalized = channel / 255;
+        return normalized <= .04045 ? normalized / 12.92 : ((normalized + .055) / 1.055) ** 2.4;
+      }).reduce((sum, channel, index) => sum + channel * [.2126, .7152, .0722][index], 0);
+      const contrast = (foreground, background) => {
+        const values = [luminance(foreground), luminance(background)].sort((left, right) => right - left);
+        return (values[0] + .05) / (values[1] + .05);
+      };
       const key = getComputedStyle(document.querySelector("#api-key"));
-      const editor = getComputedStyle(document.querySelector(".CodeMirror"));
+      const editorElement = document.querySelector(".CodeMirror");
+      const editor = getComputedStyle(editorElement);
       const body = getComputedStyle(document.body);
-      return { keyBackground: key.backgroundColor, keyColor: key.color, editorBackground: editor.backgroundColor, bodyBackground: body.backgroundColor };
+      const tokenRows = [...editorElement.querySelectorAll('span[class*="cm-"]')].map(token => ({
+        classes: token.className,
+        text: token.textContent,
+        color: getComputedStyle(token).color,
+        contrast: contrast(getComputedStyle(token).color, editor.backgroundColor),
+      }));
+      return {
+        keyBackground: key.backgroundColor,
+        keyColor: key.color,
+        editorBackground: editor.backgroundColor,
+        bodyBackground: body.backgroundColor,
+        tokens: tokenRows,
+      };
     });
     check(palette.keyBackground !== "rgba(0, 0, 0, 0)" && palette.keyColor, `${expectedTheme} API input had no readable palette`);
     check(palette.editorBackground !== palette.bodyBackground, `${expectedTheme} editor lost its visual boundary`);
+    check(palette.tokens.some(token => token.classes.includes("cm-builtin") && /str|dict/.test(token.text)), `${expectedTheme} editor did not classify Python builtins`);
+    const lowContrastTokens = palette.tokens.filter(token => token.contrast < 4.5);
+    check(lowContrastTokens.length === 0, `${expectedTheme} syntax tokens fell below 4.5:1 contrast: ${JSON.stringify(lowContrastTokens)}`);
     if (process.env.CFX11_SCREENSHOT_DIR) {
       fs.mkdirSync(process.env.CFX11_SCREENSHOT_DIR, { recursive: true });
       await page.screenshot({ path: path.join(process.env.CFX11_SCREENSHOT_DIR, `cfx11-${expectedTheme}.png`), fullPage: true });
     }
   }
+  await page.setViewportSize({ width: 480, height: 800 });
+  const narrowNavigation = await page.evaluate(() => {
+    const header = document.querySelector(".course-header").getBoundingClientRect();
+    const previous = document.querySelector("#previous-lesson").getBoundingClientRect();
+    const next = document.querySelector("#next-lesson").getBoundingClientRect();
+    const dock = document.querySelector(".wb-dock");
+    const tools = document.querySelector(".wb-tools");
+    const box = element => element ? {
+      bounds: Object.fromEntries(["left", "right", "width"].map(key => [key, Math.round(element.getBoundingClientRect()[key])])),
+      clientWidth: element.clientWidth,
+      offsetWidth: element.offsetWidth,
+      scrollWidth: element.scrollWidth,
+      overflowX: getComputedStyle(element).overflowX,
+      minWidth: getComputedStyle(element).minWidth,
+      maxWidth: getComputedStyle(element).maxWidth,
+    } : null;
+    return {
+      headerBottom: header.bottom,
+      previousWidth: previous.width,
+      nextWidth: next.width,
+      overflow: document.documentElement.scrollWidth - innerWidth,
+      scrollX,
+      html: box(document.documentElement),
+      body: box(document.body),
+      dock: box(dock),
+      tools: box(tools),
+      widestScrollContainers: [...document.querySelectorAll("body *")]
+        .map(element => ({
+          tag: element.tagName,
+          id: element.id,
+          className: String(element.className).slice(0, 100),
+          clientWidth: element.clientWidth,
+          scrollWidth: element.scrollWidth,
+          overflowX: getComputedStyle(element).overflowX,
+        }))
+        .filter(item => item.scrollWidth > innerWidth + 1)
+        .sort((left, right) => right.scrollWidth - left.scrollWidth)
+        .slice(0, 12),
+      overflowElements: [...document.querySelectorAll("body *")].map(element => {
+        const bounds = element.getBoundingClientRect();
+        return { element, bounds, documentRight: bounds.right + scrollX };
+      }).filter(item => item.documentRight > innerWidth + 1 || item.bounds.width > innerWidth + 1)
+        .sort((left, right) => Math.max(right.documentRight, right.bounds.width) - Math.max(left.documentRight, left.bounds.width))
+        .slice(0, 12).map(item => ({
+        tag: item.element.tagName,
+        id: item.element.id,
+        className: String(item.element.className).slice(0, 100),
+        left: Math.round(item.bounds.left),
+        right: Math.round(item.bounds.right),
+        documentRight: Math.round(item.documentRight),
+        width: Math.round(item.bounds.width),
+        clientWidth: item.element.clientWidth,
+        scrollWidth: item.element.scrollWidth,
+        overflowX: getComputedStyle(item.element).overflowX,
+      })),
+    };
+  });
+  check(narrowNavigation.previousWidth > 100 && narrowNavigation.nextWidth > 100, `narrow header lesson controls were not usable: ${JSON.stringify(narrowNavigation)}`);
+  check(narrowNavigation.overflow <= 1, `narrow course navigation caused horizontal overflow: ${JSON.stringify(narrowNavigation)}`);
+  if (process.env.CFX11_SCREENSHOT_DIR) {
+    await page.screenshot({ path: path.join(process.env.CFX11_SCREENSHOT_DIR, "cfx11-dark-narrow.png"), fullPage: true });
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
   await page.locator('[data-workbench-view="session"]').click();
   await page.getByRole("button", { name: "Restart Python" }).click();
   check(await page.locator(".xblock .wb-cell-artifact:not([hidden])").count() === 0, "restarting Python left stale cell results visible");
@@ -601,16 +728,16 @@ try {
   await page.waitForFunction(() => document.querySelector("#inspect-runtime")?.disabled === false, null, { timeout });
   check(await page.locator("#kernel-status").innerText() !== "Not started",
     `runtime refresh after restart did not initialize a session: ${await page.locator("#kernel-variables").innerText()}; page errors: ${JSON.stringify(errors)}`);
-  check(!(await page.locator("#kernel-variables").innerText()).includes("cross_lesson_value"), "restart did not clear the Python namespace");
+  check(!(await page.locator("#kernel-variables").innerText()).includes("shared_lesson_value"), "restart did not clear the Python namespace");
   await page.locator("#close-runtime-panel").click();
 
-  await page.locator('#course-nav a[data-lesson-id="3-Prompting-With-Messages/36-Chatbots"]').click();
+  await openNavigationLesson(page, "3-Prompting-With-Messages/36-Chatbots");
   await page.waitForFunction(() => document.querySelector("#lesson-title")?.textContent === "Chatbots", null, { timeout });
   const helperLink = page.getByRole("link", { name: "chat_helpers/gradio_interface.py" });
   await helperLink.waitFor();
   check((await helperLink.getAttribute("href")).startsWith("https://gitlab.com/nvidia/dli/content/c-fx-11-v1/"), "unlicensed helper source must remain an upstream link");
 
-  await page.locator('#course-nav a[data-lesson-id="6-Assessment/61-Assessment"]').click();
+  await openNavigationLesson(page, "6-Assessment/61-Assessment");
   await page.waitForFunction(() => document.querySelector("#lesson-title")?.textContent === "Assessment", null, { timeout });
   console.log("cfx11_browser_audit: checking assessment middleware in the retained kernel");
   const assessmentSource = `from assessment_helper import run_assessment
@@ -655,7 +782,7 @@ run_assessment(InputSensitiveChain())`;
   }
   check(errors.length === 0, `page errors: ${JSON.stringify(errors)}`);
   check(failures.length === 0, `request failures: ${JSON.stringify(failures)}`);
-  console.log(`cfx11_browser_audit: PASS (${manifest.lessons.length} lessons, Pages-style Markdown 404, digest bundle, Mermaid, source-cell order, shared code-and-evidence workbench, accessible runtime tools, explicit themes, serialized queue, in-cell input, cross-lesson kernel state, focused/all variables, runtime guide, direct and relay billing headers, restart, error line, chat widget, real LangChain graph PNG, live public APIs, upstream helper link, assessment middleware, canonical Pyodide interface)`);
+  console.log(`cfx11_browser_audit: PASS (${manifest.lessons.length} lessons, Pages-style Markdown 404, digest bundle, Mermaid, source-cell order, numbered collapsible navigation, header previous/next controls, shared code-and-evidence workbench, contrast-checked themes, serialized queue, in-cell input, isolated lesson kernels with shared opt-in, focused/all variables, runtime guide, direct and relay billing headers, restart, error line, chat widget, real LangChain graph PNG, live public APIs, upstream helper link, assessment middleware, canonical Pyodide interface)`);
 } finally {
   await browser?.close();
   server.close();

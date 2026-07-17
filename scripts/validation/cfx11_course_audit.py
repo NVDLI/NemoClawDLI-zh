@@ -325,6 +325,11 @@ def audit(course: Path = COURSE) -> list[str]:
         "actionable transient model recovery": (client, 'recovery.className = "model-recovery"'),
         "abortable model probe": (probe_source, 'credentials: "omit",\n          signal,'),
         "explicit theme control": (learner_shell, 'id="theme-toggle"'),
+        "complete editor token palette": (styles, ".cm-s-default .cm-builtin"),
+        "numbered lesson navigation": (client, "nav-lesson-number"),
+        "collapsible section navigation": (client, 'section.className = "course-nav-section"'),
+        "current lesson navigation state": (client, 'link.setAttribute("aria-current", "page")'),
+        "header lesson navigation": (learner_shell, 'class="header-lesson-nav"'),
         "focus-aware kernel variable panel": (learner_shell + client + compatibility, 'data-variable-view="focused"'),
         "complete kernel namespace option": (learner_shell, 'data-variable-view="all"'),
         "shared runtime workbench": (learner_shell + client + shared_workbench, "mountRuntimeWorkbench"),
@@ -352,6 +357,12 @@ def audit(course: Path = COURSE) -> list[str]:
         "theme-aware visible editor caret": (styles, "border-left: 2px solid var(--code-caret)"),
         "shared notebook inspection and magic syntax": (runtime + notebook_syntax, "PYODIDE_NOTEBOOK_SYNTAX"),
         "bounded output geometry": (styles + shared_workbench_styles, "max-height: 38rem"),
+        "narrow runtime dock containment": (shared_workbench_styles, "max-width: calc(100vw - 1rem)"),
+        "responsive editor containment": (client + styles, "contain: inline-size layout paint"),
+        "narrow WebKit editor input containment": (styles, ".CodeMirror textarea { width: 1px !important;"),
+        "unbounded lesson prose containment": (styles, ".lesson-body :is(p, li, blockquote) { min-width: 0; overflow-wrap: anywhere; }"),
+        "lesson preformatted content containment": (styles, ".lesson-body pre { box-sizing: border-box; max-width: 100%; overflow-x: auto; }"),
+        "responsive document scroll recovery": (client, "if (window.scrollX) window.scrollTo(0, window.scrollY)"),
         "highlighted structured results": (client, 'pre.className = "formatted-output"'),
         "in-cell runtime inspection": (client, "Inspect the runtime behind this cell"),
         "bounded runtime stream view": (client, "state.streams.length > 160"),
@@ -365,7 +376,11 @@ def audit(course: Path = COURSE) -> list[str]:
         "observable variable refresh failure": (client, 'message.textContent = `Refresh failed:'),
         "in-cell Python input": (client + runtime + compatibility, 'addEventListener("input-request"'),
         "kernel inspection": (client + runtime, 'state.runner.inspect('),
-        "cross-lesson kernel configuration": (client, "state.runner.configure(runnerConfiguration"),
+        "visible kernel scope control": (learner_shell, 'id="kernel-scope"'),
+        "isolated lesson kernel default": (learner_shell + client, 'value="lesson">One kernel per lesson'),
+        "optional shared kernel mode": (client, 'const KERNEL_SCOPE_STORAGE_KEY = "cfx11-kernel-scope:v1"'),
+        "lesson kernel switch boundary": (runner, "switchContext(configuration"),
+        "lesson navigation resets isolated kernels": (client, "state.runner.switchContext"),
         "stable NVIDIA request headers": (runtime, '["accept", "authorization", "content-type"]'),
         "origin-specific transport error": (runtime, "choose the DLI browser relay"),
         "concise transport error presentation": (client, 'summary.textContent = "Full Python traceback"'),
@@ -388,6 +403,15 @@ def audit(course: Path = COURSE) -> list[str]:
     for label, (source, marker) in runtime_contracts.items():
         if marker not in source:
             findings.append(f"browser course omits {label}")
+    for selector in (
+        ".cm-s-default .cm-keyword", ".cm-s-default .cm-def", ".cm-s-default .cm-string",
+        ".cm-s-default .cm-number", ".cm-s-default .cm-comment", ".cm-s-default .cm-atom",
+        ".cm-s-default .cm-builtin", ".cm-s-default .cm-variable", ".cm-s-default .cm-variable-2",
+        ".cm-variable-3", ".cm-type", ".cm-s-default .cm-property", ".cm-meta", ".cm-qualifier",
+        ".cm-s-default .cm-operator", ".cm-s-default .cm-bracket", ".cm-s-default .cm-error",
+    ):
+        if selector not in styles:
+            findings.append(f"browser course complete editor token palette is missing {selector}")
     for selector in (r"\.lesson-body\s*>\s*\.lesson-lead", r"\.lesson-body\s+(?:p|li)"):
         if re.search(selector + r"\s*\{[^}]*max-width\s*:", styles):
             findings.append("browser course must not constrain lesson prose with character-width hedges")

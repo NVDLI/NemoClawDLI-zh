@@ -13,6 +13,7 @@ const MODEL_BASES = Object.freeze({
 const BILLING_INVOKE_ORIGIN = "dli-cfx11-web";
 const MODEL_ROUTE_STORAGE_KEY = "cfx11-model-route:v2";
 const MODEL_CHOICE_STORAGE_KEY = "cfx11-model-choice:v1";
+const KERNEL_SCOPE_STORAGE_KEY = "cfx11-kernel-scope:v1";
 const MODEL_PROBE_CANDIDATES = Object.freeze([
   "nvidia/nemotron-nano-12b-v2-vl",
   "nvidia/nemotron-3-nano-30b-a3b",
@@ -35,6 +36,7 @@ const state = {
   videoSupplements: null,
   videoByLesson: new Map(),
   lesson: null,
+  lessonLoadId: 0,
   runner: new CoursePythonRunner(new URL("./runtime/worker.js", import.meta.url)),
   blocks: [],
   activeBlock: null,
@@ -47,6 +49,7 @@ const state = {
   rawMarkdown: "",
   operations: new ObservableOperations(),
   verifiedModel: sessionStorage.getItem("cfx11-verified-model") || "",
+  kernelScope: sessionStorage.getItem(KERNEL_SCOPE_STORAGE_KEY) === "shared" ? "shared" : "lesson",
   lastQueueStatus: "",
 };
 
@@ -62,6 +65,7 @@ const elements = Object.fromEntries([
   "dock-stop-runtime", "clear-runtime-streams", "runtime-streams", "runtime-environment",
   "environment-settings", "runtime-agent-form", "runtime-agent-input", "runtime-agent-history",
   "operation-badge", "operation-summary", "runtime-operations", "clear-runtime-operations",
+  "kernel-scope", "kernel-scope-status",
 ].map(id => [id, document.getElementById(id)]));
 
 function defaultModelRoute(protocol = location.protocol, hostname = location.hostname) {
@@ -250,6 +254,21 @@ function renderProgress() {
   elements["progress-label"].textContent = `${complete} of ${total} code cells run. This lesson: ${lessonComplete} of ${lessonTotal}.`;
 }
 
+function unitNumber(unit, fallback) {
+  return unit.match(/^(\d+)-/)?.[1] || String(fallback);
+}
+
+function unitTitle(unit) {
+  return unit.replace(/^\d+-/, "").replaceAll("-", " ");
+}
+
+function lessonNumber(lesson) {
+  const units = [...new Set(state.manifest.lessons.map(item => item.unit))];
+  const groupIndex = units.indexOf(lesson.unit);
+  const peers = state.manifest.lessons.filter(item => item.unit === lesson.unit);
+  return `${unitNumber(lesson.unit, groupIndex)}.${peers.indexOf(lesson) + 1}`;
+}
+
 function renderNavigation() {
   const current = state.lesson?.id;
   const groups = new Map();
@@ -258,21 +277,51 @@ function renderNavigation() {
     groups.get(lesson.unit).push(lesson);
   }
   elements["course-nav"].replaceChildren();
+  let groupIndex = 0;
+  let currentLink = null;
   for (const [unit, lessons] of groups) {
-    const section = document.createElement("section");
-    const heading = document.createElement("h2");
-    heading.textContent = unit.replace(/^\d+-/, "").replaceAll("-", " ");
-    section.append(heading);
-    for (const lesson of lessons) {
+    const section = document.createElement("details");
+    section.className = "course-nav-section";
+    const number = unitNumber(unit, groupIndex);
+    const summary = document.createElement("summary");
+    const numberLabel = document.createElement("span");
+    numberLabel.className = "nav-section-number";
+    numberLabel.textContent = number;
+    const title = document.createElement("span");
+    title.className = "nav-section-title";
+    title.textContent = unitTitle(unit);
+    summary.append(numberLabel, title);
+    section.append(summary);
+    section.open = lessons.some(lesson => lesson.id === current);
+    for (const [lessonIndex, lesson] of lessons.entries()) {
       const link = document.createElement("a");
       link.href = lessonHref(lesson);
-      link.textContent = lesson.title;
       link.dataset.lessonId = lesson.id;
-      if (lesson.id === current) link.setAttribute("aria-current", "page");
+      const lessonNumberLabel = document.createElement("span");
+      lessonNumberLabel.className = "nav-lesson-number";
+      lessonNumberLabel.textContent = `${number}.${lessonIndex + 1}`;
+      const lessonTitle = document.createElement("span");
+      lessonTitle.className = "nav-lesson-title";
+      lessonTitle.textContent = lesson.title;
+      link.append(lessonNumberLabel, lessonTitle);
+      if (lesson.id === current) {
+        link.setAttribute("aria-current", "page");
+        currentLink = link;
+      }
       section.append(link);
     }
     elements["course-nav"].append(section);
+    groupIndex += 1;
   }
+  requestAnimationFrame(() => {
+    const rail = currentLink?.closest(".course-rail");
+    if (!rail || !currentLink) return;
+    const linkTop = currentLink.offsetTop;
+    const linkBottom = linkTop + currentLink.offsetHeight;
+    if (linkTop < rail.scrollTop || linkBottom > rail.scrollTop + rail.clientHeight) {
+      rail.scrollTo({ top: Math.max(0, linkTop - rail.clientHeight / 3), behavior: "auto" });
+    }
+  });
 }
 
 function markerHtml(raw, videoSupplement = null) {
@@ -683,6 +732,7 @@ function renderEnvironment(environment = state.latestKernel?.environment || {}) 
     ["Scheduler", environment.batch_mode || "Ordered execution queue"],
     ["Working directory", environment.cwd || "Created with the session"],
     ["Lesson", state.lesson?.title || "Loading"],
+    ["Kernel scope", state.kernelScope === "shared" ? "Shared across lessons" : "Current lesson only"],
     ["Page origin", location.origin === "null" ? "Local file (model calls unavailable)" : location.origin],
     ["Model route", selectedModelBase()],
   ];
@@ -695,6 +745,14 @@ function renderEnvironment(environment = state.latestKernel?.environment || {}) 
     row.append(term, detail);
     return row;
   }));
+}
+
+function renderKernelScope() {
+  elements["kernel-scope"].value = state.kernelScope;
+  elements["kernel-scope-status"].textContent = state.kernelScope === "shared"
+    ? "This tab keeps one kernel when you change lessons. Restart or switch back to per-lesson scope to clear it."
+    : "Each lesson uses its own kernel. Change the scope below when you intentionally want to carry variables between lessons.";
+  renderEnvironment();
 }
 
 function resetKernelView() {
@@ -1014,8 +1072,8 @@ function filesForLesson(lesson) {
 }
 
 async function loadLesson(lesson) {
-  state.lesson = lesson;
-  renderNavigation();
+  const loadId = ++state.lessonLoadId;
+  const previousLesson = state.lesson;
   const markdownUrl = new URL(lesson.markdown_path, location.href);
   const bundled = state.contentBundle?.lessons?.[lesson.markdown_path];
   if (!bundled) throw new Error(`The reviewed content bundle does not contain ${lesson.markdown_path}.`);
@@ -1024,10 +1082,21 @@ async function loadLesson(lesson) {
   if (digest !== bundled.sha256 || digest !== lesson.markdown_sha256) {
     throw new Error(`The reviewed Markdown digest does not match for ${lesson.markdown_path}.`);
   }
+  if (loadId !== state.lessonLoadId) return;
+  state.lesson = lesson;
+  const changedLesson = previousLesson && previousLesson.id !== lesson.id;
+  if (changedLesson && state.kernelScope === "lesson") {
+    state.runner.switchContext(runnerConfiguration(lesson), `Python restarted for ${lesson.title}.`);
+    resetKernelView();
+    recordRuntimeEvent("session", `Started a separate kernel scope for ${lesson.title}`);
+  } else {
+    state.runner.configure(runnerConfiguration(lesson));
+  }
+  renderNavigation();
   state.rawMarkdown = raw;
   const videoSupplement = state.videoByLesson.get(lesson.id) || null;
   elements["lesson-title"].textContent = lesson.title;
-  elements["lesson-meta"].textContent = `${lesson.unit.replaceAll("-", " ")} · ${lesson.cells.length} source cells · reviewed source projection${videoSupplement ? " · recorded walkthrough" : ""}`;
+  elements["lesson-meta"].textContent = `Lesson ${lessonNumber(lesson)} · ${unitTitle(lesson.unit)} · ${lesson.cells.length} source cells · reviewed source projection${videoSupplement ? " · recorded walkthrough" : ""}`;
   elements["lesson-body"].replaceChildren(markdownFragment(markerHtml(raw, videoSupplement), markdownUrl));
   if (videoSupplement) mountVideoSupplement(videoSupplement);
 
@@ -1046,16 +1115,25 @@ async function loadLesson(lesson) {
     }
   });
   buildXBlocks();
-  state.runner.configure(runnerConfiguration(lesson));
   renderEnvironment();
-  elements["runtime-status"].textContent = state.latestKernel ? "Python session kept across lessons" : "Python loads when you run a cell";
+  elements["runtime-status"].textContent = state.latestKernel
+    ? state.kernelScope === "shared" ? "Python session kept across lessons" : "Python ready for this lesson"
+    : "Python loads when you run a cell";
   const index = state.manifest.lessons.indexOf(lesson);
   const previous = state.manifest.lessons[index - 1];
   const next = state.manifest.lessons[index + 1];
   elements["previous-lesson"].hidden = !previous;
   elements["next-lesson"].hidden = !next;
-  if (previous) { elements["previous-lesson"].href = lessonHref(previous); elements["previous-lesson"].textContent = `Previous · ${previous.title}`; }
-  if (next) { elements["next-lesson"].href = lessonHref(next); elements["next-lesson"].textContent = `Next · ${next.title}`; }
+  if (previous) {
+    elements["previous-lesson"].href = lessonHref(previous);
+    elements["previous-lesson"].title = `Previous: ${lessonNumber(previous)} ${previous.title}`;
+    elements["previous-lesson"].setAttribute("aria-label", `Previous lesson: ${lessonNumber(previous)} ${previous.title}`);
+  }
+  if (next) {
+    elements["next-lesson"].href = lessonHref(next);
+    elements["next-lesson"].title = `Next: ${lessonNumber(next)} ${next.title}`;
+    elements["next-lesson"].setAttribute("aria-label", `Next lesson: ${lessonNumber(next)} ${next.title}`);
+  }
   renderProgress();
   window.scrollTo({ top: 0 });
 }
@@ -1096,6 +1174,7 @@ async function initialize(signal) {
   }
   const requested = new URL(location.href).searchParams.get("lesson");
   const lesson = state.manifest.lessons.find(item => item.id === requested) || state.manifest.lessons[0];
+  renderKernelScope();
   await loadLesson(lesson);
 }
 
@@ -1434,6 +1513,20 @@ elements["stop-runtime"].addEventListener("click", () => {
 elements["dock-stop-runtime"].addEventListener("click", () => elements["stop-runtime"].click());
 elements["reset-runtime"].addEventListener("click", restartRuntime);
 elements["restart-runtime"].addEventListener("click", restartRuntime);
+elements["kernel-scope"].addEventListener("change", () => {
+  const nextScope = elements["kernel-scope"].value === "shared" ? "shared" : "lesson";
+  if (nextScope === state.kernelScope) return;
+  state.kernelScope = nextScope;
+  sessionStorage.setItem(KERNEL_SCOPE_STORAGE_KEY, nextScope);
+  restartRuntime();
+  renderKernelScope();
+  elements["runtime-status"].textContent = nextScope === "shared"
+    ? "Shared kernel enabled · Python restarted"
+    : "Per-lesson kernels enabled · Python restarted";
+  recordRuntimeEvent("session", nextScope === "shared"
+    ? "Kernel scope changed to shared across lessons"
+    : "Kernel scope changed to one kernel per lesson");
+});
 elements["start-runtime"].addEventListener("click", async () => {
   elements["start-runtime"].disabled = true;
   elements["runtime-status"].textContent = "Starting Python…";
@@ -1528,6 +1621,17 @@ window.addEventListener("popstate", () => {
   if (lesson) loadLesson(lesson).catch(error => {
     recordRuntimeEvent("stderr", error.message);
     elements["lesson-body"].innerHTML = `<section class="fatal"><h2>Lesson could not open</h2><pre>${escapeHtml(error.stack || error.message)}</pre></section>`;
+  });
+});
+let editorResizeFrame = 0;
+window.addEventListener("resize", () => {
+  cancelAnimationFrame(editorResizeFrame);
+  editorResizeFrame = requestAnimationFrame(() => {
+    // Editors and fixed workbench controls must never preserve a stale desktop
+    // horizontal offset when the viewport narrows. Code/output panes own their
+    // horizontal scrolling; the course document itself always returns to x=0.
+    if (window.scrollX) window.scrollTo(0, window.scrollY);
+    state.blocks.forEach(block => block.editor.refresh());
   });
 });
 

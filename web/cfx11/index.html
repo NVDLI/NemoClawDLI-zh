@@ -25,6 +25,10 @@
       <span class="brand-mark" aria-hidden="true">NVIDIA</span>
       <span>Deep Learning Institute</span>
     </a>
+    <nav class="header-lesson-nav" aria-label="Previous and next lessons">
+      <a id="previous-lesson" href="#" aria-label="Previous lesson">← <span>Previous</span></a>
+      <a id="next-lesson" href="#" aria-label="Next lesson"><span>Next</span> →</a>
+    </nav>
     <div class="header-actions">
       <span id="runtime-status">Python loads when you run a cell</span>
       <button id="theme-toggle" type="button" aria-label="Switch color theme">Theme</button>
@@ -100,10 +104,6 @@
       <article id="lesson-body" class="lesson-body" aria-live="polite">
         <p>Loading the reviewed Markdown source for this lesson…</p>
       </article>
-      <nav class="lesson-pagination" aria-label="Previous and next lessons">
-        <a id="previous-lesson" href="#">Previous</a>
-        <a id="next-lesson" href="#">Next</a>
-      </nav>
     </main>
   </div>
 
@@ -140,7 +140,14 @@
         <ol id="runtime-operations" class="runtime-operations"><li>No operations yet.</li></ol>
       </section>
       <section data-panel-view="session" data-workbench-content="session">
-        <p>Cells share one kernel across lessons in this tab. Reload or restart clears it.</p>
+        <p id="kernel-scope-status">Each lesson uses its own kernel. Change the scope below when you intentionally want to carry variables between lessons.</p>
+        <label class="kernel-scope" for="kernel-scope">
+          <span>Kernel scope</span>
+          <select id="kernel-scope">
+            <option value="lesson">One kernel per lesson</option>
+            <option value="shared">Share across lessons</option>
+          </select>
+        </label>
         <dl class="runtime-facts">
           <div><dt>Session</dt><dd id="kernel-status">Not started</dd></div>
           <div><dt>Queue</dt><dd id="queue-status">Queue empty</dd></div>
@@ -195,7 +202,7 @@
         <button value="close" aria-label="Close settings">Close</button>
       </div>
       <p>Use the visible key field above the lesson. Python receives the value only for an active model call. Direct mode calls <code>https://integrate.api.nvidia.com/v1</code>; relay mode uses the DLI browser relay without changing the learner-owned credential.</p>
-      <p>Run buttons join a single ordered queue. Python <code>input()</code> opens an answer field in the requesting cell. Activity remains visible across lessons and reports queue waits, execution, cancellation, failure, and timeouts.</p>
+      <p>Run buttons join a single ordered queue. Python <code>input()</code> opens an answer field in the requesting cell. Each lesson gets a fresh kernel by default; the Session view can explicitly share one across lessons. Activity remains visible and reports queue waits, execution, cancellation, failure, and timeouts.</p>
     </form>
   </dialog>
 

@@ -26,12 +26,12 @@
     {
       "name": "Markdown course shell",
       "entry": "web/cfx11/index.html",
-      "contract": "Load one digest-checked lesson from the generated Pages-safe bundle, preserve source links, render Markdown and Mermaid coherently, and upgrade each Python fence through the same XBlock path. Every XBlock exposes a keyboard-editable CodeMirror source and defaults output below it. The result pane stays hidden until execution, opens as a compact visual progress surface, clears before every new run, and grows only when it has bounded JSON, code, Markdown, HTML, tables, images, errors, or a no-output completion note to show."
+      "contract": "Load one digest-checked lesson from the generated Pages-safe bundle, preserve source links, render Markdown and Mermaid coherently, and upgrade each Python fence through the same XBlock path. Number every section and lesson, keep only the current section open by default, mark and reveal the current lesson, and expose previous and next controls in the sticky header. Every XBlock exposes a keyboard-editable CodeMirror source with a complete contrast-checked light and dark token palette and defaults output below it. The result pane stays hidden until execution, opens as a compact visual progress surface, clears before every new run, and grows only when it has bounded JSON, code, Markdown, HTML, tables, images, errors, or a no-output completion note to show."
     },
     {
       "name": "Browser Python",
       "entry": "web/cfx11/runtime/worker.js",
-      "contract": "Run original cells through one serialized queue in a persistent Pyodide worker. The floating runtime dock exposes the session, bounded streams, environment, a real NVIDIA-backed guide, variables read or changed by the last cell, and the complete namespace on demand. Preserve the kernel across in-tab lesson navigation; restart and reload clear it."
+      "contract": "Run original cells through one serialized queue in a persistent Pyodide worker. The floating runtime dock exposes the session, bounded streams, environment, a real NVIDIA-backed guide, variables read or changed by the last cell, and the complete namespace on demand. Give each source notebook its own kernel by default. Retain an explicit tab-scoped shared-kernel option for learners who intentionally carry state between lessons; changing scope, restart, and reload clear the active worker."
     },
     {
       "name": "NVIDIA model transport",
@@ -129,7 +129,7 @@
   <h1 id="skill-title">web/cfx11</h1>
   <p>Internal browser candidate for c-fx-11-v1, with digest-bound lesson delivery, executable XBlocks, and learner-owned NVIDIA API access.</p>
   <p><strong><a href="index.html">Open the course preview</a>, then review <a href="SOURCE_PROVENANCE.md">source provenance</a> and <a href="course.json">the fidelity manifest</a>.</strong> The imported course is an internal review candidate until its source license is confirmed. Open <a href="runtime/SKILL.html">runtime/</a> for the browser implementation. The <a href="content/SKILL.html">content/</a> directory holds the original cells and support files; <a href="assets/SKILL.html">assets/</a> identifies the local portability asset.</p>
-  <p>Each imported Python cell remains editable and shares one persistent kernel. Results start hidden, open with a compact visual progress cue, and grow only when evidence arrives. A successful cell with no display value says so explicitly. Results clear before the next run and appear below code by default. The settings menu can move them beside the code and controls editor height, wrapping, line numbers, source restoration, copying, and output clearing. Shift/Ctrl/Command+Enter runs a cell. Ctrl/Command+/ toggles comments. Use <code>?</code> or <code>??</code> for inspection; <code>%magic</code> lists the bounded browser notebook commands.</p>
+  <p>Each imported Python cell remains editable and uses a lesson-specific kernel by default. The Session view can explicitly share one across lessons. Results start hidden, open with a compact visual progress cue, and grow only when evidence arrives. A successful cell with no display value says so explicitly. Results clear before the next run and appear below code by default. The settings menu can move them beside the code and controls editor height, wrapping, line numbers, source restoration, copying, and output clearing. Shift/Ctrl/Command+Enter runs a cell. Ctrl/Command+/ toggles comments. Use <code>?</code> or <code>??</code> for inspection. <code>%magic</code> lists the bounded browser notebook commands.</p>
   <div class="skill-columns">
     <section><h2>Files</h2><ul>
       <li><a href="SOURCE_PROVENANCE.md"><code>SOURCE_PROVENANCE.md</code></a></li>

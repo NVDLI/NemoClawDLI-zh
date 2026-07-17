@@ -79,6 +79,24 @@ test("an execution timeout cancels dependent queued work and replaces the worker
   runner.stop();
 });
 
+test("lesson context changes stay lazy until a worker exists, then replace it", async () => {
+  const runner = new CoursePythonRunner(new URL("file:///worker.js"), { queueTimeoutMs: 100, runTimeoutMs: 100 });
+  assert.equal(runner.switchContext({ lessonDirectory: "lesson-one" }), false);
+  assert.equal(runner.worker, null);
+  assert.equal(runner.configuration.lessonDirectory, "lesson-one");
+
+  const pending = runner.preload({ label: "Start first lesson" });
+  pending.catch(() => {});
+  await new Promise(resolve => setTimeout(resolve, 0));
+  const firstWorker = FakeWorker.instances.at(-1);
+  assert.equal(runner.switchContext({ lessonDirectory: "lesson-two" }, "Lesson changed."), true);
+  await assert.rejects(pending, /Lesson changed/);
+  assert.equal(firstWorker.terminated, true);
+  assert.notEqual(FakeWorker.instances.at(-1), firstWorker);
+  assert.equal(runner.configuration.lessonDirectory, "lesson-two");
+  runner.stop();
+});
+
 test("observed network work times out and records the failure", async () => {
   const ledger = new ObservableOperations();
   await assert.rejects(
