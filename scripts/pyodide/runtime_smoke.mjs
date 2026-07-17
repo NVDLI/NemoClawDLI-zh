@@ -156,6 +156,36 @@ if (prettyReply.display_type !== "application/json" || prettyReply.display_langu
     || JSON.parse(prettyReply.display).outer.ready !== true || !prettyReply.display.includes("\n")) {
   throw new Error("Container output was not emitted as indented JSON");
 }
+const structuredObjectReply = await execute(`from dataclasses import dataclass
+@dataclass
+class Usage:
+    input_tokens: int
+    output_tokens: int
+class Message:
+    def model_dump(self, mode="python"):
+        if mode != "json":
+            raise ValueError("JSON mode is required")
+        return {
+            "type": "ai",
+            "content": "Structured response",
+            "usage": Usage(18, 23),
+        }
+[Message(), {"nested": Message()}]`, {});
+const structuredObjects = JSON.parse(structuredObjectReply.display);
+if (structuredObjectReply.display_type !== "application/json"
+    || structuredObjects[0].type !== "ai"
+    || structuredObjects[0].usage.input_tokens !== 18
+    || structuredObjects[1].nested.content !== "Structured response"
+    || structuredObjectReply.display.includes("Message object at")) {
+  throw new Error("Explicit structured Python objects were not recursively emitted as JSON");
+}
+const ordinaryObjectReply = await execute(`class Ordinary:
+    def __repr__(self):
+        return "Ordinary(display-only)"
+Ordinary()`, {});
+if (ordinaryObjectReply.display_type !== "text/plain" || ordinaryObjectReply.display !== "Ordinary(display-only)") {
+  throw new Error("Ordinary Python objects no longer retain their plain repr fallback");
+}
 const richReply = await execute(`display_markdown("**Markdown works**")
 display_html("<strong>HTML works</strong>")
 display_json({"ready": True, "count": 3})
@@ -180,7 +210,7 @@ console.log(JSON.stringify({
   examples: results,
   coverage: [...coverage].sort(),
   stdout: "captured",
-  display: "highlight-ready JSON, code, Markdown, HTML, and table MIME output",
+  display: "highlight-ready structured objects, JSON, code, Markdown, HTML, and table MIME output",
   helpers: "editable display override persisted",
   background: "registered, completed, inspected, and cancelled named asyncio tasks",
   artifact: "generated JSON preview retained exact downloadable content",

@@ -300,6 +300,34 @@ try {
     "long_text": "x" * 20000,
   }`);
   check(await longResultBlock.locator("pre.formatted-output code.language-json").count() === 1, "a returned dictionary did not use the highlighted JSON renderer");
+  const messageResultBlock = await runCell(page, 21, `from langchain_core.messages import AIMessage
+AIMessage(
+    content="My name is Nemotron Nano.",
+    response_metadata={
+        "model_name": "nvidia/nemotron-nano-12b-v2-vl",
+        "token_usage": {"prompt_tokens": 18, "completion_tokens": 23},
+    },
+    usage_metadata={"input_tokens": 18, "output_tokens": 23, "total_tokens": 41},
+)`);
+  const messageOutput = await messageResultBlock.locator(".cell-output").innerText();
+  check(await messageResultBlock.getAttribute("data-state") === "passed", `a real LangChain message did not execute:\n${messageOutput}`);
+  check(await messageResultBlock.locator("pre.formatted-output code.language-json").count() === 1,
+    `a real LangChain message did not use the highlighted structured renderer:\n${messageOutput}`);
+  check(messageOutput.includes("Nemotron Nano") && messageOutput.includes("nemotron-nano-12b-v2-vl") && messageOutput.includes("prompt_tokens"),
+    `a real LangChain message lost content or metadata:\n${messageOutput}`);
+  check(!messageOutput.includes("AIMessage(content="), `a real LangChain message leaked its raw object repr:\n${messageOutput}`);
+
+  const nestedMessageBlock = await runCell(page, 21, `from langchain_core.messages import AIMessageChunk
+[
+    AIMessageChunk(content="first", usage_metadata={"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}),
+    {"next": AIMessageChunk(content="second")},
+]`);
+  const nestedMessageOutput = await nestedMessageBlock.locator(".cell-output").innerText();
+  check(await nestedMessageBlock.getAttribute("data-state") === "passed"
+      && await nestedMessageBlock.locator("pre.formatted-output code.language-json").count() === 1
+      && nestedMessageOutput.includes("first") && nestedMessageOutput.includes("second")
+      && !nestedMessageOutput.includes("AIMessageChunk(content="),
+    `nested LangChain message chunks were not recursively rendered as structured JSON:\n${nestedMessageOutput}`);
   const longResultGeometry = await longResultBlock.evaluate(block => {
     const source = block.querySelector(".wb-cell-source").getBoundingClientRect();
     const artifact = block.querySelector(".wb-cell-artifact").getBoundingClientRect();

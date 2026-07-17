@@ -8,6 +8,7 @@
 import ast
 import asyncio
 import contextlib
+import dataclasses
 import html as html_lib
 import io
 import inspect
@@ -45,6 +46,85 @@ reply = {
 course_displays = []
 background_tasks = scope.setdefault("__course_background_tasks", {})
 DISPLAY_WIDTH = 100
+STRUCTURED_DEPTH_LIMIT = 12
+_UNSTRUCTURED = object()
+
+def _model_dump(value):
+    """Use Pydantic's public serialization protocol without inspecting object internals."""
+    try:
+        method = getattr(value, "model_dump", None)
+    except Exception:
+        return _UNSTRUCTURED
+    if not callable(method):
+        return _UNSTRUCTURED
+    try:
+        return method(mode="json")
+    except Exception:
+        return _UNSTRUCTURED
+
+def _structured_json_value(value, depth=0, seen=None):
+    """Normalize explicit structured objects into bounded, JSON-safe notebook output."""
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    if depth >= STRUCTURED_DEPTH_LIMIT:
+        return f"<{type(value).__name__}: display depth limit>"
+    if seen is None:
+        seen = set()
+    identity = id(value)
+    if identity in seen:
+        return f"<{type(value).__name__}: circular reference>"
+
+    dumped = _model_dump(value)
+    if dumped is not _UNSTRUCTURED:
+        seen.add(identity)
+        try:
+            return _structured_json_value(dumped, depth + 1, seen)
+        finally:
+            seen.discard(identity)
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
+        seen.add(identity)
+        try:
+            return {
+                field.name: _structured_json_value(getattr(value, field.name), depth + 1, seen)
+                for field in dataclasses.fields(value)
+            }
+        finally:
+            seen.discard(identity)
+    if isinstance(value, tuple) and hasattr(value, "_fields") and callable(getattr(value, "_asdict", None)):
+        seen.add(identity)
+        try:
+            return _structured_json_value(value._asdict(), depth + 1, seen)
+        finally:
+            seen.discard(identity)
+    if isinstance(value, dict):
+        seen.add(identity)
+        try:
+            return {
+                key if isinstance(key, (str, int, float, bool)) or key is None else repr(key):
+                    _structured_json_value(item, depth + 1, seen)
+                for key, item in value.items()
+            }
+        finally:
+            seen.discard(identity)
+    if isinstance(value, (list, tuple)):
+        seen.add(identity)
+        try:
+            return [_structured_json_value(item, depth + 1, seen) for item in value]
+        finally:
+            seen.discard(identity)
+    return repr(value)
+
+def _structured_root(value):
+    dumped = _model_dump(value)
+    if dumped is not _UNSTRUCTURED:
+        return _structured_json_value(dumped)
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
+        return _structured_json_value(value)
+    if isinstance(value, (dict, list)):
+        return _structured_json_value(value)
+    if isinstance(value, tuple) and hasattr(value, "_fields") and callable(getattr(value, "_asdict", None)):
+        return _structured_json_value(value)
+    return _UNSTRUCTURED
 
 def _language_name(value):
     language = str(value or "text").strip().lower()
@@ -78,7 +158,7 @@ class JSON(_DisplayObject):
     def __init__(self, data, expanded=True, indent=2):
         self.value = data
         self.expanded = bool(expanded)
-        rendered = jsonlib.dumps(data, ensure_ascii=False, indent=max(0, int(indent)), default=str)
+        rendered = jsonlib.dumps(_structured_json_value(data), ensure_ascii=False, indent=max(0, int(indent)))
         super().__init__(rendered, "application/json", "json")
 
 class Artifact(_DisplayObject):
@@ -107,8 +187,9 @@ def _display_record(value):
     json_method = getattr(value, "_repr_json_", None)
     if callable(json_method):
         return JSON(json_method())._course_display_()
-    if isinstance(value, (dict, list)):
-        return JSON(value)._course_display_()
+    structured = _structured_root(value)
+    if structured is not _UNSTRUCTURED:
+        return JSON(structured)._course_display_()
     if isinstance(value, (tuple, set, frozenset)):
         return {
             "type": "text/x-code",

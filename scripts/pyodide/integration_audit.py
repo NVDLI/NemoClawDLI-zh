@@ -64,6 +64,7 @@ EXAMPLE_MARKERS = {
     "examples/execution-contract.js": (
         "display_markdown", "display_html", "display_json", "display_code", "display_table",
         "application/json", "text/x-code", "DISPLAY_WIDTH = 100", "pprint.pformat",
+        "_structured_json_value", "model_dump", "dataclasses.is_dataclass",
         "error_line", "PyCF_ALLOW_TOP_LEVEL_AWAIT", "__course_helper_overrides", "definitionSource",
         "display_artifact", "application/x-course-artifact+json", "register_background",
         "background_status", "wait_background", "cancel_background", "__course_background_tasks",
@@ -431,6 +432,7 @@ def audit(
         "background_status", "wait_background", "cancel_background", "__course_background_tasks",
         "DISPLAY_WIDTH = 100", "__course_helper_overrides", "definitionSource", "inspect_object",
         "browser_shell", "notebook_who", "notebook_time", "notebook_magic",
+        "_structured_json_value", "model_dump", "dataclasses.is_dataclass",
     ):
         if marker not in contract_source:
             findings.append(f"Pyodide execution contract lost display behavior: {marker}")
@@ -599,6 +601,9 @@ def self_test() -> list[str]:
     broken = dict(implementation)
     broken["contract"] = broken["contract"].replace("register_background", "removed_background_helper")
     cases.append(("missing background helper", base, blueprint, skill, [], {}, broken, use_cases))
+    broken = dict(implementation)
+    broken["contract"] = broken["contract"].replace("_structured_json_value", "object_formatter_removed")
+    cases.append(("missing structured object display", base, blueprint, skill, [], {}, broken, use_cases))
     broken = dict(implementation)
     broken["workbench"] = broken["workbench"].replace("data-workbench-view", "removed-workbench-view")
     cases.append(("missing course workbench controls", base, blueprint, skill, [], {}, broken, use_cases))
