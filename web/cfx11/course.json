@@ -424,7 +424,7 @@
       "source_path": "task1/dli/1-Intro-to-Prompting/12-Hello-OpenAI.ipynb",
       "source_sha256": "77b91646b969f8e6123d742f9792bcc16f098f21e97063150a574cc62b947c1e",
       "markdown_path": "content/1-Intro-to-Prompting/12-Hello-OpenAI.md",
-      "markdown_sha256": "509880d6256ea20a60fda8b46fdb9733b2847981fd23178f61666a4f350be563",
+      "markdown_sha256": "c0fa785a3c1bd53811a8c8ccd363a82fcfede6a212cbd741abb2020ad1259aa6",
       "cells": [
         {
           "id": "1-Intro-to-Prompting/12-Hello-OpenAI:0",
@@ -646,9 +646,14 @@
           "id": "1-Intro-to-Prompting/12-Hello-OpenAI:27",
           "index": 27,
           "type": "code",
-          "source_sha256": "99eb92acd74350fc25a8e7685ba7f48e74d8e0a1e53ec8c9ac0065ca41837b7f",
-          "source_bytes": 83,
-          "source_ends_with_newline": false
+          "source_sha256": "7ed9baaf4ddb8084eaabc63b0860c53f6c7e0d004659789ddec985a22c8a2aa8",
+          "source_bytes": 373,
+          "source_ends_with_newline": false,
+          "source_patch": {
+            "schema": "dli-course-source-patch/1.0",
+            "upstream_source_sha256": "99eb92acd74350fc25a8e7685ba7f48e74d8e0a1e53ec8c9ac0065ca41837b7f",
+            "reason": "Expose the course model selector and reviewed compatible fallbacks in the OpenAI example without silently changing its request."
+          }
         },
         {
           "id": "1-Intro-to-Prompting/12-Hello-OpenAI:28",
@@ -830,7 +835,7 @@
       "source_path": "task1/dli/1-Intro-to-Prompting/13-Hello-LangChain.ipynb",
       "source_sha256": "aca4369f4ab75389890f16caa2fd04dc01ba7d5aed2683ceb651bae7644eb71e",
       "markdown_path": "content/1-Intro-to-Prompting/13-Hello-LangChain.md",
-      "markdown_sha256": "d62944f488b67d7f6fa78c9e04b29a8ee17089baa0c2dfcdc46da79f8cdd2569",
+      "markdown_sha256": "cc08e69d5a92f897eff308436a6c45bf5f662038d142f7a1e7ace4191eac846f",
       "cells": [
         {
           "id": "1-Intro-to-Prompting/13-Hello-LangChain:0",
@@ -956,9 +961,14 @@
           "id": "1-Intro-to-Prompting/13-Hello-LangChain:15",
           "index": 15,
           "type": "code",
-          "source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
-          "source_bytes": 144,
-          "source_ends_with_newline": false
+          "source_sha256": "fe8a07f8e29704ed8c72091c34ce44956cd4b2a6331a6a6220553baac2abf3d3",
+          "source_bytes": 436,
+          "source_ends_with_newline": false,
+          "source_patch": {
+            "schema": "dli-course-source-patch/1.0",
+            "upstream_source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
+            "reason": "Expose the course model selector and reviewed compatible fallbacks without silently changing the lesson request contract."
+          }
         },
         {
           "id": "1-Intro-to-Prompting/13-Hello-LangChain:16",
@@ -1124,7 +1134,7 @@
       "source_path": "task1/dli/1-Intro-to-Prompting/14-Streaming-and-Batching.ipynb",
       "source_sha256": "d48b60db4879485beb4e55635461564c762110b00e1937919d0613f31fd3f3c2",
       "markdown_path": "content/1-Intro-to-Prompting/14-Streaming-and-Batching.md",
-      "markdown_sha256": "1e377a81e6fa8f0db06f19e86b20d3d9affc6afbc2e5fbfc68ba9956e6781aba",
+      "markdown_sha256": "ced1ff49a4018c7186233816850d7d50bf611c2b7cbb42268cd749fd1d48b5a9",
       "cells": [
         {
           "id": "1-Intro-to-Prompting/14-Streaming-and-Batching:0",
@@ -1218,9 +1228,14 @@
           "id": "1-Intro-to-Prompting/14-Streaming-and-Batching:11",
           "index": 11,
           "type": "code",
-          "source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
-          "source_bytes": 144,
-          "source_ends_with_newline": false
+          "source_sha256": "fe8a07f8e29704ed8c72091c34ce44956cd4b2a6331a6a6220553baac2abf3d3",
+          "source_bytes": 436,
+          "source_ends_with_newline": false,
+          "source_patch": {
+            "schema": "dli-course-source-patch/1.0",
+            "upstream_source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
+            "reason": "Expose the course model selector and reviewed compatible fallbacks without silently changing the lesson request contract."
+          }
         },
         {
           "id": "1-Intro-to-Prompting/14-Streaming-and-Batching:12",
@@ -1634,7 +1649,7 @@
       "source_path": "task1/dli/1-Intro-to-Prompting/15-Iterative-Prompting.ipynb",
       "source_sha256": "65a6a0f82bf6f3eb8c2ea514dbf1416692395622f6a2c1263b6f194da12c94e9",
       "markdown_path": "content/1-Intro-to-Prompting/15-Iterative-Prompting.md",
-      "markdown_sha256": "fe259980ca154a863d605f6caae6f2a9590b181b8bffa762b656ddb8578dedac",
+      "markdown_sha256": "db0b6452c114e8c8503fee23486469d9fe5f86d1fb2129938c1bc7889a17a71d",
       "cells": [
         {
           "id": "1-Intro-to-Prompting/15-Iterative-Prompting:0",
@@ -1752,9 +1767,14 @@
           "id": "1-Intro-to-Prompting/15-Iterative-Prompting:14",
           "index": 14,
           "type": "code",
-          "source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
-          "source_bytes": 144,
-          "source_ends_with_newline": false
+          "source_sha256": "fe8a07f8e29704ed8c72091c34ce44956cd4b2a6331a6a6220553baac2abf3d3",
+          "source_bytes": 436,
+          "source_ends_with_newline": false,
+          "source_patch": {
+            "schema": "dli-course-source-patch/1.0",
+            "upstream_source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
+            "reason": "Expose the course model selector and reviewed compatible fallbacks without silently changing the lesson request contract."
+          }
         },
         {
           "id": "1-Intro-to-Prompting/15-Iterative-Prompting:15",
@@ -2413,7 +2433,7 @@
       "source_path": "task1/dli/1-Intro-to-Prompting/16-Prompt-Templates.ipynb",
       "source_sha256": "0eacbd969e0fb84884709c3a84673998a6f45ca80b4e71565e1e6af9158ac369",
       "markdown_path": "content/1-Intro-to-Prompting/16-Prompt-Templates.md",
-      "markdown_sha256": "e77377ec3e776f44ed808cfa167fa6ff654d966de1759ea753af269914b97431",
+      "markdown_sha256": "fe25f396b5acb9936187950d93ddda49383208eb7687b118abd4c893819d5aa1",
       "cells": [
         {
           "id": "1-Intro-to-Prompting/16-Prompt-Templates:0",
@@ -2499,9 +2519,14 @@
           "id": "1-Intro-to-Prompting/16-Prompt-Templates:10",
           "index": 10,
           "type": "code",
-          "source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
-          "source_bytes": 144,
-          "source_ends_with_newline": false
+          "source_sha256": "fe8a07f8e29704ed8c72091c34ce44956cd4b2a6331a6a6220553baac2abf3d3",
+          "source_bytes": 436,
+          "source_ends_with_newline": false,
+          "source_patch": {
+            "schema": "dli-course-source-patch/1.0",
+            "upstream_source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
+            "reason": "Expose the course model selector and reviewed compatible fallbacks without silently changing the lesson request contract."
+          }
         },
         {
           "id": "1-Intro-to-Prompting/16-Prompt-Templates:11",
@@ -3752,7 +3777,7 @@
       "source_path": "task1/dli/2-Chains/21-LCEL.ipynb",
       "source_sha256": "0d0c73f33017dde09644b05a15a679d55812637eda4663b18ac0756812ade237",
       "markdown_path": "content/2-Chains/21-LCEL.md",
-      "markdown_sha256": "ac4b6473e0a3db4d9e91c50b4df822cee8b31de76a940cecb0cb4a477d972a17",
+      "markdown_sha256": "cbc20f52a6e2749c85322478c2a03e17fa2f56cf8e891efde97038e291935bdc",
       "cells": [
         {
           "id": "2-Chains/21-LCEL:0",
@@ -3838,9 +3863,14 @@
           "id": "2-Chains/21-LCEL:10",
           "index": 10,
           "type": "code",
-          "source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
-          "source_bytes": 144,
-          "source_ends_with_newline": false
+          "source_sha256": "fe8a07f8e29704ed8c72091c34ce44956cd4b2a6331a6a6220553baac2abf3d3",
+          "source_bytes": 436,
+          "source_ends_with_newline": false,
+          "source_patch": {
+            "schema": "dli-course-source-patch/1.0",
+            "upstream_source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
+            "reason": "Expose the course model selector and reviewed compatible fallbacks without silently changing the lesson request contract."
+          }
         },
         {
           "id": "2-Chains/21-LCEL:11",
@@ -4350,7 +4380,7 @@
       "source_path": "task1/dli/2-Chains/22-Runnable-Functions.ipynb",
       "source_sha256": "adbf0e2084ce83bb0ba1d8745d44c974a3192a00d791e5ad2db1094023b62589",
       "markdown_path": "content/2-Chains/22-Runnable-Functions.md",
-      "markdown_sha256": "fc4687d0b912e33a0dadc8db0aa83f5188664b9317933b345c1725771361a6c8",
+      "markdown_sha256": "51abd6fc45d2e74ceee0f5ab22741f202ac3cc5f0c6011cfab05924f44fdf061",
       "cells": [
         {
           "id": "2-Chains/22-Runnable-Functions:0",
@@ -4436,9 +4466,14 @@
           "id": "2-Chains/22-Runnable-Functions:10",
           "index": 10,
           "type": "code",
-          "source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
-          "source_bytes": 144,
-          "source_ends_with_newline": false
+          "source_sha256": "fe8a07f8e29704ed8c72091c34ce44956cd4b2a6331a6a6220553baac2abf3d3",
+          "source_bytes": 436,
+          "source_ends_with_newline": false,
+          "source_patch": {
+            "schema": "dli-course-source-patch/1.0",
+            "upstream_source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
+            "reason": "Expose the course model selector and reviewed compatible fallbacks without silently changing the lesson request contract."
+          }
         },
         {
           "id": "2-Chains/22-Runnable-Functions:11",
@@ -4895,7 +4930,7 @@
       "source_path": "task1/dli/2-Chains/23-Combining-Chains.ipynb",
       "source_sha256": "1f931d93ca3179c8c2217fd94c539b6dd562a7564c73d08703498f759759c24a",
       "markdown_path": "content/2-Chains/23-Combining-Chains.md",
-      "markdown_sha256": "d220f616bf9e6669b48ada781d3a7cdac1082ab1234cb8abe5be207dfc363db5",
+      "markdown_sha256": "b3dce988f948f9d0845827b00f2657e40d979c9945145be58d0585393929756a",
       "cells": [
         {
           "id": "2-Chains/23-Combining-Chains:0",
@@ -4981,9 +5016,14 @@
           "id": "2-Chains/23-Combining-Chains:10",
           "index": 10,
           "type": "code",
-          "source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
-          "source_bytes": 144,
-          "source_ends_with_newline": false
+          "source_sha256": "fe8a07f8e29704ed8c72091c34ce44956cd4b2a6331a6a6220553baac2abf3d3",
+          "source_bytes": 436,
+          "source_ends_with_newline": false,
+          "source_patch": {
+            "schema": "dli-course-source-patch/1.0",
+            "upstream_source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
+            "reason": "Expose the course model selector and reviewed compatible fallbacks without silently changing the lesson request contract."
+          }
         },
         {
           "id": "2-Chains/23-Combining-Chains:11",
@@ -5419,7 +5459,7 @@
       "source_path": "task1/dli/2-Chains/24-Parallel-Chains.ipynb",
       "source_sha256": "57b140939fa5493c2f5ead32fe665d0584b3b7b43192e64adca5f18227b9c8f6",
       "markdown_path": "content/2-Chains/24-Parallel-Chains.md",
-      "markdown_sha256": "e1f70154311cc425f22ea93797bbb13c36f0028f18a5c4952f40a23b517a32cc",
+      "markdown_sha256": "7ba218d0e7ccd3d801f2500bd684dfb0003f74bc3910333fa2f06a0ba626b517",
       "cells": [
         {
           "id": "2-Chains/24-Parallel-Chains:0",
@@ -5505,9 +5545,14 @@
           "id": "2-Chains/24-Parallel-Chains:10",
           "index": 10,
           "type": "code",
-          "source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
-          "source_bytes": 144,
-          "source_ends_with_newline": false
+          "source_sha256": "fe8a07f8e29704ed8c72091c34ce44956cd4b2a6331a6a6220553baac2abf3d3",
+          "source_bytes": 436,
+          "source_ends_with_newline": false,
+          "source_patch": {
+            "schema": "dli-course-source-patch/1.0",
+            "upstream_source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
+            "reason": "Expose the course model selector and reviewed compatible fallbacks without silently changing the lesson request contract."
+          }
         },
         {
           "id": "2-Chains/24-Parallel-Chains:11",
@@ -6480,7 +6525,7 @@
       "source_path": "task1/dli/3-Prompting-With-Messages/31-Human-and-AI-Messages.ipynb",
       "source_sha256": "d898360623a3837fa1e1ba31a26ea0692c1db105f72bfa8437e8369872788861",
       "markdown_path": "content/3-Prompting-With-Messages/31-Human-and-AI-Messages.md",
-      "markdown_sha256": "b9d0bdb46fde7a3667b9d921f784fa5e947e9f7b63fab0d553644e49a17f0cea",
+      "markdown_sha256": "2788424ae6a18734e79f3a5412a48c24612dc358403c75ebcd5e1240f832cb68",
       "cells": [
         {
           "id": "3-Prompting-With-Messages/31-Human-and-AI-Messages:0",
@@ -6566,9 +6611,14 @@
           "id": "3-Prompting-With-Messages/31-Human-and-AI-Messages:10",
           "index": 10,
           "type": "code",
-          "source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
-          "source_bytes": 144,
-          "source_ends_with_newline": false
+          "source_sha256": "fe8a07f8e29704ed8c72091c34ce44956cd4b2a6331a6a6220553baac2abf3d3",
+          "source_bytes": 436,
+          "source_ends_with_newline": false,
+          "source_patch": {
+            "schema": "dli-course-source-patch/1.0",
+            "upstream_source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
+            "reason": "Expose the course model selector and reviewed compatible fallbacks without silently changing the lesson request contract."
+          }
         },
         {
           "id": "3-Prompting-With-Messages/31-Human-and-AI-Messages:11",
@@ -7142,7 +7192,7 @@
       "source_path": "task1/dli/3-Prompting-With-Messages/32-Few-Shot-Prompting.ipynb",
       "source_sha256": "3b78b5232287151bc8e8ca0d71d76299b8b2761958119aee21d3be77693122ef",
       "markdown_path": "content/3-Prompting-With-Messages/32-Few-Shot-Prompting.md",
-      "markdown_sha256": "14c1a7a75a26a650f0713d9fb08163f7b22f00d81dececd1c3e17ce063bacbb0",
+      "markdown_sha256": "79bdb6e87c4765ef604727474c20b7e3527feef31006db48a63b06a97246cc28",
       "cells": [
         {
           "id": "3-Prompting-With-Messages/32-Few-Shot-Prompting:0",
@@ -7228,9 +7278,14 @@
           "id": "3-Prompting-With-Messages/32-Few-Shot-Prompting:10",
           "index": 10,
           "type": "code",
-          "source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
-          "source_bytes": 144,
-          "source_ends_with_newline": false
+          "source_sha256": "fe8a07f8e29704ed8c72091c34ce44956cd4b2a6331a6a6220553baac2abf3d3",
+          "source_bytes": 436,
+          "source_ends_with_newline": false,
+          "source_patch": {
+            "schema": "dli-course-source-patch/1.0",
+            "upstream_source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
+            "reason": "Expose the course model selector and reviewed compatible fallbacks without silently changing the lesson request contract."
+          }
         },
         {
           "id": "3-Prompting-With-Messages/32-Few-Shot-Prompting:11",
@@ -7716,7 +7771,7 @@
       "source_path": "task1/dli/3-Prompting-With-Messages/33-System-Message.ipynb",
       "source_sha256": "a3ce1db5a28ed1fd53d4f292f85afff440508f82b5169403df1f54624db2b262",
       "markdown_path": "content/3-Prompting-With-Messages/33-System-Message.md",
-      "markdown_sha256": "b93551d80bbdcea729421973315db5c372b103421795701416483bcbb694d570",
+      "markdown_sha256": "33b5224ba8bd897a765762591d69da4933ca301b5960ea6750e93e6def15b8a1",
       "cells": [
         {
           "id": "3-Prompting-With-Messages/33-System-Message:0",
@@ -7802,9 +7857,14 @@
           "id": "3-Prompting-With-Messages/33-System-Message:10",
           "index": 10,
           "type": "code",
-          "source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
-          "source_bytes": 144,
-          "source_ends_with_newline": false
+          "source_sha256": "fe8a07f8e29704ed8c72091c34ce44956cd4b2a6331a6a6220553baac2abf3d3",
+          "source_bytes": 436,
+          "source_ends_with_newline": false,
+          "source_patch": {
+            "schema": "dli-course-source-patch/1.0",
+            "upstream_source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
+            "reason": "Expose the course model selector and reviewed compatible fallbacks without silently changing the lesson request contract."
+          }
         },
         {
           "id": "3-Prompting-With-Messages/33-System-Message:11",
@@ -8234,7 +8294,7 @@
       "source_path": "task1/dli/3-Prompting-With-Messages/34-Chain-of-Thought.ipynb",
       "source_sha256": "45cb5fd27b2ef7da2b2c751abe8d72a0d82f4bf83facbe6ee72b7e5f6c883f24",
       "markdown_path": "content/3-Prompting-With-Messages/34-Chain-of-Thought.md",
-      "markdown_sha256": "52c53bd48b92475e82f1c1df8acc0743f867912e9607b2efbb31c9916cc76549",
+      "markdown_sha256": "a2e286f4b662f587bd36556375803cd4e6b8efb9752877e6b1ed7b66d4fc178d",
       "cells": [
         {
           "id": "3-Prompting-With-Messages/34-Chain-of-Thought:0",
@@ -8320,9 +8380,14 @@
           "id": "3-Prompting-With-Messages/34-Chain-of-Thought:10",
           "index": 10,
           "type": "code",
-          "source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
-          "source_bytes": 144,
-          "source_ends_with_newline": false
+          "source_sha256": "fe8a07f8e29704ed8c72091c34ce44956cd4b2a6331a6a6220553baac2abf3d3",
+          "source_bytes": 436,
+          "source_ends_with_newline": false,
+          "source_patch": {
+            "schema": "dli-course-source-patch/1.0",
+            "upstream_source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
+            "reason": "Expose the course model selector and reviewed compatible fallbacks without silently changing the lesson request contract."
+          }
         },
         {
           "id": "3-Prompting-With-Messages/34-Chain-of-Thought:11",
@@ -8768,7 +8833,7 @@
       "source_path": "task1/dli/3-Prompting-With-Messages/35-Reasoning-Models.ipynb",
       "source_sha256": "82ec9420f2c2b08afc7420a4d512dc1284d87e6cca936f6dd0ce24f652329d8e",
       "markdown_path": "content/3-Prompting-With-Messages/35-Reasoning-Models.md",
-      "markdown_sha256": "95839f0d9f6673d74051c89bfcda70fa1a34aff99cac80ba91f6b5f1b324428f",
+      "markdown_sha256": "cb6f552e49de8656a0b93febf2c97a1be89f6c69d39fa886cad47659c1549c4e",
       "cells": [
         {
           "id": "3-Prompting-With-Messages/35-Reasoning-Models:0",
@@ -8878,9 +8943,14 @@
           "id": "3-Prompting-With-Messages/35-Reasoning-Models:13",
           "index": 13,
           "type": "code",
-          "source_sha256": "014cb3f558a811200db3036b3bc8138ef661b5e160e1422ebeab358dcc29ae5f",
-          "source_bytes": 544,
-          "source_ends_with_newline": false
+          "source_sha256": "fcafbc0e5997d7aeda885ea8d41020fefdcb9d6372bbfbf5de6821179f701364",
+          "source_bytes": 792,
+          "source_ends_with_newline": false,
+          "source_patch": {
+            "schema": "dli-course-source-patch/1.0",
+            "upstream_source_sha256": "014cb3f558a811200db3036b3bc8138ef661b5e160e1422ebeab358dcc29ae5f",
+            "reason": "Apply the visible standard-model choice while keeping the lesson's separate reasoning model and sampling contract explicit."
+          }
         },
         {
           "id": "3-Prompting-With-Messages/35-Reasoning-Models:14",
@@ -9414,7 +9484,7 @@
       "source_path": "task1/dli/3-Prompting-With-Messages/36-Chatbots.ipynb",
       "source_sha256": "48640f3d55bc45019348e15fcd0b98d2a6e065e7d6b68693197660e768d8099f",
       "markdown_path": "content/3-Prompting-With-Messages/36-Chatbots.md",
-      "markdown_sha256": "477c13c55633f0131f10369866486e9b4ab4de28f2d70b54147ec780bafcb223",
+      "markdown_sha256": "4cb125ebb5f0bfaae6a3cbdecfbcdd669c777b768cfe632d290184cc8d03552b",
       "cells": [
         {
           "id": "3-Prompting-With-Messages/36-Chatbots:0",
@@ -9500,9 +9570,14 @@
           "id": "3-Prompting-With-Messages/36-Chatbots:10",
           "index": 10,
           "type": "code",
-          "source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
-          "source_bytes": 144,
-          "source_ends_with_newline": false
+          "source_sha256": "fe8a07f8e29704ed8c72091c34ce44956cd4b2a6331a6a6220553baac2abf3d3",
+          "source_bytes": 436,
+          "source_ends_with_newline": false,
+          "source_patch": {
+            "schema": "dli-course-source-patch/1.0",
+            "upstream_source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
+            "reason": "Expose the course model selector and reviewed compatible fallbacks without silently changing the lesson request contract."
+          }
         },
         {
           "id": "3-Prompting-With-Messages/36-Chatbots:11",
@@ -10140,7 +10215,7 @@
       "source_path": "task1/dli/4-Structured-Output/41-Structured-Output.ipynb",
       "source_sha256": "d5d0bb87848d6fcc60e9834827b6507acbe676840c48525e3a90af28ccd309aa",
       "markdown_path": "content/4-Structured-Output/41-Structured-Output.md",
-      "markdown_sha256": "37f09b8499a2b7727e78d98221cc04ab7d725cbffe650ad6bed6594d3a3d4ff4",
+      "markdown_sha256": "a0a087d40fe59e8bb428596fed3481cb8beb677d930693373d9f90b11052943d",
       "cells": [
         {
           "id": "4-Structured-Output/41-Structured-Output:0",
@@ -10226,9 +10301,14 @@
           "id": "4-Structured-Output/41-Structured-Output:10",
           "index": 10,
           "type": "code",
-          "source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
-          "source_bytes": 144,
-          "source_ends_with_newline": false
+          "source_sha256": "fe8a07f8e29704ed8c72091c34ce44956cd4b2a6331a6a6220553baac2abf3d3",
+          "source_bytes": 436,
+          "source_ends_with_newline": false,
+          "source_patch": {
+            "schema": "dli-course-source-patch/1.0",
+            "upstream_source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
+            "reason": "Expose the course model selector and reviewed compatible fallbacks without silently changing the lesson request contract."
+          }
         },
         {
           "id": "4-Structured-Output/41-Structured-Output:11",
@@ -10746,7 +10826,7 @@
       "source_path": "task1/dli/4-Structured-Output/42-Pydantic.ipynb",
       "source_sha256": "ac7dcdf0cbe7e08c415d838679a1e09f0549d280270e02f2f2af8650c8c364a2",
       "markdown_path": "content/4-Structured-Output/42-Pydantic.md",
-      "markdown_sha256": "d3a63b0ebb06738a0cf91bfa0da8d38542c96eeadd15e953a5b77a671ae06b48",
+      "markdown_sha256": "a50ff774baf2cad6dcc73ead6bfbef0f8a9ed3b23e9b22cdf214112d44bead7d",
       "cells": [
         {
           "id": "4-Structured-Output/42-Pydantic:0",
@@ -10840,9 +10920,14 @@
           "id": "4-Structured-Output/42-Pydantic:11",
           "index": 11,
           "type": "code",
-          "source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
-          "source_bytes": 144,
-          "source_ends_with_newline": false
+          "source_sha256": "fe8a07f8e29704ed8c72091c34ce44956cd4b2a6331a6a6220553baac2abf3d3",
+          "source_bytes": 436,
+          "source_ends_with_newline": false,
+          "source_patch": {
+            "schema": "dli-course-source-patch/1.0",
+            "upstream_source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
+            "reason": "Expose the course model selector and reviewed compatible fallbacks without silently changing the lesson request contract."
+          }
         },
         {
           "id": "4-Structured-Output/42-Pydantic:12",
@@ -11456,7 +11541,7 @@
       "source_path": "task1/dli/4-Structured-Output/43-Document-Tagging.ipynb",
       "source_sha256": "12e4e248f7424af0eafc9c2d67e999358437f2fec827dc757bdafe962a4ca389",
       "markdown_path": "content/4-Structured-Output/43-Document-Tagging.md",
-      "markdown_sha256": "b65463219d29518e54db57f18552507e1822aa7e3a42ff5b49d61bcf26ecf66c",
+      "markdown_sha256": "0a8290dabbe3624c4c6fdadec76bac23f7e606d8f26be817a0cd4cc136043d5f",
       "cells": [
         {
           "id": "4-Structured-Output/43-Document-Tagging:0",
@@ -11542,9 +11627,14 @@
           "id": "4-Structured-Output/43-Document-Tagging:10",
           "index": 10,
           "type": "code",
-          "source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
-          "source_bytes": 144,
-          "source_ends_with_newline": false
+          "source_sha256": "fe8a07f8e29704ed8c72091c34ce44956cd4b2a6331a6a6220553baac2abf3d3",
+          "source_bytes": 436,
+          "source_ends_with_newline": false,
+          "source_patch": {
+            "schema": "dli-course-source-patch/1.0",
+            "upstream_source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
+            "reason": "Expose the course model selector and reviewed compatible fallbacks without silently changing the lesson request contract."
+          }
         },
         {
           "id": "4-Structured-Output/43-Document-Tagging:11",
@@ -12192,7 +12282,7 @@
       "source_path": "task1/dli/5-Tools/51-Tool-Calling.ipynb",
       "source_sha256": "44a18d3bdc49c33ca981c145dc355366d2e34f3d8034a60a142f799d5eafd04b",
       "markdown_path": "content/5-Tools/51-Tool-Calling.md",
-      "markdown_sha256": "8bfc8ff22f1fb791fcf8de640d84aa362422b57d5a560c96db5466f1028acd32",
+      "markdown_sha256": "7dbd7d01b11907c1d04d1d4440705b199a8ca49d76b92e3487e07c382837f298",
       "cells": [
         {
           "id": "5-Tools/51-Tool-Calling:0",
@@ -12278,9 +12368,14 @@
           "id": "5-Tools/51-Tool-Calling:10",
           "index": 10,
           "type": "code",
-          "source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
-          "source_bytes": 144,
-          "source_ends_with_newline": false
+          "source_sha256": "fe8a07f8e29704ed8c72091c34ce44956cd4b2a6331a6a6220553baac2abf3d3",
+          "source_bytes": 436,
+          "source_ends_with_newline": false,
+          "source_patch": {
+            "schema": "dli-course-source-patch/1.0",
+            "upstream_source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
+            "reason": "Expose the course model selector and reviewed compatible fallbacks without silently changing the lesson request contract."
+          }
         },
         {
           "id": "5-Tools/51-Tool-Calling:11",
@@ -13273,7 +13368,7 @@
       "source_path": "task1/dli/5-Tools/52-Agents.ipynb",
       "source_sha256": "8c9e7e4d8d9d534472d3f6d5e0b12ccea4361c1379a33803f238fa62f6c70531",
       "markdown_path": "content/5-Tools/52-Agents.md",
-      "markdown_sha256": "f0f3e91ba77bc8307843bb24eed66a320e10f64989b6713ac1d031fda95f0958",
+      "markdown_sha256": "35cf30b353d0c16bfb9e96c4cd80031d9a10f550388e82e6042fc255eeb657b9",
       "cells": [
         {
           "id": "5-Tools/52-Agents:0",
@@ -13359,9 +13454,14 @@
           "id": "5-Tools/52-Agents:10",
           "index": 10,
           "type": "code",
-          "source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
-          "source_bytes": 144,
-          "source_ends_with_newline": false
+          "source_sha256": "fe8a07f8e29704ed8c72091c34ce44956cd4b2a6331a6a6220553baac2abf3d3",
+          "source_bytes": 436,
+          "source_ends_with_newline": false,
+          "source_patch": {
+            "schema": "dli-course-source-patch/1.0",
+            "upstream_source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
+            "reason": "Expose the course model selector and reviewed compatible fallbacks without silently changing the lesson request contract."
+          }
         },
         {
           "id": "5-Tools/52-Agents:11",
@@ -14413,7 +14513,7 @@
       "source_path": "task1/dli/6-Assessment/61-Assessment.ipynb",
       "source_sha256": "593e322267cf7840ab52d3dee747d88b343fa94f19d26b4fd32290187d21837d",
       "markdown_path": "content/6-Assessment/61-Assessment.md",
-      "markdown_sha256": "50ec7116438034e47f7e205b681e2264e0ce351f30390a83b15716b2c6f8c892",
+      "markdown_sha256": "8bb0b2650f2c0698454346a065276af25a5d9c9ea777369cc6620e60d822b6b6",
       "cells": [
         {
           "id": "6-Assessment/61-Assessment:0",
@@ -14491,9 +14591,14 @@
           "id": "6-Assessment/61-Assessment:9",
           "index": 9,
           "type": "code",
-          "source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
-          "source_bytes": 144,
-          "source_ends_with_newline": false
+          "source_sha256": "fe8a07f8e29704ed8c72091c34ce44956cd4b2a6331a6a6220553baac2abf3d3",
+          "source_bytes": 436,
+          "source_ends_with_newline": false,
+          "source_patch": {
+            "schema": "dli-course-source-patch/1.0",
+            "upstream_source_sha256": "d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b",
+            "reason": "Expose the course model selector and reviewed compatible fallbacks without silently changing the lesson request contract."
+          }
         },
         {
           "id": "6-Assessment/61-Assessment:10",

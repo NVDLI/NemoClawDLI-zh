@@ -12,11 +12,15 @@ const MODEL_BASES = Object.freeze({
 });
 const BILLING_INVOKE_ORIGIN = "dli-cfx11-web";
 const MODEL_ROUTE_STORAGE_KEY = "cfx11-model-route:v2";
+const MODEL_CHOICE_STORAGE_KEY = "cfx11-model-choice:v1";
 const MODEL_PROBE_CANDIDATES = Object.freeze([
   "nvidia/nemotron-nano-12b-v2-vl",
   "nvidia/nemotron-3-nano-30b-a3b",
-  "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+  "meta/llama-3.3-70b-instruct",
 ]);
+const VIDEO_SUPPLEMENT_SCHEMA = "dli-course-video-supplements/1.0";
+const VIDEO_ASSET_ORIGIN = "https://d36m44n9vdbmda.cloudfront.net";
+const VIDEO_ASSET_PREFIX = "/assets/s-fx-12-v2/";
 
 const SOURCE_ASSET_REPLACEMENTS = Object.freeze(new Map([
   [
@@ -28,6 +32,8 @@ const SOURCE_ASSET_REPLACEMENTS = Object.freeze(new Map([
 const state = {
   manifest: null,
   contentBundle: null,
+  videoSupplements: null,
+  videoByLesson: new Map(),
   lesson: null,
   runner: new CoursePythonRunner(new URL("./runtime/worker.js", import.meta.url)),
   blocks: [],
@@ -51,6 +57,7 @@ const elements = Object.fromEntries([
   "clear-api-key", "kernel-status", "queue-status", "kernel-variables", "inspect-runtime",
   "restart-runtime", "test-api-key", "save-api-key", "model-route", "route-status", "runtime-panel",
   "connection-details", "connection-summary-status",
+  "model-choice", "model-choice-status",
   "runtime-panel-title", "close-runtime-panel", "kernel-started", "start-runtime",
   "dock-stop-runtime", "clear-runtime-streams", "runtime-streams", "runtime-environment",
   "environment-settings", "runtime-agent-form", "runtime-agent-input", "runtime-agent-history",
@@ -67,14 +74,26 @@ function selectedModelBase() {
   return MODEL_BASES[elements["model-route"]?.value] || MODEL_BASES[defaultModelRoute()];
 }
 
+function selectedModelOverride() {
+  const choice = elements["model-choice"]?.value || "auto";
+  if (choice === "auto") return MODEL_PROBE_CANDIDATES.includes(state.verifiedModel) ? state.verifiedModel : "";
+  return MODEL_PROBE_CANDIDATES.includes(choice) ? choice : "";
+}
+
+function orderedModelCandidates() {
+  const preferred = selectedModelOverride();
+  return preferred
+    ? [preferred, ...MODEL_PROBE_CANDIDATES.filter(model => model !== preferred)]
+    : [...MODEL_PROBE_CANDIDATES];
+}
+
 function runnerConfiguration(lesson = state.lesson) {
   return {
     lessonDirectory: lesson.id.includes("/") ? lesson.id.slice(0, lesson.id.lastIndexOf("/")) : "introduction",
     files: filesForLesson(lesson),
     modelBaseUrl: selectedModelBase(),
-    modelCandidates: state.verifiedModel
-      ? [state.verifiedModel, ...MODEL_PROBE_CANDIDATES.filter(model => model !== state.verifiedModel)]
-      : [...MODEL_PROBE_CANDIDATES],
+    modelOverride: selectedModelOverride(),
+    modelCandidates: orderedModelCandidates(),
   };
 }
 
@@ -256,13 +275,88 @@ function renderNavigation() {
   }
 }
 
-function markerHtml(raw) {
-  return raw.replace(/<!-- dli-course-cell (\{[^\n]+\}) -->/g, (_, json) => {
-    const record = JSON.parse(json);
-    return record.type === "code"
-      ? `\n<div class="xblock-marker" data-cell-id="${escapeHtml(record.id)}" data-cell-index="${record.index}"></div>\n\n`
+function markerHtml(raw, videoSupplement = null) {
+  let activeCell = null;
+  return raw.replace(/<!-- dli-course-cell (\{[^\n]+\}) -->|<!-- \/dli-course-cell -->/g, (_, json) => {
+    if (json) {
+      activeCell = JSON.parse(json);
+      return activeCell.type === "code"
+        ? `\n<div class="xblock-marker" data-cell-id="${escapeHtml(activeCell.id)}" data-cell-index="${activeCell.index}"></div>\n\n`
+        : "\n";
+    }
+    const videoMarker = videoSupplement && activeCell?.index === videoSupplement.insert_after_cell
+      ? `\n<div class="lesson-video-marker" data-video-id="${escapeHtml(videoSupplement.id)}"></div>\n\n`
       : "\n";
-  }).replace(/<!-- \/dli-course-cell -->/g, "\n");
+    activeCell = null;
+    return videoMarker;
+  });
+}
+
+function reviewedVideoUrl(record) {
+  const url = new URL(record.media_url);
+  if (url.protocol !== "https:" || url.origin !== VIDEO_ASSET_ORIGIN || !url.pathname.startsWith(VIDEO_ASSET_PREFIX)) {
+    throw new Error(`Walkthrough ${record.id} leaves the reviewed NVIDIA video boundary.`);
+  }
+  return url.href;
+}
+
+function buildVideoSupplement(record) {
+  const figure = document.createElement("figure");
+  figure.className = "lesson-video";
+  figure.dataset.videoId = record.id;
+
+  const heading = document.createElement("div");
+  heading.className = "lesson-video-heading";
+  const copy = document.createElement("div");
+  const eyebrow = document.createElement("span");
+  eyebrow.className = "lesson-video-eyebrow";
+  eyebrow.textContent = "Recorded walkthrough";
+  const title = document.createElement("strong");
+  title.textContent = record.lesson_title;
+  title.setAttribute("role", "heading");
+  title.setAttribute("aria-level", "2");
+  copy.append(eyebrow, title);
+  const durationNote = document.createElement("span");
+  durationNote.className = "lesson-video-source-label";
+  durationNote.textContent = "Optional companion";
+  heading.append(copy, durationNote);
+
+  const video = document.createElement("video");
+  video.controls = true;
+  video.preload = "metadata";
+  video.playsInline = true;
+  video.setAttribute("aria-label", `Recorded walkthrough for ${record.lesson_title}`);
+  const source = document.createElement("source");
+  source.src = reviewedVideoUrl(record);
+  source.type = record.media_type;
+  video.append(source);
+
+  const caption = document.createElement("figcaption");
+  const note = document.createElement("p");
+  note.textContent = "This recording accompanies the adjacent instructor-led course. The current code, available models, and model responses may differ.";
+  const links = document.createElement("p");
+  links.className = "lesson-video-links";
+  const fallback = document.createElement("a");
+  fallback.href = reviewedVideoUrl(record);
+  fallback.target = "_blank";
+  fallback.rel = "noopener noreferrer";
+  fallback.textContent = "Open video in a new tab";
+  const sourceNotebook = document.createElement("a");
+  sourceNotebook.href = `${state.videoSupplements.source.repository}/-/blob/${state.videoSupplements.source.commit}/task1/dli/${record.source_notebook}`;
+  sourceNotebook.target = "_blank";
+  sourceNotebook.rel = "noopener noreferrer";
+  sourceNotebook.dataset.externalSource = "true";
+  sourceNotebook.textContent = "View source notebook";
+  links.append(fallback, document.createTextNode(" · "), sourceNotebook);
+  caption.append(note, links);
+  figure.append(heading, video, caption);
+  return figure;
+}
+
+function mountVideoSupplement(record) {
+  const marker = elements["lesson-body"].querySelector(`.lesson-video-marker[data-video-id="${CSS.escape(record.id)}"]`);
+  if (!marker) throw new Error(`Walkthrough ${record.id} has no reviewed lesson placement.`);
+  marker.replaceWith(buildVideoSupplement(record));
 }
 
 function renderDisplay(record) {
@@ -424,12 +518,32 @@ function renderRuntimeStreams() {
 
 function appendError(output, stderr) {
   if (!stderr) return;
-  const actionable = String(stderr).split("\n").find(line => line.includes("The browser could not reach"));
-  if (!actionable) {
+  const text = String(stderr);
+  const actionable = text.split("\n").find(line => line.includes("The browser could not reach"));
+  const transientModelFailure = /(?:Gateway Time-out|status_code['"]?:?\s*(?:429|502|503|504)|\[(?:429|502|503|504)\]|HTTP\s+(?:429|502|503|504)|ReadTimeout|APIConnectionError)/i.test(text)
+    && /(?:NVIDIA|chat\/completions|openai|langchain|model|Gateway Time-out)/i.test(text);
+  if (!actionable && !transientModelFailure) {
     appendChannel(output, "stderr", stderr, "stderr");
     return;
   }
-  appendChannel(output, "Connection", actionable.replace(/^.*?(The browser could not reach)/, "$1"), "stderr");
+  if (actionable) {
+    appendChannel(output, "Connection", actionable.replace(/^.*?(The browser could not reach)/, "$1"), "stderr");
+  } else {
+    const recovery = document.createElement("div");
+    recovery.className = "model-recovery";
+    const message = document.createElement("p");
+    message.textContent = "The selected model is temporarily unavailable. Your Python session is still intact; choose another compatible model, then rerun the model setup cell and this cell.";
+    const choose = document.createElement("button");
+    choose.type = "button";
+    choose.textContent = "Choose another model";
+    choose.addEventListener("click", () => {
+      elements["connection-details"].open = true;
+      elements["model-choice"].focus();
+      elements["connection-details"].scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    recovery.append(message, choose);
+    output.append(recovery);
+  }
   const details = document.createElement("details");
   const summary = document.createElement("summary");
   summary.textContent = "Full Python traceback";
@@ -911,12 +1025,15 @@ async function loadLesson(lesson) {
     throw new Error(`The reviewed Markdown digest does not match for ${lesson.markdown_path}.`);
   }
   state.rawMarkdown = raw;
+  const videoSupplement = state.videoByLesson.get(lesson.id) || null;
   elements["lesson-title"].textContent = lesson.title;
-  elements["lesson-meta"].textContent = `${lesson.unit.replaceAll("-", " ")} · ${lesson.cells.length} source cells · imported verbatim`;
-  elements["lesson-body"].replaceChildren(markdownFragment(markerHtml(raw), markdownUrl));
+  elements["lesson-meta"].textContent = `${lesson.unit.replaceAll("-", " ")} · ${lesson.cells.length} source cells · reviewed source projection${videoSupplement ? " · recorded walkthrough" : ""}`;
+  elements["lesson-body"].replaceChildren(markdownFragment(markerHtml(raw, videoSupplement), markdownUrl));
+  if (videoSupplement) mountVideoSupplement(videoSupplement);
 
   const bySource = new Map(state.manifest.lessons.map(item => [item.source_path.replace(/^task1\/dli\//, ""), item]));
   elements["lesson-body"].querySelectorAll("a[href]").forEach(link => {
+    if (link.dataset.externalSource === "true") return;
     const decoded = decodeURIComponent(new URL(link.href).pathname);
     const sourceLink = [...bySource.keys()].find(path => decoded.endsWith(path));
     if (sourceLink) {
@@ -951,19 +1068,31 @@ function openLesson(lesson, { replace = false } = {}) {
 }
 
 async function initialize(signal) {
-  const [manifestResponse, contentResponse] = await Promise.all([
+  const [manifestResponse, contentResponse, videoResponse] = await Promise.all([
     fetch(new URL("course.json", location.href), { credentials: "omit", signal }),
     fetch(new URL("content-bundle.json", location.href), { credentials: "omit", signal }),
+    fetch(new URL("video-supplements.json", location.href), { credentials: "omit", signal }),
   ]);
   if (!manifestResponse.ok) throw new Error(`Could not load the course manifest (${manifestResponse.status}).`);
   if (!contentResponse.ok) throw new Error(`Could not load the reviewed lesson bundle (${contentResponse.status}).`);
+  if (!videoResponse.ok) throw new Error(`Could not load the reviewed walkthrough manifest (${videoResponse.status}).`);
   state.manifest = await manifestResponse.json();
   state.contentBundle = await contentResponse.json();
+  state.videoSupplements = await videoResponse.json();
   if (state.contentBundle.schema !== "dli-markdown-delivery/1.0") throw new Error("The lesson bundle schema is not supported.");
+  if (state.videoSupplements.schema !== VIDEO_SUPPLEMENT_SCHEMA) throw new Error("The walkthrough manifest schema is not supported.");
   const expected = new Set(state.manifest.lessons.map(lesson => lesson.markdown_path));
   const bundled = new Set(Object.keys(state.contentBundle.lessons || {}));
   if (expected.size !== bundled.size || [...expected].some(path => !bundled.has(path))) {
     throw new Error("The lesson bundle does not exactly match the course manifest.");
+  }
+  const lessonIds = new Set(state.manifest.lessons.map(lesson => lesson.id));
+  for (const record of state.videoSupplements.entries || []) {
+    if (!lessonIds.has(record.lesson_id) || state.videoByLesson.has(record.lesson_id)) {
+      throw new Error(`Walkthrough ${record.id} has an invalid or duplicate lesson placement.`);
+    }
+    reviewedVideoUrl(record);
+    state.videoByLesson.set(record.lesson_id, record);
   }
   const requested = new URL(location.href).searchParams.get("lesson");
   const lesson = state.manifest.lessons.find(item => item.id === requested) || state.manifest.lessons[0];
@@ -1144,6 +1273,29 @@ applyTheme(currentTheme());
 elements["theme-toggle"].addEventListener("click", () => applyTheme(currentTheme() === "dark" ? "light" : "dark"));
 const savedModelRoute = sessionStorage.getItem(MODEL_ROUTE_STORAGE_KEY);
 elements["model-route"].value = ["direct", "proxy"].includes(savedModelRoute) ? savedModelRoute : defaultModelRoute();
+const savedModelChoice = sessionStorage.getItem(MODEL_CHOICE_STORAGE_KEY) || "auto";
+elements["model-choice"].value = savedModelChoice === "auto" || MODEL_PROBE_CANDIDATES.includes(savedModelChoice)
+  ? savedModelChoice : "auto";
+function modelChoiceDescription() {
+  const choice = elements["model-choice"].value;
+  if (choice === "auto") {
+    return state.verifiedModel
+      ? `Automatic mode selected ${state.verifiedModel}. Rerun the lesson's model setup cell to apply it.`
+      : "Automatic mode uses the first compatible model that passes the connection test.";
+  }
+  return `Pinned to ${choice}. Rerun the lesson's model setup cell to apply it; responses may differ from the lesson default.`;
+}
+function applyModelChoice({ persist = false } = {}) {
+  if (persist) sessionStorage.setItem(MODEL_CHOICE_STORAGE_KEY, elements["model-choice"].value);
+  elements["model-choice-status"].textContent = modelChoiceDescription();
+  if (state.lesson) state.runner.configure(runnerConfiguration());
+  renderEnvironment();
+}
+elements["model-choice"].addEventListener("change", () => {
+  applyModelChoice({ persist: true });
+  recordRuntimeEvent("connection", modelChoiceDescription());
+});
+applyModelChoice();
 function applyModelRoute({ persist = false } = {}) {
   if (persist) sessionStorage.setItem(MODEL_ROUTE_STORAGE_KEY, elements["model-route"].value);
   elements["route-status"].textContent = elements["model-route"].value === "direct"
@@ -1189,9 +1341,12 @@ async function probeModelConnection(key) {
   const baseUrl = MODEL_BASES[route] || MODEL_BASES.direct;
   return state.operations.run("Test NVIDIA model connection", async ({ signal, update }) => {
     const attempts = [];
-    for (const [index, model] of MODEL_PROBE_CANDIDATES.entries()) {
-      update(`Trying ${index + 1} of ${MODEL_PROBE_CANDIDATES.length}: ${model}`);
-      elements["api-status"].textContent = `Checking model ${index + 1} of ${MODEL_PROBE_CANDIDATES.length}: ${model}…`;
+    const candidates = elements["model-choice"].value === "auto"
+      ? orderedModelCandidates()
+      : [selectedModelOverride()];
+    for (const [index, model] of candidates.entries()) {
+      update(`Trying ${index + 1} of ${candidates.length}: ${model}`);
+      elements["api-status"].textContent = `Checking model ${index + 1} of ${candidates.length}: ${model}…`;
       let response;
       try {
         response = await fetch(`${baseUrl}/chat/completions`, {
@@ -1216,6 +1371,7 @@ async function probeModelConnection(key) {
       if (response.ok) {
         state.verifiedModel = model;
         sessionStorage.setItem("cfx11-verified-model", model);
+        applyModelChoice();
         state.runner.configure(runnerConfiguration());
         recordRuntimeEvent("connection", `NVIDIA connection verified with ${model}.`);
         return model;
@@ -1241,7 +1397,7 @@ elements["test-api-key"].addEventListener("click", async () => {
   elements["api-status"].textContent = "Checking NVIDIA API access with bounded fallback…";
   try {
     const model = await probeModelConnection(key);
-    elements["api-status"].textContent = `Connected with ${model}. Lesson cells keep their explicit model choices.`;
+    elements["api-status"].textContent = `Connected with ${model}. Rerun a lesson's model setup cell to apply this choice.`;
     updateConnectionSummary(`Connected · ${model}`);
     elements["connection-details"].open = false;
   } catch (error) {

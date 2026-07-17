@@ -83,6 +83,7 @@ try {
     args: ["--host-resolver-rules=MAP staging.localhost 127.0.0.1"],
   });
   const stagingPage = await browser.newPage({ viewport: { width: 1280, height: 720 }, colorScheme: "dark" });
+  await stagingPage.route("https://d36m44n9vdbmda.cloudfront.net/assets/s-fx-12-v2/*.mp4", route => route.fulfill({ status: 200, contentType: "video/mp4", body: "" }));
   await stagingPage.goto(`http://staging.localhost:${port}/web/cfx11/index.html?lesson=2-Chains%2F22-Runnable-Functions`, { waitUntil: "domcontentloaded", timeout });
   await waitForCourseReady(stagingPage, "unregistered-origin route audit");
   check(await stagingPage.locator("#model-route").inputValue() === "proxy", "an unregistered staging origin did not select the DLI browser relay");
@@ -94,6 +95,7 @@ try {
   let mermaidRequests = 0;
   page.on("pageerror", error => errors.push(error.message));
   page.on("requestfailed", request => failures.push(`${request.url()}: ${request.failure()?.errorText}`));
+  await page.route("https://d36m44n9vdbmda.cloudfront.net/assets/s-fx-12-v2/*.mp4", route => route.fulfill({ status: 200, contentType: "video/mp4", body: "" }));
   await page.route("https://mermaid.ink/img/**", async route => {
     mermaidRequests += 1;
     await route.fulfill({
@@ -106,6 +108,9 @@ try {
   await page.goto(url, { waitUntil: "domcontentloaded", timeout });
   await waitForCourseReady(page, "Runnable Functions");
   const manifest = await page.evaluate(() => fetch("course.json").then(response => response.json()));
+  const videoManifest = await page.evaluate(() => fetch("video-supplements.json").then(response => response.json()));
+  const videoByLesson = new Map(videoManifest.entries.map(record => [record.lesson_id, record]));
+  const renderedVideos = new Set();
   for (const lesson of manifest.lessons) {
     console.log(`cfx11_browser_audit: checking lesson ${lesson.id}`);
     const lessonUrl = `http://127.0.0.1:${port}/web/cfx11/index.html?lesson=${encodeURIComponent(lesson.id)}`;
@@ -118,7 +123,22 @@ try {
     const sourceThemeOverrides = await page.locator("#lesson-body style, #lesson-body [style], #lesson-body [color], #lesson-body [bgcolor]")
       .evaluateAll(nodes => nodes.filter(node => !node.closest(".xblock")).length);
     check(sourceThemeOverrides === 0, `${lesson.id} retained a source-controlled theme override`);
+    const expectedVideo = videoByLesson.get(lesson.id);
+    const videos = page.locator(".lesson-video");
+    check(await videos.count() === (expectedVideo ? 1 : 0), `${lesson.id} rendered the wrong number of source-bound walkthroughs`);
+    if (expectedVideo) {
+      renderedVideos.add(expectedVideo.id);
+      const player = videos.locator("video");
+      const source = player.locator("source");
+      check(await player.getAttribute("controls") !== null, `${lesson.id} walkthrough has no learner controls`);
+      check(await player.getAttribute("autoplay") === null, `${lesson.id} walkthrough unexpectedly autoplays`);
+      check(await player.getAttribute("preload") === "metadata", `${lesson.id} walkthrough does not use bounded metadata preload`);
+      check(await source.getAttribute("src") === expectedVideo.media_url, `${lesson.id} walkthrough changed its reviewed media URL`);
+      const sourceNotebookHref = await videos.getByRole("link", { name: "View source notebook", exact: true }).getAttribute("href");
+      check(sourceNotebookHref?.includes(videoManifest.source.commit), `${lesson.id} walkthrough source link is not commit-bound: ${sourceNotebookHref}`);
+    }
   }
+  check(renderedVideos.size === videoManifest.entries.length, "full lesson traversal did not render every invoked source walkthrough");
   check(mermaidRequests > 0, "Mermaid source fences were not upgraded to rendered diagrams during full lesson traversal");
   await page.goto(url, { waitUntil: "domcontentloaded", timeout });
   await waitForCourseReady(page, "Runnable Functions interaction audit");
@@ -131,6 +151,7 @@ try {
     .evaluateAll(nodes => nodes.map(node => getComputedStyle(node).maxWidth));
   check(proseWidths.every(width => width === "none"), `lesson prose retained a character-width hedge: ${JSON.stringify(proseWidths)}`);
   check(await page.locator("#model-route").inputValue() === "direct", "the local validator origin must retain the direct NVIDIA route");
+  check(await page.locator("#model-choice").inputValue() === "auto", "the lesson model must default to a visible automatic compatibility choice");
   check(await page.locator("#runtime-dock").getAttribute("data-workbench-ready") === "true", "runtime workbench did not mount");
   const activityTool = page.getByRole("button", { name: "Activity", exact: false });
   await activityTool.click();
@@ -452,6 +473,9 @@ try {
   check(await page.locator("#connection-details").getAttribute("open") === null, "a verified model connection did not collapse to its compact summary");
   check((await page.locator("#connection-summary-status").innerText()).startsWith("Connected"), "the compact model summary did not report verified state");
   keyTestRequests = await page.evaluate(() => window.__cfx11KeyTestRequests);
+  const verifiedFallback = keyTestRequests?.[1]?.body?.model;
+  check((await page.locator("#connection-summary-status").innerText()).includes(verifiedFallback), "the visible connection summary did not name the compatible fallback it chose");
+  check((await page.locator("#model-choice-status").textContent()).includes(verifiedFallback), "automatic model configuration did not retain the compatible fallback it chose");
   await page.evaluate(() => {
     window.fetch = window.__cfx11OriginalFetch;
     delete window.__cfx11OriginalFetch;
@@ -482,6 +506,16 @@ try {
   check(keyTestRequests[1]?.headers["x-billing-invoke-origin"] === "dli-cfx11-web", "direct key test omitted stable course attribution");
   check(!(retiredBillingHeader in keyTestRequests[1].headers), "direct key test restored the retired billing header");
   check(keyTestRequests.every(request => request.body?.max_tokens === 1 && request.body?.stream === false), "key test fallback was not bounded to one non-streaming output token per candidate");
+  const overrideBlock = await runCell(page, 21, 'import os\nos.getenv("NVIDIA_MODEL")');
+  check(await overrideBlock.getAttribute("data-state") === "passed" && (await overrideBlock.locator(".cell-output").innerText()).includes(verifiedFallback),
+    "the verified compatible model did not reach the Python setup-cell environment");
+  const recoveryBlock = await runCell(page, 21, 'raise RuntimeError("NVIDIA chat/completions HTTP 504 Gateway Time-out")');
+  check(await recoveryBlock.getAttribute("data-state") === "failed", "the transient model failure probe did not fail");
+  check((await recoveryBlock.locator(".model-recovery").innerText()).includes("temporarily unavailable"), "a transient model outage did not provide concise recovery guidance");
+  await recoveryBlock.getByRole("button", { name: "Choose another model" }).click();
+  check(await page.locator("#connection-details").getAttribute("open") !== null && await page.locator("#model-choice").evaluate(node => document.activeElement === node),
+    "the transient model recovery action did not open and focus the model choice");
+  await page.locator("#connection-details > summary").click();
   await page.getByRole("button", { name: "Activity", exact: false }).click();
   check((await page.locator("#runtime-operations").innerText()).includes("Test NVIDIA model connection"), "connection fallback was absent from workflow activity");
   check((await page.locator("#operation-summary").innerText()).includes("No work is running"), "completed connection test remained falsely active");

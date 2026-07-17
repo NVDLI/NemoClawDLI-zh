@@ -146,9 +146,12 @@ There's a lot of information here that we are not concerned with, but if we dril
 With the `client` instance now created, we can make a simple request to generate chat completions by using the `client.chat.completions.create` method which expects a `model` to use for the completion, as well as a list of `messages` to send to the model. We will be discussing the details of the `messages` list in more detail below, but for now we will pass in a simple single message containing a prompt from the user (you) asking for a fun fact about space.
 <!-- /dli-course-cell -->
 
-<!-- dli-course-cell {"id":"1-Intro-to-Prompting/12-Hello-OpenAI:27","index":27,"schema":"dli-course-cell/1.0","source_sha256":"99eb92acd74350fc25a8e7685ba7f48e74d8e0a1e53ec8c9ac0065ca41837b7f","type":"code"} -->
+<!-- dli-course-cell {"id":"1-Intro-to-Prompting/12-Hello-OpenAI:27","index":27,"schema":"dli-course-cell/1.0","source_sha256":"7ed9baaf4ddb8084eaabc63b0860c53f6c7e0d004659789ddec985a22c8a2aa8","type":"code"} -->
 ```python
-model = 'nvidia/nemotron-nano-12b-v2-vl'
+# Use the model selected in the course connection panel, or keep the lesson default.
+model = os.getenv("NVIDIA_MODEL") or "nvidia/nemotron-nano-12b-v2-vl"
+# model = "nvidia/nemotron-3-nano-30b-a3b"  # Compatible fallback; responses may differ.
+# model = "meta/llama-3.3-70b-instruct"  # Legacy fallback; responses may differ more.
 prompt = 'Tell me a fun fact about space.'
 ```
 <!-- /dli-course-cell -->

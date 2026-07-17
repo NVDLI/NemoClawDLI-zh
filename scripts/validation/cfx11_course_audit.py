@@ -22,6 +22,9 @@ from scripts.pyodide.verify_cfx11_wheels import audit as audit_wheels
 COURSE = ROOT / "web/cfx11"
 SCHEMA = "dli-markdown-course/1.0"
 DELIVERY_SCHEMA = "dli-markdown-delivery/1.0"
+VIDEO_SCHEMA = "dli-course-video-supplements/1.0"
+VIDEO_ORIGIN = "https://d36m44n9vdbmda.cloudfront.net"
+VIDEO_PREFIX = f"{VIDEO_ORIGIN}/assets/s-fx-12-v2/"
 MARKER = re.compile(
     r"<!-- dli-course-cell (?P<meta>\{[^\n]+\}) -->\n(?P<body>.*?)<!-- /dli-course-cell -->",
     re.DOTALL,
@@ -81,7 +84,7 @@ def audit_discovery(root: Path = ROOT) -> list[str]:
 def audit(course: Path = COURSE) -> list[str]:
     findings: list[str] = []
     required = [
-        "index.html", "course.css", "course.js", "course.json", "content-bundle.json", "SOURCE_PROVENANCE.md",
+        "index.html", "course.css", "course.js", "course.json", "content-bundle.json", "video-supplements.json", "SOURCE_PROVENANCE.md",
         "runtime/runner.js", "runtime/worker.js", "runtime/operations.js", "runtime/course_compat.py",
     ]
     for relative in required:
@@ -205,6 +208,68 @@ def audit(course: Path = COURSE) -> list[str]:
     if set(delivered) != expected_delivery:
         findings.append("content bundle lesson paths do not exactly match course.json")
 
+    try:
+        videos = json.loads((course / "video-supplements.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        videos = {}
+        findings.append(f"cannot load video-supplements.json: {error}")
+    if videos.get("schema") != VIDEO_SCHEMA:
+        findings.append(f"video-supplements.json schema must be {VIDEO_SCHEMA}")
+    video_source = videos.get("source") or {}
+    if video_source.get("repository") != "https://gitlab.com/nvidia/dli/content/s-fx-12-v2":
+        findings.append("walkthrough source repository is not the authoritative S-FX course")
+    if not re.fullmatch(r"[0-9a-f]{40}", str(video_source.get("commit") or "")):
+        findings.append("walkthrough source is not bound to a full Git commit")
+    video_entries = videos.get("entries") or []
+    video_ids: set[str] = set()
+    video_lessons: set[str] = set()
+    helper_digests: dict[str, str] = {}
+    for record in video_entries:
+        video_id = str(record.get("id") or "")
+        lesson_id = str(record.get("lesson_id") or "")
+        if not re.fullmatch(r"walkthrough_\d{2}", video_id) or record.get("source_function") != video_id:
+            findings.append(f"walkthrough record has an invalid identity: {video_id!r}")
+        if video_id in video_ids:
+            findings.append(f"duplicate walkthrough id: {video_id}")
+        video_ids.add(video_id)
+        if lesson_id not in lesson_ids or lesson_id in video_lessons:
+            findings.append(f"walkthrough {video_id} has a missing or duplicate target lesson: {lesson_id}")
+        video_lessons.add(lesson_id)
+        target_lesson = next((lesson for lesson in lessons if lesson.get("id") == lesson_id), {})
+        if record.get("lesson_title") != target_lesson.get("title"):
+            findings.append(f"walkthrough {video_id} target title differs from course.json")
+        insert_after = record.get("insert_after_cell")
+        target_indices = {cell.get("index") for cell in target_lesson.get("cells", [])}
+        if insert_after not in target_indices:
+            findings.append(f"walkthrough {video_id} placement is outside its target lesson")
+        if record.get("source_widget_cell") != 3:
+            findings.append(f"walkthrough {video_id} is not bound to the source HTML-widget call cell")
+        if not str(record.get("source_notebook") or "").endswith(".ipynb"):
+            findings.append(f"walkthrough {video_id} lacks a source notebook")
+        helper = str(record.get("source_helper") or "")
+        helper_digest = str(record.get("source_helper_sha256") or "")
+        notebook_digest = str(record.get("source_notebook_sha256") or "")
+        if not helper.endswith("videos/walkthroughs.py") or not re.fullmatch(r"[0-9a-f]{64}", helper_digest):
+            findings.append(f"walkthrough {video_id} lacks digest-bound helper evidence")
+        if helper in helper_digests and helper_digests[helper] != helper_digest:
+            findings.append(f"walkthrough helper {helper} has inconsistent digests")
+        helper_digests[helper] = helper_digest
+        if not re.fullmatch(r"[0-9a-f]{64}", notebook_digest):
+            findings.append(f"walkthrough {video_id} lacks digest-bound notebook evidence")
+        media_url = str(record.get("media_url") or "")
+        if media_url != f"{VIDEO_PREFIX}{video_id}.mp4" or record.get("media_type") != "video/mp4":
+            findings.append(f"walkthrough {video_id} leaves the reviewed NVIDIA MP4 boundary")
+        if record.get("distribution") != "referenced-not-copied":
+            findings.append(f"walkthrough {video_id} misstates its distribution relationship")
+    source_audit = videos.get("source_audit") or {}
+    if source_audit.get("invoked_widget_count") != len(video_entries):
+        findings.append("walkthrough source audit count differs from the serialized entries")
+    unused_helpers = source_audit.get("unused_helper_functions")
+    if not isinstance(unused_helpers, list) or any(not re.fullmatch(r"[^#]+\.py#walkthrough_\d{2}", str(item)) for item in unused_helpers):
+        findings.append("walkthrough source audit does not explicitly classify unused helper functions")
+    if course == COURSE and not video_entries:
+        findings.append("committed course has no source-bound walkthrough supplements")
+
     runtime = (course / "runtime/worker.js").read_text(encoding="utf-8")
     runner = (course / "runtime/runner.js").read_text(encoding="utf-8")
     operations = (course / "runtime/operations.js").read_text(encoding="utf-8")
@@ -212,6 +277,7 @@ def audit(course: Path = COURSE) -> list[str]:
     compatibility = (course / "runtime/course_compat.py").read_text(encoding="utf-8")
     learner_shell = (course / "index.html").read_text(encoding="utf-8")
     styles = (course / "course.css").read_text(encoding="utf-8")
+    content_source = "".join(path.read_text(encoding="utf-8") for path in (course / "content").rglob("*.md"))
     shared_workbench = (ROOT / "web/shared/runtime-workbench.js").read_text(encoding="utf-8")
     shared_workbench_styles = (ROOT / "web/shared/runtime-workbench.css").read_text(encoding="utf-8")
     notebook_syntax = (ROOT / "scripts/pyodide/examples/notebook-syntax.js").read_text(encoding="utf-8")
@@ -253,6 +319,10 @@ def audit(course: Path = COURSE) -> list[str]:
         "auth-sensitive model connection test": (client, '`${baseUrl}/chat/completions`'),
         "one-token model connection test": (client, "max_tokens: 1"),
         "bounded model fallback": (client + runtime, "MODEL_PROBE_CANDIDATES"),
+        "visible lesson model choice": (learner_shell, 'id="model-choice"'),
+        "session-scoped lesson model choice": (client, 'const MODEL_CHOICE_STORAGE_KEY = "cfx11-model-choice:v1"'),
+        "runtime lesson model override": (runtime, 'const value = String(configuration.modelOverride || "").trim();'),
+        "actionable transient model recovery": (client, 'recovery.className = "model-recovery"'),
         "abortable model probe": (probe_source, 'credentials: "omit",\n          signal,'),
         "explicit theme control": (learner_shell, 'id="theme-toggle"'),
         "focus-aware kernel variable panel": (learner_shell + client + compatibility, 'data-variable-view="focused"'),
@@ -304,6 +374,12 @@ def audit(course: Path = COURSE) -> list[str]:
         "theme-specific code palette": (styles, "--code-bg: #f6f8fa;"),
         "fixed-color logo presentation": (styles, 'img[src$="/nvidia.png"]'),
         "Mermaid presentation": (client, "function mermaidImageUrl"),
+        "digest-bound walkthrough manifest": (client, 'fetch(new URL("video-supplements.json"'),
+        "strict walkthrough media boundary": (client, "function reviewedVideoUrl"),
+        "source-compatible walkthrough placement": (client, "function markerHtml(raw, videoSupplement"),
+        "accessible walkthrough controls": (client, "video.controls = true"),
+        "non-autoplay walkthrough loading": (client, 'video.preload = "metadata"'),
+        "responsive walkthrough presentation": (styles, ".lesson-video video"),
         "opinionated Markdown anchors": (client + styles, "heading-anchor"),
         "client billing attribution": (client, '"X-BILLING-INVOKE-ORIGIN": BILLING_INVOKE_ORIGIN'),
         "runtime billing attribution": (runtime, 'headers.set("X-BILLING-INVOKE-ORIGIN", BILLING_INVOKE_ORIGIN)'),
@@ -316,9 +392,33 @@ def audit(course: Path = COURSE) -> list[str]:
         if re.search(selector + r"\s*\{[^}]*max-width\s*:", styles):
             findings.append("browser course must not constrain lesson prose with character-width hedges")
     candidate_match = re.search(r"const MODEL_PROBE_CANDIDATES = Object\.freeze\(\[(.*?)\]\);", client, re.DOTALL)
-    candidate_models = re.findall(r'"(nvidia/[^"\s]+)"', candidate_match.group(1) if candidate_match else "")
-    if len(set(candidate_models)) < 2:
-        findings.append("browser course model probe must retain multiple distinct bounded candidates")
+    candidate_models = set(re.findall(r'"((?:nvidia|meta)/[^"\s]+)"', candidate_match.group(1) if candidate_match else ""))
+    compatible_models = {
+        "nvidia/nemotron-nano-12b-v2-vl",
+        "nvidia/nemotron-3-nano-30b-a3b",
+        "meta/llama-3.3-70b-instruct",
+    }
+    if candidate_models != compatible_models:
+        findings.append("browser course model probe must retain the reviewed standard-model compatibility set")
+    if not compatible_models <= set(re.findall(r'"((?:nvidia|meta)/[^"\s]+)"', runtime)):
+        findings.append("browser worker does not fail closed on the reviewed lesson-model compatibility set")
+    standard_setups = [
+        block.group("body")
+        for block in MARKER.finditer(content_source)
+        if 'base_url = os.getenv("NVIDIA_BASE_URL")' in block.group("body")
+        and "ChatNVIDIA(base_url=base_url, model=model, temperature=0)" in block.group("body")
+    ]
+    for setup in standard_setups:
+        if 'os.getenv("NVIDIA_MODEL")' not in setup or not all(model in setup for model in compatible_models):
+            findings.append("a standard ChatNVIDIA setup cell omits the visible model choice or a commented compatible fallback")
+            break
+    if len(lessons) > 1 and not standard_setups:
+        findings.append("course content has no standard ChatNVIDIA model setup cells")
+    if any(str(lesson.get("id", "")).endswith("35-Reasoning-Models") for lesson in lessons):
+        if "standard_model = os.getenv(\"NVIDIA_MODEL\")" not in content_source:
+            findings.append("reasoning lesson standard model does not honor the visible course choice")
+        if "model='nvidia/nemotron-3-nano-omni-30b-a3b-reasoning'" not in content_source:
+            findings.append("reasoning lesson no longer keeps its distinct reasoning-model contract")
     lifecycle_states = set(re.findall(r'"(queued|running|succeeded|failed|timed-out|cancelled)"', runner + operations))
     if lifecycle_states != {"queued", "running", "succeeded", "failed", "timed-out", "cancelled"}:
         findings.append("browser workflow lifecycle must surface queued, running, succeeded, failed, timed-out, and cancelled states")
@@ -341,6 +441,9 @@ def audit(course: Path = COURSE) -> list[str]:
     findings.extend(f"browser wheel evidence: {finding}" for finding in audit_wheels(course / "runtime"))
     if "source license is unresolved" not in (course / "SOURCE_PROVENANCE.md").read_text(encoding="utf-8").lower():
         findings.append("source provenance must fail closed on the unresolved source-course license")
+    provenance = (course / "SOURCE_PROVENANCE.md").read_text(encoding="utf-8")
+    if str(video_source.get("commit") or "") not in provenance or "referenced, not copied" not in provenance.lower():
+        findings.append("source provenance does not explain the commit-bound supplemental walkthrough relationship")
 
     candidate_path = ROOT / "scripts/pyodide/candidate-components.json"
     try:

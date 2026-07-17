@@ -39,6 +39,73 @@ SOURCE_PATCHES = {
     },
 }
 
+MODEL_SETUP_SOURCE = '''base_url = os.getenv("NVIDIA_BASE_URL")
+model = 'nvidia/nemotron-nano-12b-v2-vl'
+llm = ChatNVIDIA(base_url=base_url, model=model, temperature=0)'''
+MODEL_SETUP_PROJECTED = '''base_url = os.getenv("NVIDIA_BASE_URL")
+
+# Use the model selected in the course connection panel, or keep the lesson default.
+model = os.getenv("NVIDIA_MODEL") or "nvidia/nemotron-nano-12b-v2-vl"
+# model = "nvidia/nemotron-3-nano-30b-a3b"  # Compatible fallback; responses may differ.
+# model = "meta/llama-3.3-70b-instruct"  # Legacy fallback; responses may differ more.
+
+llm = ChatNVIDIA(base_url=base_url, model=model, temperature=0)'''
+MODEL_SETUP_CELLS = {
+    ("1-Intro-to-Prompting/13-Hello-LangChain.ipynb", 15),
+    ("1-Intro-to-Prompting/14-Streaming-and-Batching.ipynb", 11),
+    ("1-Intro-to-Prompting/15-Iterative-Prompting.ipynb", 14),
+    ("1-Intro-to-Prompting/16-Prompt-Templates.ipynb", 10),
+    ("2-Chains/21-LCEL.ipynb", 10),
+    ("2-Chains/22-Runnable-Functions.ipynb", 10),
+    ("2-Chains/23-Combining-Chains.ipynb", 10),
+    ("2-Chains/24-Parallel-Chains.ipynb", 10),
+    ("3-Prompting-With-Messages/31-Human-and-AI-Messages.ipynb", 10),
+    ("3-Prompting-With-Messages/32-Few-Shot-Prompting.ipynb", 10),
+    ("3-Prompting-With-Messages/33-System-Message.ipynb", 10),
+    ("3-Prompting-With-Messages/34-Chain-of-Thought.ipynb", 10),
+    ("3-Prompting-With-Messages/36-Chatbots.ipynb", 10),
+    ("4-Structured-Output/41-Structured-Output.ipynb", 10),
+    ("4-Structured-Output/42-Pydantic.ipynb", 11),
+    ("4-Structured-Output/43-Document-Tagging.ipynb", 10),
+    ("5-Tools/51-Tool-Calling.ipynb", 10),
+    ("5-Tools/52-Agents.ipynb", 10),
+    ("6-Assessment/61-Assessment.ipynb", 9),
+}
+SOURCE_PATCHES.update({
+    key: {
+        "type": "code",
+        "upstream_source_sha256": sha,
+        "before": MODEL_SETUP_SOURCE,
+        "after": MODEL_SETUP_PROJECTED,
+        "reason": "Expose the course model selector and reviewed compatible fallbacks without silently changing the lesson request contract.",
+    }
+    for key, sha in ((key, hashlib.sha256(MODEL_SETUP_SOURCE.encode("utf-8")).hexdigest()) for key in MODEL_SETUP_CELLS)
+})
+SOURCE_PATCHES.update({
+    ("1-Intro-to-Prompting/12-Hello-OpenAI.ipynb", 27): {
+        "type": "code",
+        "upstream_source_sha256": "99eb92acd74350fc25a8e7685ba7f48e74d8e0a1e53ec8c9ac0065ca41837b7f",
+        "before": "model = 'nvidia/nemotron-nano-12b-v2-vl'",
+        "after": '''# Use the model selected in the course connection panel, or keep the lesson default.
+model = os.getenv("NVIDIA_MODEL") or "nvidia/nemotron-nano-12b-v2-vl"
+# model = "nvidia/nemotron-3-nano-30b-a3b"  # Compatible fallback; responses may differ.
+# model = "meta/llama-3.3-70b-instruct"  # Legacy fallback; responses may differ more.''',
+        "reason": "Expose the course model selector and reviewed compatible fallbacks in the OpenAI example without silently changing its request.",
+    },
+    ("3-Prompting-With-Messages/35-Reasoning-Models.ipynb", 13): {
+        "type": "code",
+        "upstream_source_sha256": "014cb3f558a811200db3036b3bc8138ef661b5e160e1422ebeab358dcc29ae5f",
+        "before": '''# Our standard model (same as previous notebooks)
+standard_llm = ChatNVIDIA(base_url=base_url, model='nvidia/nemotron-nano-12b-v2-vl', temperature=0)''',
+        "after": '''# Our standard model (same as previous notebooks)
+standard_model = os.getenv("NVIDIA_MODEL") or "nvidia/nemotron-nano-12b-v2-vl"
+# standard_model = "nvidia/nemotron-3-nano-30b-a3b"  # Compatible standard-model fallback.
+# standard_model = "meta/llama-3.3-70b-instruct"  # Legacy fallback; responses may differ more.
+standard_llm = ChatNVIDIA(base_url=base_url, model=standard_model, temperature=0)''',
+        "reason": "Apply the visible standard-model choice while keeping the lesson's separate reasoning model and sampling contract explicit.",
+    },
+})
+
 
 def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
@@ -168,6 +235,10 @@ def import_course(source: Path, destination: Path, artifact_sha256: str) -> dict
         raise ValueError(f"source directory does not exist: {source}")
 
     content = destination / "content"
+    contracts = {
+        path.relative_to(content): path.read_bytes()
+        for path in content.rglob("SKILL.html")
+    } if content.is_dir() else {}
     if content.exists():
         shutil.rmtree(content)
     content.mkdir(parents=True)
@@ -193,6 +264,11 @@ def import_course(source: Path, destination: Path, artifact_sha256: str) -> dict
             "sha256": sha256_bytes(source_path.read_bytes()),
             "bytes": source_path.stat().st_size,
         })
+
+    for relative, payload in contracts.items():
+        target = content / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(payload)
 
     manifest = {
         "schema": SCHEMA,

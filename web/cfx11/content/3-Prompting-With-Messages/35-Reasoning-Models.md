@@ -102,12 +102,15 @@ In this notebook, we'll be comparing a standard LLM with a reasoning model. Let'
 For our reasoning model, we'll use [**`nvidia/nemotron-3-nano-omni-30b-a3b-reasoning`**](https://build.nvidia.com/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning). It is NVIDIA's Nemotron 3 Nano Omni reasoning model: a 30B-total, 3B-active omnimodal model intended for tasks that benefit from deliberate analysis across rich inputs.
 <!-- /dli-course-cell -->
 
-<!-- dli-course-cell {"id":"3-Prompting-With-Messages/35-Reasoning-Models:13","index":13,"schema":"dli-course-cell/1.0","source_sha256":"014cb3f558a811200db3036b3bc8138ef661b5e160e1422ebeab358dcc29ae5f","type":"code"} -->
+<!-- dli-course-cell {"id":"3-Prompting-With-Messages/35-Reasoning-Models:13","index":13,"schema":"dli-course-cell/1.0","source_sha256":"fcafbc0e5997d7aeda885ea8d41020fefdcb9d6372bbfbf5de6821179f701364","type":"code"} -->
 ```python
 base_url = os.getenv("NVIDIA_BASE_URL")
 
 # Our standard model (same as previous notebooks)
-standard_llm = ChatNVIDIA(base_url=base_url, model='nvidia/nemotron-nano-12b-v2-vl', temperature=0)
+standard_model = os.getenv("NVIDIA_MODEL") or "nvidia/nemotron-nano-12b-v2-vl"
+# standard_model = "nvidia/nemotron-3-nano-30b-a3b"  # Compatible standard-model fallback.
+# standard_model = "meta/llama-3.3-70b-instruct"  # Legacy fallback; responses may differ more.
+standard_llm = ChatNVIDIA(base_url=base_url, model=standard_model, temperature=0)
 
 # A reasoning model
 reasoning_llm = ChatNVIDIA(

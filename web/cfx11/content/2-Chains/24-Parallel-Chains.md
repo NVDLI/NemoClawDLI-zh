@@ -80,10 +80,15 @@ from langchain_core.runnables import RunnableLambda, RunnableParallel
 ## Create a Model Instance
 <!-- /dli-course-cell -->
 
-<!-- dli-course-cell {"id":"2-Chains/24-Parallel-Chains:10","index":10,"schema":"dli-course-cell/1.0","source_sha256":"d741a922d2642a3fc57f5481f8c069b9cfe987622157b766b7bad7190f65996b","type":"code"} -->
+<!-- dli-course-cell {"id":"2-Chains/24-Parallel-Chains:10","index":10,"schema":"dli-course-cell/1.0","source_sha256":"fe8a07f8e29704ed8c72091c34ce44956cd4b2a6331a6a6220553baac2abf3d3","type":"code"} -->
 ```python
 base_url = os.getenv("NVIDIA_BASE_URL")
-model = 'nvidia/nemotron-nano-12b-v2-vl'
+
+# Use the model selected in the course connection panel, or keep the lesson default.
+model = os.getenv("NVIDIA_MODEL") or "nvidia/nemotron-nano-12b-v2-vl"
+# model = "nvidia/nemotron-3-nano-30b-a3b"  # Compatible fallback; responses may differ.
+# model = "meta/llama-3.3-70b-instruct"  # Legacy fallback; responses may differ more.
+
 llm = ChatNVIDIA(base_url=base_url, model=model, temperature=0)
 ```
 <!-- /dli-course-cell -->

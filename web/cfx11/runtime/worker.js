@@ -9,6 +9,11 @@ const PYODIDE_ROOT = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/
 const NVIDIA_DIRECT_BASE = "https://integrate.api.nvidia.com/v1";
 const NVIDIA_PROXY_BASE = "https://nvidia-api-cors-proxy.experiments.courses.nvidia.com/v1";
 const NVIDIA_BASES = Object.freeze(new Set([NVIDIA_DIRECT_BASE, NVIDIA_PROXY_BASE]));
+const LESSON_MODELS = Object.freeze(new Set([
+  "nvidia/nemotron-nano-12b-v2-vl",
+  "nvidia/nemotron-3-nano-30b-a3b",
+  "meta/llama-3.3-70b-instruct",
+]));
 const BILLING_INVOKE_ORIGIN = "dli-cfx11-web";
 const EXECUTE_CELL = globalThis.PYODIDE_EXECUTION_CONTRACT.source;
 const BUILTIN_PACKAGES = Object.freeze([
@@ -107,6 +112,12 @@ function checkedNetworkUrl(rawUrl) {
 function selectedModelBase(configuration = {}) {
   const value = String(configuration.modelBaseUrl || NVIDIA_DIRECT_BASE).replace(/\/$/, "");
   if (!NVIDIA_BASES.has(value)) throw new Error("The selected NVIDIA model route is not allowed by this course.");
+  return value;
+}
+
+function selectedLessonModel(configuration = {}) {
+  const value = String(configuration.modelOverride || "").trim();
+  if (value && !LESSON_MODELS.has(value)) throw new Error("The selected lesson model is not allowed by this course.");
   return value;
 }
 
@@ -353,8 +364,10 @@ async function runCell(message) {
   activeRequestId = message.id;
   const key = String(message.apiKey || "");
   pyodide.globals.set("__course_api_key", key);
+  const modelOverride = selectedLessonModel(message.configuration);
+  pyodide.globals.set("__course_model_override", modelOverride);
   const modelBaseUrl = selectedModelBase(message.configuration);
-  pyodide.runPython(`import os\nos.environ["NVIDIA_BASE_URL"] = ${JSON.stringify(modelBaseUrl)}\nos.environ["NVIDIA_API_KEY"] = str(__course_api_key)`);
+  pyodide.runPython(`import os\nos.environ["NVIDIA_BASE_URL"] = ${JSON.stringify(modelBaseUrl)}\nos.environ["NVIDIA_API_KEY"] = str(__course_api_key)\nif __course_model_override:\n    os.environ["NVIDIA_MODEL"] = str(__course_model_override)\nelse:\n    os.environ.pop("NVIDIA_MODEL", None)`);
   const normalized = globalThis.PYODIDE_NOTEBOOK_SYNTAX.normalize(String(message.source || ""));
   try {
     const reply = await executeRaw(pyodide, normalized.source, {}, executionCount);
@@ -367,8 +380,9 @@ async function runCell(message) {
     pyodide.runPython('__course_scope["COURSE_EXECUTION_TRACE"] = []');
     return reply;
   } finally {
-    pyodide.runPython('import os\nos.environ.pop("NVIDIA_API_KEY", None)');
+    pyodide.runPython('import os\nos.environ.pop("NVIDIA_API_KEY", None)\nos.environ.pop("NVIDIA_MODEL", None)');
     pyodide.globals.delete("__course_api_key");
+    pyodide.globals.delete("__course_model_override");
     activeRequestId = null;
   }
 }

@@ -24,6 +24,11 @@ BUNDLE_SPEC = importlib.util.spec_from_file_location("notebook_content_bundle", 
 BUNDLE = importlib.util.module_from_spec(BUNDLE_SPEC)
 assert BUNDLE_SPEC.loader
 BUNDLE_SPEC.loader.exec_module(BUNDLE)
+VIDEO_IMPORT_PATH = ROOT / "scripts/notebook-import/import_video_supplements.py"
+VIDEO_IMPORT_SPEC = importlib.util.spec_from_file_location("notebook_video_supplements", VIDEO_IMPORT_PATH)
+VIDEO_IMPORT = importlib.util.module_from_spec(VIDEO_IMPORT_SPEC)
+assert VIDEO_IMPORT_SPEC.loader
+VIDEO_IMPORT_SPEC.loader.exec_module(VIDEO_IMPORT)
 
 
 class NotebookCourseImporterTests(unittest.TestCase):
@@ -33,6 +38,15 @@ class NotebookCourseImporterTests(unittest.TestCase):
             shutil.copy2(source / relative, destination / relative)
         shutil.copytree(source / "runtime", destination / "runtime", dirs_exist_ok=True)
         (destination / "content-bundle.json").write_text(BUNDLE.encoded(BUNDLE.build(destination)), encoding="utf-8")
+        (destination / "video-supplements.json").write_text(json.dumps({
+            "schema": "dli-course-video-supplements/1.0",
+            "source": {
+                "repository": "https://gitlab.com/nvidia/dli/content/s-fx-12-v2",
+                "commit": "8dc3b253e9ccb015470cd3b35d907b0fada38452",
+            },
+            "entries": [],
+            "source_audit": {"invoked_widget_count": 0, "unused_helper_functions": []},
+        }), encoding="utf-8")
 
     def fixture(self, root: Path) -> Path:
         source = root / "source"
@@ -59,10 +73,13 @@ class NotebookCourseImporterTests(unittest.TestCase):
             first = IMPORTER.import_course(source, destination, "a" * 64)
             first_markdown = (destination / "content/01-Exact.md").read_bytes()
             first_manifest = (destination / "course.json").read_bytes()
+            contract = destination / "content/SKILL.html"
+            contract.write_text("<html><body>generated explorer contract</body></html>\n", encoding="utf-8")
             second = IMPORTER.import_course(source, destination, "a" * 64)
             self.assertEqual(first, second)
             self.assertEqual(first_markdown, (destination / "content/01-Exact.md").read_bytes())
             self.assertEqual(first_manifest, (destination / "course.json").read_bytes())
+            self.assertEqual("<html><body>generated explorer contract</body></html>\n", contract.read_text(encoding="utf-8"))
             markdown = first_markdown.decode()
             self.assertIn("# Exact prose\nTwo spaces stay.  \n", markdown)
             self.assertIn("value = 6\nvalue * 7", markdown)
@@ -81,6 +98,35 @@ class NotebookCourseImporterTests(unittest.TestCase):
                 IMPORTER.project_source(relative, 76, "markdown", source + " drift")
         finally:
             patch["upstream_source_sha256"] = "36fbbf2de0109959505aa56a5bc701e41977d17c33105601ac7efd6fb8a2873e"
+
+    def test_video_import_uses_notebook_invocations_and_classifies_orphans(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source"
+            target = root / "target"
+            (source / "videos").mkdir(parents=True)
+            target.mkdir()
+            (source / "videos/walkthroughs.py").write_text(
+                'def walkthrough_00():\n    video_url = "https://d36m44n9vdbmda.cloudfront.net/assets/s-fx-12-v2/walkthrough_00.mp4"\n\n'
+                'def walkthrough_99():\n    video_url = "https://d36m44n9vdbmda.cloudfront.net/assets/s-fx-12-v2/walkthrough_99.mp4"\n',
+                encoding="utf-8",
+            )
+            notebook = {
+                "cells": [
+                    {"cell_type": "markdown", "source": ["# Intro"]},
+                    {"cell_type": "markdown", "source": ["Watch first."]},
+                    {"cell_type": "code", "source": ["from videos.walkthroughs import walkthrough_00 as walkthrough"]},
+                    {"cell_type": "code", "source": ["walkthrough()"]},
+                ]
+            }
+            (source / "Workshop-Intro.ipynb").write_text(json.dumps(notebook), encoding="utf-8")
+            (target / "course.json").write_text(json.dumps({
+                "lessons": [{"id": "Workshop-Intro", "title": "Workshop Intro", "cells": [{"index": 1}]}],
+            }), encoding="utf-8")
+            payload = VIDEO_IMPORT.build(source, target, "a" * 40)
+            self.assertEqual(["walkthrough_00"], [entry["id"] for entry in payload["entries"]])
+            self.assertEqual(["videos/walkthroughs.py#walkthrough_99"], payload["source_audit"]["unused_helper_functions"])
+            self.assertEqual("referenced-not-copied", payload["entries"][0]["distribution"])
 
     def test_audit_detects_cell_and_support_file_mutations(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -158,6 +204,10 @@ class CommittedCourseTests(unittest.TestCase):
             ("course.js", 'note.textContent = "Completed without output."', 'note.textContent = ""', "explicit no-output completion"),
             ("course.css", ".wb-cell-artifact { min-height: 0; }", ".wb-cell-artifact { min-height: 9rem; }", "compact result pane"),
             ("course.css", "prefers-reduced-motion: reduce", "removed-reduced-motion", "reduced-motion execution progress"),
+            ("index.html", 'id="model-choice"', 'id="removed-model-choice"', "visible lesson model choice"),
+            ("course.js", 'const MODEL_CHOICE_STORAGE_KEY = "cfx11-model-choice:v1"', 'const REMOVED_MODEL_CHOICE_STORAGE_KEY = "removed"', "session-scoped lesson model choice"),
+            ("course.js", 'recovery.className = "model-recovery"', 'recovery.className = "removed-model-recovery"', "actionable transient model recovery"),
+            ("runtime/worker.js", 'const value = String(configuration.modelOverride || "").trim();', 'const value = "";', "runtime lesson model override"),
         ]
         for relative, before, after, expected in mutations:
             with self.subTest(relative=relative, expected=expected), tempfile.TemporaryDirectory() as temporary:
@@ -180,20 +230,38 @@ class CommittedCourseTests(unittest.TestCase):
                 findings = cfx11_course_audit.audit(course)
                 self.assertTrue(any("character-width hedges" in finding for finding in findings), findings)
 
-    def test_model_probe_requires_more_than_one_distinct_candidate(self):
+    def test_model_probe_requires_the_reviewed_compatibility_set(self):
         with tempfile.TemporaryDirectory() as temporary:
             course = Path(temporary) / "cfx11"
             shutil.copytree(ROOT / "web/cfx11", course)
             client = course / "course.js"
             source = client.read_text(encoding="utf-8")
             source = source.replace(
-                '  "nvidia/nemotron-3-nano-30b-a3b",\n  "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",\n',
+                '  "nvidia/nemotron-3-nano-30b-a3b",\n',
                 "",
                 1,
             )
             client.write_text(source, encoding="utf-8")
             findings = cfx11_course_audit.audit(course)
-            self.assertTrue(any("multiple distinct" in finding for finding in findings), findings)
+            self.assertTrue(any("compatibility set" in finding for finding in findings), findings)
+
+    def test_walkthrough_manifest_and_renderer_fail_closed(self):
+        mutations = [
+            ("video-supplements.json", "referenced-not-copied", "copied-without-evidence", "distribution relationship"),
+            ("video-supplements.json", "d36m44n9vdbmda.cloudfront.net", "example.invalid", "NVIDIA MP4 boundary"),
+            ("course.js", "video.controls = true", "video.controls = false", "accessible walkthrough controls"),
+            ("course.js", 'video.preload = "metadata"', 'video.preload = "auto"', "non-autoplay walkthrough loading"),
+        ]
+        for relative, before, after, expected in mutations:
+            with self.subTest(relative=relative, expected=expected), tempfile.TemporaryDirectory() as temporary:
+                course = Path(temporary) / "cfx11"
+                shutil.copytree(ROOT / "web/cfx11", course)
+                path = course / relative
+                source = path.read_text(encoding="utf-8")
+                self.assertIn(before, source)
+                path.write_text(source.replace(before, after, 1), encoding="utf-8")
+                findings = cfx11_course_audit.audit(course)
+                self.assertTrue(any(expected in finding for finding in findings), findings)
 
     def test_dynamic_content_keeps_a_strict_url_and_theme_boundary(self):
         client = (ROOT / "web/cfx11/course.js").read_text(encoding="utf-8")

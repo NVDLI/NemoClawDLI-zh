@@ -67,7 +67,7 @@
           </summary>
           <div class="connection-body">
             <div>
-              <p>Model cells use a key that stays in this browser tab. A connection test tries a bounded list of lightweight models and stops after the first one-token response. Lesson cells keep their explicit model choices.</p>
+              <p>Model cells use a key that stays in this browser tab. Automatic mode tests compatible choices in order and shows which one it selected. You can pin one model when you need reproducible behavior; model outputs are not interchangeable.</p>
             </div>
             <div class="key-entry">
               <label for="api-key">NVIDIA API key</label>
@@ -78,6 +78,14 @@
                 <button id="clear-api-key" type="button">Clear</button>
               </div>
               <p id="api-status" class="connection-status">No key is stored in this browser tab.</p>
+              <label for="model-choice">Lesson model</label>
+              <select id="model-choice">
+                <option value="auto">Automatic compatible choice</option>
+                <option value="nvidia/nemotron-nano-12b-v2-vl">Nemotron Nano 12B V2-VL · lesson default</option>
+                <option value="nvidia/nemotron-3-nano-30b-a3b">Nemotron 3 Nano 30B · fallback</option>
+                <option value="meta/llama-3.3-70b-instruct">Llama 3.3 70B Instruct · legacy fallback</option>
+              </select>
+              <p id="model-choice-status" class="connection-status">Automatic mode uses the first compatible model that passes the connection test.</p>
               <label for="model-route">Model route</label>
               <select id="model-route">
                 <option value="direct">Direct NVIDIA API</option>
