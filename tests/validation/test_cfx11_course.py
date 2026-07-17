@@ -261,7 +261,7 @@ class CommittedCourseTests(unittest.TestCase):
             ("video-supplements.json", "referenced-not-copied", "copied-without-evidence", "distribution relationship"),
             ("video-supplements.json", "d36m44n9vdbmda.cloudfront.net", "example.invalid", "NVIDIA MP4 boundary"),
             ("course.js", "video.controls = true", "video.controls = false", "accessible walkthrough controls"),
-            ("course.js", 'video.preload = "metadata"', 'video.preload = "auto"', "non-autoplay walkthrough loading"),
+            ("course.js", 'video.preload = "none"', 'video.preload = "auto"', "learner-initiated walkthrough loading"),
         ]
         for relative, before, after, expected in mutations:
             with self.subTest(relative=relative, expected=expected), tempfile.TemporaryDirectory() as temporary:

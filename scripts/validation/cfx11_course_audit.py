@@ -393,7 +393,7 @@ def audit(course: Path = COURSE) -> list[str]:
         "strict walkthrough media boundary": (client, "function reviewedVideoUrl"),
         "source-compatible walkthrough placement": (client, "function markerHtml(raw, videoSupplement"),
         "accessible walkthrough controls": (client, "video.controls = true"),
-        "non-autoplay walkthrough loading": (client, 'video.preload = "metadata"'),
+        "learner-initiated walkthrough loading": (client, 'video.preload = "none"'),
         "responsive walkthrough presentation": (styles, ".lesson-video video"),
         "opinionated Markdown anchors": (client + styles, "heading-anchor"),
         "client billing attribution": (client, '"X-BILLING-INVOKE-ORIGIN": BILLING_INVOKE_ORIGIN'),

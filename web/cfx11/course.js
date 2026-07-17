@@ -372,7 +372,7 @@ function buildVideoSupplement(record) {
 
   const video = document.createElement("video");
   video.controls = true;
-  video.preload = "metadata";
+  video.preload = "none";
   video.playsInline = true;
   video.setAttribute("aria-label", `Recorded walkthrough for ${record.lesson_title}`);
   const source = document.createElement("source");

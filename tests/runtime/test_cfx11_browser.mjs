@@ -99,9 +99,13 @@ try {
   const errors = [];
   const failures = [];
   let mermaidRequests = 0;
+  let videoRequests = 0;
   page.on("pageerror", error => errors.push(error.message));
   page.on("requestfailed", request => failures.push(`${request.url()}: ${request.failure()?.errorText}`));
-  await page.route("https://d36m44n9vdbmda.cloudfront.net/assets/s-fx-12-v2/*.mp4", route => route.fulfill({ status: 200, contentType: "video/mp4", body: "" }));
+  await page.route("https://d36m44n9vdbmda.cloudfront.net/assets/s-fx-12-v2/*.mp4", route => {
+    videoRequests += 1;
+    return route.fulfill({ status: 200, contentType: "video/mp4", body: "" });
+  });
   await page.route("https://mermaid.ink/img/**", async route => {
     mermaidRequests += 1;
     await route.fulfill({
@@ -138,13 +142,14 @@ try {
       const source = player.locator("source");
       check(await player.getAttribute("controls") !== null, `${lesson.id} walkthrough has no learner controls`);
       check(await player.getAttribute("autoplay") === null, `${lesson.id} walkthrough unexpectedly autoplays`);
-      check(await player.getAttribute("preload") === "metadata", `${lesson.id} walkthrough does not use bounded metadata preload`);
+      check(await player.getAttribute("preload") === "none", `${lesson.id} walkthrough loads before the learner asks it to play`);
       check(await source.getAttribute("src") === expectedVideo.media_url, `${lesson.id} walkthrough changed its reviewed media URL`);
       const sourceNotebookHref = await videos.getByRole("link", { name: "View source notebook", exact: true }).getAttribute("href");
       check(sourceNotebookHref?.includes(videoManifest.source.commit), `${lesson.id} walkthrough source link is not commit-bound: ${sourceNotebookHref}`);
     }
   }
   check(renderedVideos.size === videoManifest.entries.length, "full lesson traversal did not render every invoked source walkthrough");
+  check(videoRequests === 0, `lesson traversal fetched ${videoRequests} large walkthrough file(s) before the learner pressed play`);
   check(mermaidRequests > 0, "Mermaid source fences were not upgraded to rendered diagrams during full lesson traversal");
   await page.goto(url, { waitUntil: "domcontentloaded", timeout });
   await waitForCourseReady(page, "Runnable Functions interaction audit");
