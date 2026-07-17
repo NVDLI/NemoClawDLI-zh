@@ -26,6 +26,8 @@ Its implementation lives under [`examples/`](examples/):
    execution, Stop, Reset, and run-all behavior.
 9. [`execution-contract.js`](examples/execution-contract.js) is the single source for Python execution,
    MIME selection, display helpers, and the editable helper-source registry used by both workers.
+10. [`notebook-syntax.js`](examples/notebook-syntax.js) normalizes inspection, timing, namespace,
+    virtual-filesystem, package, and bounded browser-shell syntax before Python execution.
 
 [`runtime_smoke.mjs`](runtime_smoke.mjs) verifies exact asset hashes, executes every progressive cell
 with real Pyodide, proves persistent state, JSON/code/Markdown/HTML/table/artifact display output,
@@ -98,7 +100,10 @@ locked source archives. The recorded `ormsgpack` patch is the only downstream so
 - License and notice files ship beside the applicable artifacts.
 - The generated CycloneDX SBOM matches the built artifact.
 - The scratch REPL and notebook cells share a namespace until Stop or Reset replaces the worker.
-- CodeMirror highlights Python and exposes line numbers in both themes.
+- CodeMirror highlights Python, wraps long lines, exposes line numbers and a visible theme-aware caret,
+  and supports run, comment, and indentation shortcuts in both themes.
+- Notebook inspection and magic syntax is shared by the canonical worker and course integrations.
+  Browser-shell commands operate only on the Pyodide virtual filesystem; they do not start a host process.
 - Shift+Enter runs and advances; Ctrl/Cmd+Enter runs in place.
 - Execution counters, automatic final-expression display, stdout, and tracebacks render with notebook prompts.
 - Dictionaries and lists render as indented, highlighted JSON; code output keeps its full width and scrolls instead of hard-wrapping.

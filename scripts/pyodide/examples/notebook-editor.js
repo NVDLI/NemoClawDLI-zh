@@ -58,6 +58,28 @@
     }));
   }
 
+  function toggleComments(editor) {
+    editor.operation(() => {
+      for (const selection of editor.listSelections()) {
+        const first = Math.min(selection.anchor.line, selection.head.line);
+        const last = Math.max(selection.anchor.line, selection.head.line);
+        const uncomment = Array.from({ length: last - first + 1 }, (_, offset) => editor.getLine(first + offset))
+          .filter(line => line.trim()).every(line => /^\s*#(?:\s|$)/.test(line));
+        for (let lineNumber = first; lineNumber <= last; lineNumber += 1) {
+          const line = editor.getLine(lineNumber);
+          if (!line.trim()) continue;
+          const indent = line.match(/^\s*/)[0];
+          if (uncomment) {
+            const prefix = line.match(/^\s*# ?/)[0];
+            editor.replaceRange(indent, { line: lineNumber, ch: 0 }, { line: lineNumber, ch: prefix.length });
+          } else {
+            editor.replaceRange(`${indent}# `, { line: lineNumber, ch: 0 }, { line: lineNumber, ch: indent.length });
+          }
+        }
+      }
+    });
+  }
+
   function attach(textarea, { run, runNext }) {
     let errorLine = null;
     const fallback = {
@@ -83,16 +105,19 @@
       lineNumbers: true,
       indentUnit: 4,
       indentWithTabs: false,
-      lineWrapping: false,
+      lineWrapping: true,
       viewportMargin: Infinity,
       extraKeys: {
         "Shift-Enter": () => runNext(),
         "Ctrl-Enter": () => run(),
         "Cmd-Enter": () => run(),
+        "Ctrl-/": toggleComments,
+        "Cmd-/": toggleComments,
         Tab(instance) {
           if (instance.somethingSelected()) instance.indentSelection("add");
           else instance.replaceSelection("    ", "end", "+input");
         },
+        "Shift-Tab": instance => instance.execCommand("indentLess"),
       },
     });
     editor.setSize(null, "auto");

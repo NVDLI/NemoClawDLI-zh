@@ -11,6 +11,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const MANIFEST = JSON.parse(await readFile(path.join(HERE, "candidate-components.json"), "utf8"));
 await import(pathToFileURL(path.join(HERE, "examples/cell-examples.js")));
 await import(pathToFileURL(path.join(HERE, "examples/execution-contract.js")));
+await import(pathToFileURL(path.join(HERE, "examples/notebook-syntax.js")));
 const EXAMPLES = globalThis.PYODIDE_CELL_EXAMPLES;
 const EXECUTE_CELL = globalThis.PYODIDE_EXECUTION_CONTRACT.source;
 const CDN_BASE = `https://cdn.jsdelivr.net/pyodide/v${MANIFEST.runtime.pyodide}/full/`;
@@ -67,10 +68,13 @@ let executionCount = 0;
 
 async function execute(source, inputs) {
   executionCount += 1;
-  pyodide.globals.set("__cell_source", source);
+  const normalized = globalThis.PYODIDE_NOTEBOOK_SYNTAX.normalize(source);
+  pyodide.globals.set("__cell_source", normalized.source);
   pyodide.globals.set("__cell_inputs", inputs);
   pyodide.globals.set("__execution_count", executionCount);
-  return JSON.parse(String(await pyodide.runPythonAsync(EXECUTE_CELL)));
+  const reply = JSON.parse(String(await pyodide.runPythonAsync(EXECUTE_CELL)));
+  if (reply.error_line && normalized.lineOffset) reply.error_line = Math.max(1, reply.error_line - normalized.lineOffset);
+  return reply;
 }
 
 if (!Array.isArray(EXAMPLES) || EXAMPLES.length < 8) {
@@ -134,6 +138,18 @@ const stateStart = await execute("repl_value = 41\nrepl_value", {});
 const stateNext = await execute("repl_value += 1\nrepl_value", {});
 if (stateStart.display !== "41" || stateNext.display !== "42" || stateNext.execution_count !== stateStart.execution_count + 1) {
   throw new Error("Python namespace or execution counter did not persist between runs");
+}
+const inspectReply = await execute("??repl_value", {});
+if (!inspectReply.ok || !inspectReply.display.includes("builtins.int") || !inspectReply.display.includes('"value": "42"')) {
+  throw new Error("Notebook ?? inspection did not resolve a persistent value");
+}
+const shellReply = await execute("!echo hello pipes | rev | tr 'a-z' 'A-Z'", {});
+if (!shellReply.ok || !shellReply.stdout.includes("SEPIP OLLEH")) {
+  throw new Error(`Bounded browser-shell pipeline did not execute: ${JSON.stringify(shellReply)}`);
+}
+const magicReply = await execute("%magic", {});
+if (!magicReply.ok || !magicReply.display.includes("value? / value??")) {
+  throw new Error("Notebook magic help did not render");
 }
 const prettyReply = await execute("{'outer': {'numbers': list(range(12)), 'ready': True}}", {});
 if (prettyReply.display_type !== "application/json" || prettyReply.display_language !== "json"

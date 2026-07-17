@@ -109,6 +109,8 @@
   .py-example-actions{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;padding:0 1rem .8rem}.py-cell-status{margin-left:auto;color:var(--td);font-size:.8rem}
   .py-notebook-output{border-top:1px solid var(--bd)}.py-output-row{display:grid;grid-template-columns:4.8rem minmax(0,1fr);align-items:start}.py-output-row[hidden]{display:none}.py-output-row pre{min-height:0;max-height:20rem;padding:.65rem .8rem;white-space:pre-wrap;background:var(--bg)}.py-output-row[data-stream="stderr"] .py-cell-prompt,.py-output-row[data-stream="stderr"] pre{color:var(--err)}.py-output-row[data-stream="display"] .py-cell-prompt{color:var(--acc)}
   @media(max-width:760px){main{width:min(100% - 24px,1080px)}.usage,.py-network-settings{grid-template-columns:1fr}.cell-head{display:block}.cell-actions{margin-top:.7rem}.py-runtime-status,.py-cell-status{width:100%;margin-left:0}.py-shortcuts{width:100%;margin-left:0}.py-chat-message{max-width:92%}.py-repl-editor,.py-repl-entry,.py-editor-shell,.py-output-row{grid-template-columns:3.7rem minmax(0,1fr)}.py-repl-prompt,.py-cell-prompt{padding-inline:.35rem;font-size:10px}table{display:block;overflow-x:auto}th,td{min-width:12rem}}
+  .py-editor-shell .CodeMirror-cursor,
+  .py-repl-editor .CodeMirror-cursor { border-left: 2px solid var(--gs); }
 </style>
 </head>
 <body>
@@ -190,7 +192,8 @@ course_topic.upper()</textarea>
     <thead><tr><th>Primitive</th><th>Behavior demonstrated above</th></tr></thead>
     <tbody>
       <tr><td>Kernel</td><td>The REPL and cells share one Python namespace and a monotonic execution counter.</td></tr>
-      <tr><td>Editor</td><td>CodeMirror provides Python tokens, line numbers, indentation, and keyboard execution.</td></tr>
+      <tr><td>Editor</td><td>CodeMirror provides Python tokens, line numbers, wrapping, a visible theme-aware caret, comment and indentation shortcuts, and keyboard execution.</td></tr>
+      <tr><td>Notebook syntax</td><td><code>?</code> and <code>??</code> inspect live values; <code>!</code>, <code>%%bash</code>, and common <code>%</code> commands use bounded browser helpers rather than pretending a host shell exists.</td></tr>
       <tr><td>Display</td><td><code>display()</code>, <code>display_json()</code>, <code>display_code()</code>, <code>display_table()</code>, <code>display_markdown()</code>, <code>display_html()</code>, <code>display_artifact()</code>, and <code>clear_output()</code> cover the useful notebook display paths. JSON and code are highlighted, HTML is sanitized, generated files are previewed without execution, and <code>print()</code> remains a separate stream.</td></tr>
       <tr><td>Background work</td><td><code>register_background()</code>, <code>background_status()</code>, <code>wait_background()</code>, and <code>cancel_background()</code> manage named asyncio tasks across cell executions. Stop and Reset still terminate the worker and every task.</td></tr>
       <tr><td>Feedback</td><td><code>In [*]</code> marks active work; tracebacks retain their Python frames and mark the failing line.</td></tr>
@@ -369,6 +372,7 @@ export function createCourseFetch({ fetchImpl = fetch, relayUrl, allowedOrigins 
       <tr><td><a href="examples/worker-client.js">examples/worker-client.js</a></td><td>Owns page-side requests, timeout, Stop, and Reset.</td></tr>
       <tr><td><a href="examples/notebook-editor.js">examples/notebook-editor.js</a></td><td>Defines the Python CodeMirror mode, line-numbered editor adapter, indentation, and execution shortcuts.</td></tr>
       <tr><td><a href="examples/execution-contract.js">examples/execution-contract.js</a></td><td>Defines the shared Jupyter-style execution and MIME display contract used by the live page, worker, and runtime smoke test.</td></tr>
+      <tr><td><a href="examples/notebook-syntax.js">examples/notebook-syntax.js</a></td><td>Normalizes notebook inspection, line and cell magics, timing, and bounded browser-shell syntax before Python execution.</td></tr>
       <tr><td><a href="examples/network-fetch.js">examples/network-fetch.js</a></td><td>Shows the optional browser-network boundary without embedding a service URL.</td></tr>
       <tr><td><a href="examples/learner-cell.py">examples/learner-cell.py</a></td><td>Demonstrates separate progress output and a notebook-style final value.</td></tr>
       <tr><td><a href="examples/cell-examples.js">examples/cell-examples.js</a></td><td>Defines twelve progressively improving Python cells and their cookbook-coverage labels.</td></tr>
@@ -431,6 +435,7 @@ if (targetByFile[requested]) document.getElementById(targetByFile[requested])?.s
 <script src="examples/notebook-editor.js"></script>
 <script src="examples/cell-examples.js"></script>
 <script src="examples/execution-contract.js"></script>
+<script src="examples/notebook-syntax.js"></script>
 <script src="examples/live-playground.js"></script>
 <script type="module">
 import { mountRuntimeWorkbench } from "../../web/shared/runtime-workbench.js";

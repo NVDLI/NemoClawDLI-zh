@@ -214,6 +214,7 @@ def audit(course: Path = COURSE) -> list[str]:
     styles = (course / "course.css").read_text(encoding="utf-8")
     shared_workbench = (ROOT / "web/shared/runtime-workbench.js").read_text(encoding="utf-8")
     shared_workbench_styles = (ROOT / "web/shared/runtime-workbench.css").read_text(encoding="utf-8")
+    notebook_syntax = (ROOT / "scripts/pyodide/examples/notebook-syntax.js").read_text(encoding="utf-8")
     boundary = runtime + runner + operations + client + compatibility + learner_shell
     if boundary.count("https://integrate.api.nvidia.com/v1") < 2:
         findings.append("direct NVIDIA API boundary is not explicit in both runtime and learner settings")
@@ -263,7 +264,13 @@ def audit(course: Path = COURSE) -> list[str]:
         "runtime focus return": (shared_workbench, "returnFocus"),
         "code and evidence workspace": (client + shared_workbench_styles, "wb-cell-workspace"),
         "explicit keyboard-editable cells": (client, "readOnly: false"),
-        "per-cell output layout": (client + shared_workbench_styles, 'article.dataset.outputLayout === "below"'),
+        "coherent per-cell settings": (client + shared_workbench_styles, "wb-cell-settings-panel"),
+        "per-cell output layout": (client + shared_workbench_styles, "cellSettings.output"),
+        "per-cell editor height": (client + styles, "cellSettings.height"),
+        "per-cell wrapping and line numbers": (client, 'editor.setOption("lineWrapping"'),
+        "Python comment and indentation shortcuts": (client, '"Ctrl-/": togglePythonComments'),
+        "theme-aware visible editor caret": (styles, "border-left: 2px solid var(--code-caret)"),
+        "shared notebook inspection and magic syntax": (runtime + notebook_syntax, "PYODIDE_NOTEBOOK_SYNTAX"),
         "bounded output geometry": (styles + shared_workbench_styles, "max-height: 38rem"),
         "highlighted structured results": (client, 'pre.className = "formatted-output"'),
         "in-cell runtime inspection": (client, "Inspect the runtime behind this cell"),

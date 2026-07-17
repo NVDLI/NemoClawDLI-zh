@@ -18,6 +18,8 @@
   --code-bg: #0d1117;
   --code-gutter: #11161d;
   --code-text: #e6edf3;
+  --code-caret: #aee23a;
+  --code-selection: #264f78;
   --stdout-bg: #101820;
   --input-bg: #17220f;
   --syntax-keyword: #ff7b72;
@@ -46,6 +48,8 @@
   --code-bg: #f6f8fa;
   --code-gutter: #e9edf1;
   --code-text: #1f2328;
+  --code-caret: #1f2328;
+  --code-selection: #add6ff;
   --stdout-bg: #eef5fa;
   --input-bg: #f2f8e9;
   --syntax-keyword: #cf222e;
@@ -73,6 +77,8 @@
     --code-bg: #f6f8fa;
     --code-gutter: #e9edf1;
     --code-text: #1f2328;
+    --code-caret: #1f2328;
+    --code-selection: #add6ff;
     --stdout-bg: #eef5fa;
     --input-bg: #f2f8e9;
     --syntax-keyword: #cf222e;
@@ -197,6 +203,10 @@ main { min-width: 0; padding: clamp(1rem, 3vw, 3rem) clamp(1rem, 5vw, 5rem) 6rem
 .xblock.wb-cell[data-state="failed"] .wb-cell-state { border-color: var(--error); color: var(--error); }
 .wb-cell-source .CodeMirror, .wb-cell-source .CodeMirror-scroll { min-height: 9rem; }
 .wb-cell-source .CodeMirror { cursor: text; outline: 0; }
+.wb-cell[data-editor-height="match"] .wb-cell-source .CodeMirror { flex: 1 1 auto; max-height: 38rem; }
+.wb-cell[data-editor-height="match"] .wb-cell-source .CodeMirror-scroll { height: 100%; max-height: 38rem; }
+.wb-cell[data-editor-height="content"] .wb-cell-source .CodeMirror-scroll { max-height: 24rem; }
+.wb-cell[data-editor-height="tall"] .wb-cell-source .CodeMirror-scroll { height: 24rem; max-height: 24rem; }
 .wb-cell-source .CodeMirror-focused { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--blue) 70%, transparent); }
 .wb-cell-artifact .cell-output { flex: 1; width: 100%; min-width: 0; max-width: 100%; max-height: 38rem; overflow: auto; overscroll-behavior: contain; border-top: 0; }
 .wb-cell-artifact .model-stream { min-height: 2.5rem; }
@@ -204,6 +214,8 @@ main { min-width: 0; padding: clamp(1rem, 3vw, 3rem) clamp(1rem, 5vw, 5rem) 6rem
 .CodeMirror-scroll { min-height: 3.5rem; max-height: 38rem; }
 .CodeMirror-gutters { background: var(--code-gutter); border-right-color: var(--line); }
 .CodeMirror-linenumber { color: var(--quiet); }
+.CodeMirror-cursor { border-left: 2px solid var(--code-caret) !important; }
+.CodeMirror-selected, .CodeMirror-focused .CodeMirror-selected { background: var(--code-selection) !important; }
 .cm-s-default .cm-keyword { color: var(--syntax-keyword); }
 .cm-s-default .cm-def { color: var(--syntax-name); }
 .cm-s-default .cm-string { color: var(--syntax-string); }

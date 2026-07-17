@@ -589,6 +589,47 @@ async function runBlock(block) {
   }
 }
 
+function togglePythonComments(editor) {
+  editor.operation(() => {
+    for (const range of editor.listSelections()) {
+      const first = Math.min(range.anchor.line, range.head.line);
+      const last = Math.max(range.anchor.line, range.head.line);
+      const lines = Array.from({ length: last - first + 1 }, (_, offset) => editor.getLine(first + offset));
+      const uncomment = lines.filter(line => line.trim()).every(line => /^\s*#(?:\s|$)/.test(line));
+      lines.forEach((line, offset) => {
+        if (!line.trim()) return;
+        const lineNumber = first + offset;
+        const indent = line.match(/^\s*/)[0];
+        if (uncomment) {
+          const prefix = line.match(/^\s*# ?/)[0];
+          editor.replaceRange(indent, { line: lineNumber, ch: 0 }, { line: lineNumber, ch: prefix.length });
+        } else {
+          editor.replaceRange(`${indent}# `, { line: lineNumber, ch: 0 }, { line: lineNumber, ch: indent.length });
+        }
+      });
+    }
+  });
+}
+
+async function copyText(value) {
+  if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(value);
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.append(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  textarea.remove();
+}
+
+function emptyCellOutput() {
+  const empty = document.createElement("p");
+  empty.className = "wb-cell-empty";
+  empty.textContent = "Run the cell to see its value, progress, model stream, or error here.";
+  return empty;
+}
+
 function buildXBlocks() {
   state.blocks = [];
   for (const marker of elements["lesson-body"].querySelectorAll(".xblock-marker")) {
@@ -624,23 +665,57 @@ function buildXBlocks() {
     const run = document.createElement("button");
     run.type = "button";
     run.textContent = "Run";
+    const settings = document.createElement("details");
+    settings.className = "wb-cell-settings";
+    const settingsSummary = document.createElement("summary");
+    settingsSummary.textContent = "Cell settings";
+    settingsSummary.setAttribute("aria-label", `Cell ${Number(marker.dataset.cellIndex) + 1} settings`);
+    const settingsPanel = document.createElement("div");
+    settingsPanel.className = "wb-cell-settings-panel";
+    const makeSelect = (labelText, name, choices) => {
+      const label = document.createElement("label");
+      label.textContent = labelText;
+      const select = document.createElement("select");
+      select.name = name;
+      select.setAttribute("aria-label", labelText);
+      for (const [value, text] of choices) select.add(new Option(text, value));
+      label.append(select);
+      settingsPanel.append(label);
+      return select;
+    };
+    const layout = makeSelect("Output position", "output-position", [["beside", "Beside code"], ["below", "Below code"]]);
+    const editorHeight = makeSelect("Editor height", "editor-height", [["match", "Match result"], ["content", "Fit code"], ["tall", "Tall editor"]]);
+    const makeCheck = (labelText, name) => {
+      const label = document.createElement("label");
+      label.className = "wb-cell-setting-check";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.name = name;
+      input.setAttribute("aria-label", labelText);
+      label.append(input, document.createTextNode(labelText));
+      settingsPanel.append(label);
+      return input;
+    };
+    const wrap = makeCheck("Wrap long lines", "wrap-lines");
+    const lineNumbers = makeCheck("Show line numbers", "line-numbers");
+    const settingsActions = document.createElement("div");
+    settingsActions.className = "wb-cell-settings-actions";
+    const copy = document.createElement("button");
+    copy.type = "button";
+    copy.textContent = "Copy code";
     const restore = document.createElement("button");
     restore.type = "button";
     restore.textContent = "Restore source";
-    const layout = document.createElement("button");
-    layout.type = "button";
-    layout.className = "cell-layout-toggle";
-    const layoutKey = `cfx11-output-layout:${marker.dataset.cellId}`;
-    const savedLayout = sessionStorage.getItem(layoutKey) === "below" ? "below" : "beside";
-    article.dataset.outputLayout = savedLayout;
-    const updateLayoutControl = () => {
-      const below = article.dataset.outputLayout === "below";
-      layout.textContent = below ? "Output beside" : "Output below";
-      layout.setAttribute("aria-pressed", String(below));
-      layout.title = below ? "Place this cell's result beside its code" : "Place this cell's result below its code";
-    };
-    updateLayoutControl();
-    header.append(heading, status, layout, restore, run);
+    const clear = document.createElement("button");
+    clear.type = "button";
+    clear.textContent = "Clear output";
+    settingsActions.append(copy, restore, clear);
+    const syntaxHelp = document.createElement("p");
+    syntaxHelp.className = "wb-cell-settings-help";
+    syntaxHelp.innerHTML = "<strong>Notebook controls</strong><br>Shift/Ctrl/⌘+Enter runs · Ctrl/⌘+/ comments · Tab/Shift+Tab indents<br><code>value?</code> / <code>value??</code> inspect · <code>!command</code> uses the browser shell · <code>%magic</code> lists commands";
+    settingsPanel.append(settingsActions, syntaxHelp);
+    settings.append(settingsSummary, settingsPanel);
+    header.append(heading, status, settings, run);
 
     const workspace = document.createElement("div");
     workspace.className = "wb-cell-workspace";
@@ -649,7 +724,12 @@ function buildXBlocks() {
     sourcePane.setAttribute("aria-label", "Editable Python source");
     const sourceLabel = document.createElement("div");
     sourceLabel.className = "wb-cell-pane-label";
-    sourceLabel.textContent = "Editable Python · click to type · Shift+Enter runs";
+    const sourceCopy = document.createElement("span");
+    sourceCopy.textContent = "Editable Python · click to type · Shift+Enter runs";
+    const sourcePosition = document.createElement("span");
+    sourcePosition.className = "wb-cell-editor-position";
+    sourcePosition.textContent = "Ln 1, Col 1";
+    sourceLabel.append(sourceCopy, sourcePosition);
     const textarea = document.createElement("textarea");
     textarea.value = source;
     textarea.setAttribute("aria-label", `Python source for cell ${Number(marker.dataset.cellIndex) + 1}`);
@@ -663,10 +743,7 @@ function buildXBlocks() {
     artifactLabel.textContent = "Result and evidence";
     const output = document.createElement("div");
     output.className = "cell-output";
-    const emptyOutput = document.createElement("p");
-    emptyOutput.className = "wb-cell-empty";
-    emptyOutput.textContent = "Run the cell to see its value, progress, model stream, or error here.";
-    output.append(emptyOutput);
+    output.append(emptyCellOutput());
     artifactPane.append(artifactLabel, output);
     workspace.append(sourcePane, artifactPane);
 
@@ -694,17 +771,63 @@ function buildXBlocks() {
     sourceNode.remove();
     const editor = globalThis.CodeMirror.fromTextArea(textarea, {
       mode: "python", lineNumbers: true, indentUnit: 4, tabSize: 4,
-      lineWrapping: false, readOnly: false, gutters: ["CodeMirror-linenumbers", "course-errors"],
-      extraKeys: { "Shift-Enter": () => run.click(), "Ctrl-Enter": () => run.click(), "Cmd-Enter": () => run.click() },
+      lineWrapping: true, readOnly: false, viewportMargin: Infinity,
+      gutters: ["CodeMirror-linenumbers", "course-errors"],
+      extraKeys: {
+        "Shift-Enter": () => run.click(), "Ctrl-Enter": () => run.click(), "Cmd-Enter": () => run.click(),
+        "Ctrl-/": togglePythonComments, "Cmd-/": togglePythonComments,
+        "Tab": candidate => candidate.somethingSelected() ? candidate.execCommand("indentMore") : candidate.replaceSelection("    ", "end"),
+        "Shift-Tab": candidate => candidate.execCommand("indentLess"),
+      },
     });
+    editor.setSize("100%", "auto");
     const block = { id: marker.dataset.cellId, article, status, output, editor, originalSource: source };
-    run.addEventListener("click", () => runBlock(block));
-    restore.addEventListener("click", () => editor.setValue(source));
-    layout.addEventListener("click", () => {
-      article.dataset.outputLayout = article.dataset.outputLayout === "below" ? "beside" : "below";
-      sessionStorage.setItem(layoutKey, article.dataset.outputLayout);
-      updateLayoutControl();
+    const settingsKey = `cfx11-cell-settings:${marker.dataset.cellId}`;
+    const legacyLayout = sessionStorage.getItem(`cfx11-output-layout:${marker.dataset.cellId}`);
+    let saved = {};
+    try { saved = JSON.parse(sessionStorage.getItem(settingsKey) || "{}"); } catch { saved = {}; }
+    const cellSettings = {
+      output: ["beside", "below"].includes(saved.output) ? saved.output : legacyLayout === "below" ? "below" : "beside",
+      height: ["match", "content", "tall"].includes(saved.height) ? saved.height : "match",
+      wrap: saved.wrap !== false,
+      lineNumbers: saved.lineNumbers !== false,
+    };
+    const applySettings = (persist = true) => {
+      article.dataset.outputLayout = cellSettings.output;
+      article.dataset.editorHeight = cellSettings.height;
+      layout.value = cellSettings.output;
+      editorHeight.value = cellSettings.height;
+      wrap.checked = cellSettings.wrap;
+      lineNumbers.checked = cellSettings.lineNumbers;
+      editor.setOption("lineWrapping", cellSettings.wrap);
+      editor.setOption("lineNumbers", cellSettings.lineNumbers);
+      editor.setSize("100%", cellSettings.height === "tall" ? "24rem" : "auto");
       editor.refresh();
+      if (persist) sessionStorage.setItem(settingsKey, JSON.stringify(cellSettings));
+    };
+    applySettings(false);
+    run.addEventListener("click", () => runBlock(block));
+    restore.addEventListener("click", () => { editor.setValue(source); editor.focus(); });
+    copy.addEventListener("click", async () => {
+      await copyText(editor.getValue());
+      copy.textContent = "Copied";
+      setTimeout(() => { copy.textContent = "Copy code"; }, 1200);
+    });
+    clear.addEventListener("click", () => {
+      output.replaceChildren(emptyCellOutput());
+      article.dataset.state = "ready";
+      status.textContent = "Ready";
+    });
+    layout.addEventListener("change", () => { cellSettings.output = layout.value; applySettings(); });
+    editorHeight.addEventListener("change", () => { cellSettings.height = editorHeight.value; applySettings(); });
+    wrap.addEventListener("change", () => { cellSettings.wrap = wrap.checked; applySettings(); });
+    lineNumbers.addEventListener("change", () => { cellSettings.lineNumbers = lineNumbers.checked; applySettings(); });
+    editor.on("cursorActivity", candidate => {
+      const cursor = candidate.getCursor();
+      sourcePosition.textContent = `Ln ${cursor.line + 1}, Col ${cursor.ch + 1}`;
+    });
+    editor.on("change", candidate => {
+      sourcePane.dataset.edited = String(candidate.getValue() !== source);
     });
     state.blocks.push(block);
   }

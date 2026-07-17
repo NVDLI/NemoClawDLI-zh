@@ -24,6 +24,7 @@ CELL_EXAMPLES = ROOT / "scripts/pyodide/examples/cell-examples.js"
 LIVE_PLAYGROUND = ROOT / "scripts/pyodide/examples/live-playground.js"
 NOTEBOOK_EDITOR = ROOT / "scripts/pyodide/examples/notebook-editor.js"
 EXECUTION_CONTRACT = ROOT / "scripts/pyodide/examples/execution-contract.js"
+NOTEBOOK_SYNTAX = ROOT / "scripts/pyodide/examples/notebook-syntax.js"
 RUNTIME_SMOKE = ROOT / "scripts/pyodide/runtime_smoke.mjs"
 USE_CASES = ROOT / "scripts/pyodide/cookbook-use-cases.json"
 COURSE_WHEEL_LOCK = ROOT / "web/cfx11/runtime/wheels.lock.json"
@@ -67,6 +68,10 @@ EXAMPLE_MARKERS = {
         "display_artifact", "application/x-course-artifact+json", "register_background",
         "background_status", "wait_background", "cancel_background", "__course_background_tasks",
     ),
+    "examples/notebook-syntax.js": (
+        "PYODIDE_NOTEBOOK_SYNTAX", "value? / value??", "browser_shell", "inspect_object",
+        'name === "who"', 'name === "whos"', 'name === "magic"', 'text.startsWith("%%bash\\n")',
+    ),
     "examples/worker-client.js": ("class PythonRunner", "reset()", "stop()", "setTimeout"),
     "examples/network-fetch.js": ("createCourseFetch", "allowedOrigins", "relayUrl"),
     "examples/learner-cell.py": ("inputs", "result"),
@@ -75,7 +80,8 @@ EXAMPLE_MARKERS = {
     ),
     "examples/notebook-editor.js": (
         'defineMode("course-python"', 'mode: "course-python"', "CodeMirror.fromTextArea",
-        "lineNumbers", "Shift-Enter", "Ctrl-Enter", "Cmd-Enter", "showError", "py-code-error-line",
+        "lineNumbers", "lineWrapping: true", "Shift-Enter", "Ctrl-Enter", "Cmd-Enter",
+        '"Ctrl-/"', '"Cmd-/"', '"Shift-Tab"', "showError", "py-code-error-line",
     ),
     "examples/live-playground.js": (
         "new Worker", "runAll", "runRepl", "data-python-cells", "runtimeMounted",
@@ -364,6 +370,7 @@ def audit(
                 "editor": NOTEBOOK_EDITOR.read_text(encoding="utf-8"),
                 "playground": LIVE_PLAYGROUND.read_text(encoding="utf-8"),
                 "contract": EXECUTION_CONTRACT.read_text(encoding="utf-8"),
+                "syntax": NOTEBOOK_SYNTAX.read_text(encoding="utf-8"),
                 "smoke": RUNTIME_SMOKE.read_text(encoding="utf-8"),
                 "workbench": skill,
                 "workbench_controller": SHARED_WORKBENCH.read_text(encoding="utf-8"),
@@ -376,6 +383,7 @@ def audit(
     editor_source = implementation_texts.get("editor", "")
     playground_source = implementation_texts.get("playground", "")
     contract_source = implementation_texts.get("contract", "")
+    syntax_source = implementation_texts.get("syntax", "")
     smoke_source = implementation_texts.get("smoke", "")
     workbench_source = implementation_texts.get("workbench", "")
     workbench_controller = implementation_texts.get("workbench_controller", "")
@@ -421,10 +429,14 @@ def audit(
         "display_json", "display_code", "display_table", "application/json", "text/x-code",
         "display_artifact", "application/x-course-artifact+json", "register_background",
         "background_status", "wait_background", "cancel_background", "__course_background_tasks",
-        "DISPLAY_WIDTH = 100", "__course_helper_overrides", "definitionSource",
+        "DISPLAY_WIDTH = 100", "__course_helper_overrides", "definitionSource", "inspect_object",
+        "browser_shell", "notebook_who", "notebook_time", "notebook_magic",
     ):
         if marker not in contract_source:
             findings.append(f"Pyodide execution contract lost display behavior: {marker}")
+    for marker in ("PYODIDE_NOTEBOOK_SYNTAX", "normalizeLine", "%%bash", "value? / value??", "%magic"):
+        if marker not in syntax_source:
+            findings.append(f"Pyodide notebook syntax lost executable behavior: {marker}")
     markdown_helper = re.search(r"def display_markdown\(source\):(?P<body>.*?)(?=\ndef display_html)", contract_source, re.S)
     if not markdown_helper or not all(
         marker in markdown_helper.group("body") for marker in ("course_displays.append", '"type": "text/markdown"', '"data": str(source)')
@@ -434,7 +446,8 @@ def audit(
         findings.append("Pyodide Markdown helper still relies on an opaque wrapper chain")
     for marker in (
         "CodeMirror.fromTextArea", 'mode: "course-python"', "lineNumbers: true",
-        '"Shift-Enter"', '"Ctrl-Enter"', '"Cmd-Enter"', "PYODIDE_NOTEBOOK_EDITOR",
+        '"Shift-Enter"', '"Ctrl-Enter"', '"Cmd-Enter"', '"Ctrl-/"', '"Shift-Tab"',
+        "lineWrapping: true", "PYODIDE_NOTEBOOK_EDITOR",
         "showError", "clearError", "py-code-error-line",
     ):
         if marker not in editor_source:
@@ -445,6 +458,7 @@ def audit(
         "SHA-256 mismatch", "expressionReply.display", "stateNext.display",
         "execution counter did not persist", "prettyReply.display_type", "richReply.displays",
         "errorReply.error_line !== 2", "Editable helper override did not persist",
+        "Notebook ?? inspection did not resolve a persistent value", "Bounded browser-shell pipeline did not execute",
         "Background registration did not produce the downloadable JSON artifact",
         "Background cancellation did not settle the registered task",
     ):
@@ -519,6 +533,7 @@ def self_test() -> list[str]:
         "editor": NOTEBOOK_EDITOR.read_text(encoding="utf-8"),
         "playground": LIVE_PLAYGROUND.read_text(encoding="utf-8"),
         "contract": EXECUTION_CONTRACT.read_text(encoding="utf-8"),
+        "syntax": NOTEBOOK_SYNTAX.read_text(encoding="utf-8"),
         "smoke": RUNTIME_SMOKE.read_text(encoding="utf-8"),
         "workbench": skill,
         "workbench_controller": SHARED_WORKBENCH.read_text(encoding="utf-8"),

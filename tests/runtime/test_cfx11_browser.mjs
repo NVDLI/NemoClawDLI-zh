@@ -161,11 +161,17 @@ try {
   await keyboardBlock.locator(".CodeMirror").evaluate(element => element.CodeMirror.execCommand("selectAll"));
   await page.keyboard.type("student_keyboard_edit = 17\nstudent_keyboard_edit");
   check(await keyboardBlock.locator(".CodeMirror").evaluate(element => element.CodeMirror.getValue()) === "student_keyboard_edit = 17\nstudent_keyboard_edit", "normal keyboard input did not edit the Python cell");
+  await keyboardBlock.locator(".CodeMirror").evaluate(element => element.CodeMirror.execCommand("selectAll"));
+  await page.keyboard.press("Control+Slash");
+  check((await keyboardBlock.locator(".CodeMirror").evaluate(element => element.CodeMirror.getValue())).split("\n").every(line => line.startsWith("# ")), "the notebook comment shortcut did not use Python comments");
+  await page.keyboard.press("Control+Slash");
+  const settingsToggle = keyboardBlock.locator("summary[aria-label$='settings']");
+  await settingsToggle.click();
   await keyboardBlock.getByRole("button", { name: "Restore source", exact: true }).click();
   check(await keyboardBlock.locator(".CodeMirror").evaluate(element => element.CodeMirror.getValue()) === originalKeyboardSource, "Restore source did not recover the imported Python");
-
-  const layoutButton = keyboardBlock.getByRole("button", { name: "Output below", exact: true });
-  await layoutButton.click();
+  check(await keyboardBlock.getByRole("button", { name: "Copy code", exact: true }).count() === 1, "cell settings omitted the copy action");
+  check(await keyboardBlock.getByRole("button", { name: "Clear output", exact: true }).count() === 1, "cell settings omitted the output reset action");
+  await keyboardBlock.getByLabel("Output position").selectOption("below");
   check(await keyboardBlock.getAttribute("data-output-layout") === "below", "the per-cell output control did not select the below layout");
   const belowGeometry = await keyboardBlock.locator(".wb-cell-workspace").evaluate(workspace => {
     const source = workspace.querySelector(".wb-cell-source").getBoundingClientRect();
@@ -174,8 +180,18 @@ try {
   });
   check(belowGeometry.artifactTop >= belowGeometry.sourceBottom - 1 && Math.abs(belowGeometry.sourceWidth - belowGeometry.artifactWidth) < 2,
     `the selected below layout did not stack the cell panes: ${JSON.stringify(belowGeometry)}`);
-  await keyboardBlock.getByRole("button", { name: "Output beside", exact: true }).click();
+  await keyboardBlock.getByLabel("Output position").selectOption("beside");
   check(await keyboardBlock.getAttribute("data-output-layout") === "beside", "the per-cell output control did not restore the beside layout");
+  await keyboardBlock.getByLabel("Wrap long lines").uncheck();
+  check(await keyboardBlock.locator(".CodeMirror").evaluate(element => element.CodeMirror.getOption("lineWrapping") === false), "cell settings did not disable line wrapping");
+  await keyboardBlock.getByLabel("Wrap long lines").check();
+  await keyboardBlock.getByLabel("Show line numbers").uncheck();
+  check(await keyboardBlock.locator(".CodeMirror").evaluate(element => element.CodeMirror.getOption("lineNumbers") === false), "cell settings did not hide line numbers");
+  await keyboardBlock.getByLabel("Show line numbers").check();
+  await keyboardBlock.getByLabel("Editor height").selectOption("tall");
+  check(await keyboardBlock.getAttribute("data-editor-height") === "tall", "cell settings did not select a tall editor");
+  await keyboardBlock.getByLabel("Editor height").selectOption("match");
+  await settingsToggle.click();
   console.log("cfx11_browser_audit: starting persistent Python kernel and queue checks");
   for (const index of [7, 14, 16, 20, 21]) {
     const block = await runCell(page, index);
@@ -183,6 +199,20 @@ try {
     check(await block.getAttribute("data-state") === "passed", `source cell ${index} did not execute:\n${output}`);
   }
   check((await page.locator('.xblock[data-cell-id$=":21"] .cell-output').innerText()).includes("12"), "persistent Python state did not return 12");
+
+  const inspectionBlock = await runCell(page, 21, 'base_url = "https://integrate.api.nvidia.com/v1"\n??base_url');
+  const inspectionOutput = await inspectionBlock.locator(".cell-output").innerText();
+  check(await inspectionBlock.getAttribute("data-state") === "passed" && inspectionOutput.includes("builtins.str") && inspectionOutput.includes("integrate.api.nvidia.com"),
+    `notebook ?? inspection did not inspect a live value:\n${inspectionOutput}`);
+  const shellBlock = await runCell(page, 21, "!pwd");
+  const shellOutput = await shellBlock.locator(".cell-output").innerText();
+  check(await shellBlock.getAttribute("data-state") === "passed" && shellOutput.includes("/course/2-Chains"), `browser-shell !pwd did not expose the virtual working directory:\n${shellOutput}`);
+  const whoBlock = await runCell(page, 21, "%who");
+  check((await whoBlock.locator(".cell-output").innerText()).includes("base_url"), "%who omitted a learner variable from the persistent namespace");
+  const magicBlock = await runCell(page, 21, "%magic");
+  check((await magicBlock.locator(".cell-output").innerText()).includes("value? / value??"), "%magic did not explain the supported notebook syntax");
+  const bashBlock = await runCell(page, 21, "%%bash\necho hello pipes | rev | tr 'a-z' 'A-Z'");
+  check((await bashBlock.locator(".cell-output").innerText()).includes("SEPIP OLLEH"), "bounded %%bash pipeline regressed");
 
   const batchBlock = await runCell(page, 21, "from langchain_core.runnables import RunnableLambda\nRunnableLambda(lambda value: value * 2).batch([2, 4, 6])");
   const batchOutput = await batchBlock.locator(".cell-output").innerText();
@@ -271,6 +301,23 @@ try {
   const errorBlock = await runCell(page, 21, "values = [1]\nvalues[9]");
   check(await errorBlock.getAttribute("data-state") === "failed", "runtime error did not fail the cell");
   check(await errorBlock.locator(".CodeMirror").evaluate(element => element.CodeMirror.lineInfo(1)?.bgClass?.includes("course-error-line")), "runtime error did not highlight line 2");
+  const matchedEditorGeometry = await errorBlock.evaluate(block => {
+    const source = block.querySelector(".wb-cell-source").getBoundingClientRect();
+    const editor = block.querySelector(".CodeMirror").getBoundingClientRect();
+    return { sourceBottom: source.bottom, editorBottom: editor.bottom, sourceHeight: source.height, editorHeight: editor.height };
+  });
+  check(Math.abs(matchedEditorGeometry.sourceBottom - matchedEditorGeometry.editorBottom) < 2,
+    `the default editor did not fill its source pane beside tall output: ${JSON.stringify(matchedEditorGeometry)}`);
+  await errorBlock.locator(".CodeMirror").click();
+  for (const theme of ["light", "dark"]) {
+    await page.evaluate(value => document.documentElement.dataset.theme = value, theme);
+    const caret = await errorBlock.locator(".CodeMirror-cursor").first().evaluate(element => {
+      const style = getComputedStyle(element);
+      return { width: parseFloat(style.borderLeftWidth), color: style.borderLeftColor };
+    });
+    check(caret.width >= 2, `${theme} editor caret is too thin: ${JSON.stringify(caret)}`);
+    check(theme !== "dark" || caret.color !== "rgb(0, 0, 0)", `dark editor retained a black caret: ${JSON.stringify(caret)}`);
+  }
 
   const widgetSource = `class DummyChat:\n    def chat(self, prompt):\n        return "echo: " + prompt\napp = create_chatbot_interface_from_bot(DummyChat())\napp.launch()`;
   const widgetBlock = await runCell(page, 21, widgetSource);
@@ -460,7 +507,9 @@ try {
   await page.locator('[data-workbench-view="variables"]').click();
   await page.getByRole("button", { name: "All variables", exact: true }).click();
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
-  await page.waitForFunction(() => document.querySelector("#kernel-status")?.textContent !== "Not started", null, { timeout });
+  await page.waitForFunction(() => document.querySelector("#inspect-runtime")?.disabled === false, null, { timeout });
+  check(await page.locator("#kernel-status").innerText() !== "Not started",
+    `runtime refresh after restart did not initialize a session: ${await page.locator("#kernel-variables").innerText()}; page errors: ${JSON.stringify(errors)}`);
   check(!(await page.locator("#kernel-variables").innerText()).includes("cross_lesson_value"), "restart did not clear the Python namespace");
   await page.locator("#close-runtime-panel").click();
 

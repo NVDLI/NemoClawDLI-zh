@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import "../../../scripts/pyodide/examples/execution-contract.js";
+import "../../../scripts/pyodide/examples/notebook-syntax.js";
 
 const PYODIDE_VERSION = "314.0.2";
 const PYODIDE_ROOT = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`;
@@ -346,23 +347,6 @@ __course_json.dumps({
   };
 }
 
-function normalizeMagic(source) {
-  if (source.startsWith("%%time\n")) {
-    return {
-      source: `import time as __course_time\n__course_started = __course_time.perf_counter()\n${source.slice(7)}\nprint(f"Wall time: {__course_time.perf_counter() - __course_started:.3f} s")`,
-      lineOffset: 2,
-    };
-  }
-  if (source.startsWith("%%bash\n")) {
-    const command = source.slice(7).trim();
-    if (command === "echo hello pipes | rev | tr 'a-z' 'A-Z'") {
-      return { source: "print('hello pipes'[::-1].upper())", lineOffset: 0 };
-    }
-    return { source: `raise RuntimeError(${JSON.stringify("This browser course does not execute arbitrary shell commands.")})`, lineOffset: 0 };
-  }
-  return { source, lineOffset: 0 };
-}
-
 async function runCell(message) {
   const pyodide = await prepareKernel(message.configuration);
   executionCount += 1;
@@ -371,7 +355,7 @@ async function runCell(message) {
   pyodide.globals.set("__course_api_key", key);
   const modelBaseUrl = selectedModelBase(message.configuration);
   pyodide.runPython(`import os\nos.environ["NVIDIA_BASE_URL"] = ${JSON.stringify(modelBaseUrl)}\nos.environ["NVIDIA_API_KEY"] = str(__course_api_key)`);
-  const normalized = normalizeMagic(String(message.source || ""));
+  const normalized = globalThis.PYODIDE_NOTEBOOK_SYNTAX.normalize(String(message.source || ""));
   try {
     const reply = await executeRaw(pyodide, normalized.source, {}, executionCount);
     if (reply.error_line && normalized.lineOffset) reply.error_line = Math.max(1, reply.error_line - normalized.lineOffset);
