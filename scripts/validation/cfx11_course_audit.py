@@ -400,6 +400,7 @@ def audit(course: Path = COURSE) -> list[str]:
         "deferred walkthrough source": (client, "source.dataset.src = reviewedVideoUrl(record)"),
         "contextual walkthrough preview": (client, 'preview.className = "lesson-video-preview"'),
         "walkthrough preview presentation": (styles, ".lesson-video-preview {"),
+        "code-only lesson cell count": (client, 'const codeCellCount = lesson.cells.filter(cell => cell.type === "code").length;'),
         "responsive walkthrough presentation": (styles, ".lesson-video video"),
         "opinionated Markdown anchors": (client + styles, "heading-anchor"),
         "client billing attribution": (client, '"X-BILLING-INVOKE-ORIGIN": BILLING_INVOKE_ORIGIN'),

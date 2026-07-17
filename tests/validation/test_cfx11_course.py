@@ -264,6 +264,7 @@ class CommittedCourseTests(unittest.TestCase):
             ("course.js", 'video.preload = "none"', 'video.preload = "auto"', "learner-initiated walkthrough loading"),
             ("course.js", "source.dataset.src = reviewedVideoUrl(record)", "source.src = reviewedVideoUrl(record)", "deferred walkthrough source"),
             ("course.js", 'preview.className = "lesson-video-preview"', 'preview.className = "video-placeholder"', "contextual walkthrough preview"),
+            ("course.js", 'const codeCellCount = lesson.cells.filter(cell => cell.type === "code").length;', "const codeCellCount = lesson.cells.length;", "code-only lesson cell count"),
         ]
         for relative, before, after, expected in mutations:
             with self.subTest(relative=relative, expected=expected), tempfile.TemporaryDirectory() as temporary:

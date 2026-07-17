@@ -127,6 +127,9 @@ try {
     await page.goto(lessonUrl, { waitUntil: "domcontentloaded", timeout });
     await page.waitForFunction(expected => document.querySelector("#lesson-title")?.textContent === expected, lesson.title, { timeout });
     const expectedCells = lesson.cells.filter(cell => cell.type === "code");
+    const expectedCellLabel = `${expectedCells.length} Python cell${expectedCells.length === 1 ? "" : "s"}`;
+    check((await page.locator("#lesson-meta").innerText()).includes(expectedCellLabel),
+      `${lesson.id} mislabeled source cells as runnable Python cells`);
     check(await page.locator(".xblock").count() === expectedCells.length, `${lesson.id} did not expose every source code cell`);
     const actualIds = await page.locator(".xblock").evaluateAll(nodes => nodes.map(node => node.dataset.cellId));
     check(JSON.stringify(actualIds) === JSON.stringify(expectedCells.map(cell => cell.id)), `${lesson.id} changed source-cell order`);

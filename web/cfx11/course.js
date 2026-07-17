@@ -1134,8 +1134,9 @@ async function loadLesson(lesson) {
   renderNavigation();
   state.rawMarkdown = raw;
   const videoSupplement = state.videoByLesson.get(lesson.id) || null;
+  const codeCellCount = lesson.cells.filter(cell => cell.type === "code").length;
   elements["lesson-title"].textContent = lesson.title;
-  elements["lesson-meta"].textContent = `Lesson ${lessonNumber(lesson)} · ${unitTitle(lesson.unit)} · ${lesson.cells.length} Python cells${videoSupplement ? " · video" : ""}`;
+  elements["lesson-meta"].textContent = `Lesson ${lessonNumber(lesson)} · ${unitTitle(lesson.unit)} · ${codeCellCount} Python cell${codeCellCount === 1 ? "" : "s"}${videoSupplement ? " · video" : ""}`;
   elements["lesson-body"].replaceChildren(markdownFragment(markerHtml(raw, videoSupplement), markdownUrl));
   if (videoSupplement) mountVideoSupplement(videoSupplement);
 
