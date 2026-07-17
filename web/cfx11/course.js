@@ -11,6 +11,7 @@ const MODEL_BASES = Object.freeze({
   proxy: "https://nvidia-api-cors-proxy.experiments.courses.nvidia.com/v1",
 });
 const BILLING_INVOKE_ORIGIN = "dli-cfx11-web";
+const MODEL_ROUTE_STORAGE_KEY = "cfx11-model-route:v2";
 const MODEL_PROBE_CANDIDATES = Object.freeze([
   "nvidia/nemotron-nano-12b-v2-vl",
   "nvidia/nemotron-3-nano-30b-a3b",
@@ -56,8 +57,14 @@ const elements = Object.fromEntries([
   "operation-badge", "operation-summary", "runtime-operations", "clear-runtime-operations",
 ].map(id => [id, document.getElementById(id)]));
 
+function defaultModelRoute(protocol = location.protocol, hostname = location.hostname) {
+  const localHost = ["localhost", "127.0.0.1", "::1"].includes(hostname);
+  const registeredProductionHost = protocol === "https:" && hostname === "cdn.dli.learn.nvidia.com";
+  return localHost || registeredProductionHost ? "direct" : "proxy";
+}
+
 function selectedModelBase() {
-  return MODEL_BASES[elements["model-route"]?.value] || MODEL_BASES.direct;
+  return MODEL_BASES[elements["model-route"]?.value] || MODEL_BASES[defaultModelRoute()];
 }
 
 function runnerConfiguration(lesson = state.lesson) {
@@ -550,8 +557,10 @@ function restartRuntime() {
   resetKernelView();
   for (const block of state.blocks) {
     block.article.dataset.state = "ready";
+    block.article.dataset.outputState = "hidden";
     block.status.textContent = "Ready";
     block.output.replaceChildren();
+    block.artifact.hidden = true;
   }
   elements["runtime-status"].textContent = "Python restarted · variables cleared";
   state.operations.settle(operationId, "succeeded", "Namespace cleared and worker replaced");
@@ -562,6 +571,8 @@ async function runBlock(block) {
   block.article.setAttribute("aria-busy", "true");
   block.status.textContent = "Queued";
   block.output.replaceChildren();
+  block.artifact.hidden = false;
+  block.article.dataset.outputState = "running";
   const stream = document.createElement("pre");
   stream.className = "model-stream";
   block.output.append(stream);
@@ -573,12 +584,14 @@ async function runBlock(block) {
     const reply = await execution;
     renderReply(block, reply);
     block.article.dataset.state = reply.ok ? "passed" : "failed";
+    block.article.dataset.outputState = reply.ok ? "complete" : "failed";
     block.status.textContent = reply.ok ? `Ran as In [${reply.execution_count}]` : "Failed";
     if (reply.ok) updateProgress(state.lesson.id, block.id);
     return reply.ok;
   } catch (error) {
     renderReply(block, { stderr: error.message, displays: [] });
     block.article.dataset.state = "failed";
+    block.article.dataset.outputState = "failed";
     block.status.textContent = "Failed";
     return false;
   } finally {
@@ -623,13 +636,6 @@ async function copyText(value) {
   textarea.remove();
 }
 
-function emptyCellOutput() {
-  const empty = document.createElement("p");
-  empty.className = "wb-cell-empty";
-  empty.textContent = "Run the cell to see its value, progress, model stream, or error here.";
-  return empty;
-}
-
 function buildXBlocks() {
   state.blocks = [];
   for (const marker of elements["lesson-body"].querySelectorAll(".xblock-marker")) {
@@ -647,6 +653,7 @@ function buildXBlocks() {
     article.className = "xblock wb-cell";
     article.dataset.cellId = marker.dataset.cellId;
     article.dataset.state = "ready";
+    article.dataset.outputState = "hidden";
     article.setAttribute("aria-busy", "false");
     const header = document.createElement("header");
     const heading = document.createElement("div");
@@ -738,12 +745,12 @@ function buildXBlocks() {
     const artifactPane = document.createElement("section");
     artifactPane.className = "wb-cell-artifact";
     artifactPane.setAttribute("aria-label", "Cell result");
+    artifactPane.hidden = true;
     const artifactLabel = document.createElement("div");
     artifactLabel.className = "wb-cell-pane-label";
     artifactLabel.textContent = "Result and evidence";
     const output = document.createElement("div");
     output.className = "cell-output";
-    output.append(emptyCellOutput());
     artifactPane.append(artifactLabel, output);
     workspace.append(sourcePane, artifactPane);
 
@@ -781,13 +788,13 @@ function buildXBlocks() {
       },
     });
     editor.setSize("100%", "auto");
-    const block = { id: marker.dataset.cellId, article, status, output, editor, originalSource: source };
+    const block = { id: marker.dataset.cellId, article, status, artifact: artifactPane, output, editor, originalSource: source };
     const settingsKey = `cfx11-cell-settings:${marker.dataset.cellId}`;
     const legacyLayout = sessionStorage.getItem(`cfx11-output-layout:${marker.dataset.cellId}`);
     let saved = {};
     try { saved = JSON.parse(sessionStorage.getItem(settingsKey) || "{}"); } catch { saved = {}; }
     const cellSettings = {
-      output: ["beside", "below"].includes(saved.output) ? saved.output : legacyLayout === "below" ? "below" : "beside",
+      output: ["beside", "below"].includes(saved.output) ? saved.output : legacyLayout === "beside" ? "beside" : "below",
       height: ["match", "content", "tall"].includes(saved.height) ? saved.height : "match",
       wrap: saved.wrap !== false,
       lineNumbers: saved.lineNumbers !== false,
@@ -814,8 +821,10 @@ function buildXBlocks() {
       setTimeout(() => { copy.textContent = "Copy code"; }, 1200);
     });
     clear.addEventListener("click", () => {
-      output.replaceChildren(emptyCellOutput());
+      output.replaceChildren();
+      artifactPane.hidden = true;
       article.dataset.state = "ready";
+      article.dataset.outputState = "hidden";
       status.textContent = "Ready";
     });
     layout.addEventListener("change", () => { cellSettings.output = layout.value; applySettings(); });
@@ -1083,16 +1092,18 @@ function runtimeGuideContext() {
 elements["open-settings"].addEventListener("click", () => elements["settings-dialog"].showModal());
 applyTheme(currentTheme());
 elements["theme-toggle"].addEventListener("click", () => applyTheme(currentTheme() === "dark" ? "light" : "dark"));
-elements["model-route"].value = sessionStorage.getItem("cfx11-model-route") === "proxy" ? "proxy" : "direct";
-elements["model-route"].addEventListener("change", () => {
-  sessionStorage.setItem("cfx11-model-route", elements["model-route"].value);
+const savedModelRoute = sessionStorage.getItem(MODEL_ROUTE_STORAGE_KEY);
+elements["model-route"].value = ["direct", "proxy"].includes(savedModelRoute) ? savedModelRoute : defaultModelRoute();
+function applyModelRoute({ persist = false } = {}) {
+  if (persist) sessionStorage.setItem(MODEL_ROUTE_STORAGE_KEY, elements["model-route"].value);
   elements["route-status"].textContent = elements["model-route"].value === "direct"
-    ? "Direct mode sends requests to NVIDIA with the course billing attribution header."
-    : "Relay mode is for embedding hosts that cannot use the direct CORS route and preserves the same course attribution.";
+    ? "Direct NVIDIA API · selected for the registered production course origin."
+    : "DLI browser relay · selected for this staging or embedding origin.";
   if (state.lesson) state.runner.configure(runnerConfiguration());
   renderEnvironment();
-});
-elements["model-route"].dispatchEvent(new Event("change"));
+}
+elements["model-route"].addEventListener("change", () => applyModelRoute({ persist: true }));
+applyModelRoute();
 elements["api-key"].value = sessionStorage.getItem("cfx11-nvidia-key") || "";
 function updateConnectionSummary(status = "") {
   const hasKey = Boolean(elements["api-key"].value.trim());

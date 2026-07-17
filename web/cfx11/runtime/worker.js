@@ -193,7 +193,7 @@ globalThis.courseHttpRequest = async function courseHttpRequest(requestJson) {
     response = await fetch(url, { method, credentials: "omit", headers, body: requestBody });
   } catch (error) {
     const origin = self.location.origin === "null" ? "a local file" : self.location.origin;
-    throw new Error(`The browser could not reach ${url.origin} from ${origin}. Open the published HTTPS course instead of a local file or unregistered origin, then retry. ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`The browser could not reach ${url.origin} from ${origin}. Open Model connection settings and choose the DLI browser relay for a staging or unregistered origin, then retry. ${error instanceof Error ? error.message : String(error)}`);
   }
   const stream = headers.get("accept")?.includes("text/event-stream") || false;
   const responseBytes = await readResponseBytes(response, stream && isNvidiaModelUrl(url));

@@ -77,7 +77,17 @@ async function waitForBlock(page, block) {
 await listen();
 let browser;
 try {
-  browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_BIN || undefined });
+  browser = await chromium.launch({
+    headless: true,
+    executablePath: process.env.CHROME_BIN || undefined,
+    args: ["--host-resolver-rules=MAP staging.localhost 127.0.0.1"],
+  });
+  const stagingPage = await browser.newPage({ viewport: { width: 1280, height: 720 }, colorScheme: "dark" });
+  await stagingPage.goto(`http://staging.localhost:${port}/web/cfx11/index.html?lesson=2-Chains%2F22-Runnable-Functions`, { waitUntil: "domcontentloaded", timeout });
+  await waitForCourseReady(stagingPage, "unregistered-origin route audit");
+  check(await stagingPage.locator("#model-route").inputValue() === "proxy", "an unregistered staging origin did not select the DLI browser relay");
+  check((await stagingPage.locator("#route-status").innerText()).includes("staging or embedding origin"), "the staging route choice was not explained to the learner");
+  await stagingPage.close();
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, colorScheme: "dark" });
   const errors = [];
   const failures = [];
@@ -114,26 +124,27 @@ try {
   await waitForCourseReady(page, "Runnable Functions interaction audit");
   check(await page.locator(".xblock").count() === 23, "Runnable Functions must expose all 23 original code cells");
   check(await page.locator(".xblock .wb-cell-workspace").count() === 23, "every Python cell must expose the shared code-and-evidence workspace");
-  check(await page.locator(".xblock .wb-cell-artifact .wb-cell-empty").count() === 23, "cell evidence panes must explain their pre-run state");
+  check(await page.locator(".xblock .wb-cell-artifact[hidden]").count() === 23, "pre-run cells must not reserve space for empty evidence panes");
+  check(await page.locator('.xblock[data-output-layout="below"]').count() === 23, "new cells must default to output below the editable code");
+  check(await page.locator(".xblock .wb-cell-empty").count() === 0, "pre-run cells must not render placeholder output");
+  check(await page.locator("#model-route").inputValue() === "direct", "the local validator origin must retain the direct NVIDIA route");
   check(await page.locator("#runtime-dock").getAttribute("data-workbench-ready") === "true", "runtime workbench did not mount");
   const activityTool = page.getByRole("button", { name: "Activity", exact: false });
   await activityTool.click();
   check(await page.locator("#runtime-panel").isVisible(), "runtime activity view did not open");
   const workspaceGeometry = await page.locator(".xblock .wb-cell-workspace").first().evaluate(workspace => {
     const source = workspace.querySelector(".wb-cell-source").getBoundingClientRect();
-    const artifact = workspace.querySelector(".wb-cell-artifact").getBoundingClientRect();
     return {
       sourceWidth: source.width,
-      artifactWidth: artifact.width,
-      artifactRight: artifact.right,
+      sourceRight: source.right,
       viewportWidth: innerWidth,
       documentWidth: document.documentElement.scrollWidth,
     };
   });
-  check(workspaceGeometry.sourceWidth > 250 && workspaceGeometry.artifactWidth > 220,
-    `runtime panel crushed the code-and-evidence workspace: ${JSON.stringify(workspaceGeometry)}`);
-  check(workspaceGeometry.artifactRight <= workspaceGeometry.documentWidth && workspaceGeometry.documentWidth <= workspaceGeometry.viewportWidth,
-    `runtime panel pushed cell evidence outside the viewport: ${JSON.stringify(workspaceGeometry)}`);
+  check(workspaceGeometry.sourceWidth > 500,
+    `runtime panel crushed the code-only pre-run workspace: ${JSON.stringify(workspaceGeometry)}`);
+  check(workspaceGeometry.sourceRight <= workspaceGeometry.documentWidth && workspaceGeometry.documentWidth <= workspaceGeometry.viewportWidth,
+    `runtime panel pushed the pre-run cell outside the viewport: ${JSON.stringify(workspaceGeometry)}`);
   await page.keyboard.press("Escape");
   check(await page.locator("#runtime-panel").isHidden(), "Escape did not close the runtime workbench");
   check(await activityTool.evaluate(button => document.activeElement === button), "runtime workbench did not return focus to its opening tool");
@@ -171,15 +182,27 @@ try {
   check(await keyboardBlock.locator(".CodeMirror").evaluate(element => element.CodeMirror.getValue()) === originalKeyboardSource, "Restore source did not recover the imported Python");
   check(await keyboardBlock.getByRole("button", { name: "Copy code", exact: true }).count() === 1, "cell settings omitted the copy action");
   check(await keyboardBlock.getByRole("button", { name: "Clear output", exact: true }).count() === 1, "cell settings omitted the output reset action");
-  await keyboardBlock.getByLabel("Output position").selectOption("below");
-  check(await keyboardBlock.getAttribute("data-output-layout") === "below", "the per-cell output control did not select the below layout");
+  check(await keyboardBlock.getByLabel("Output position").inputValue() === "below", "the per-cell output control did not default below code");
+  await keyboardBlock.locator(".CodeMirror").evaluate(element => element.CodeMirror.setValue("1"));
+  await keyboardBlock.getByRole("button", { name: "Run", exact: true }).click();
+  await waitForBlock(page, keyboardBlock);
+  check(await keyboardBlock.locator(".wb-cell-artifact").isVisible(), "running a cell did not reveal its result pane");
+  check(await keyboardBlock.getAttribute("data-output-state") === "complete", "a completed cell did not expose its output lifecycle state");
   const belowGeometry = await keyboardBlock.locator(".wb-cell-workspace").evaluate(workspace => {
     const source = workspace.querySelector(".wb-cell-source").getBoundingClientRect();
     const artifact = workspace.querySelector(".wb-cell-artifact").getBoundingClientRect();
     return { sourceBottom: source.bottom, artifactTop: artifact.top, sourceWidth: source.width, artifactWidth: artifact.width };
   });
   check(belowGeometry.artifactTop >= belowGeometry.sourceBottom - 1 && Math.abs(belowGeometry.sourceWidth - belowGeometry.artifactWidth) < 2,
-    `the selected below layout did not stack the cell panes: ${JSON.stringify(belowGeometry)}`);
+    `the default below layout did not stack the cell panes: ${JSON.stringify(belowGeometry)}`);
+  await keyboardBlock.locator(".cell-output").evaluate(output => output.append(" stale-result-that-must-clear"));
+  await keyboardBlock.getByRole("button", { name: "Run", exact: true }).click();
+  check(!(await keyboardBlock.locator(".cell-output").innerText()).includes("stale-result-that-must-clear"), "a new execution retained stale output");
+  await waitForBlock(page, keyboardBlock);
+  await keyboardBlock.getByRole("button", { name: "Clear output", exact: true }).click();
+  check(await keyboardBlock.locator(".wb-cell-artifact").isHidden(), "Clear output did not return the cell to its compact pre-run state");
+  check(await keyboardBlock.getAttribute("data-output-state") === "hidden", "Clear output did not reset the output lifecycle state");
+  await keyboardBlock.getByRole("button", { name: "Restore source", exact: true }).click();
   await keyboardBlock.getByLabel("Output position").selectOption("beside");
   check(await keyboardBlock.getAttribute("data-output-layout") === "beside", "the per-cell output control did not restore the beside layout");
   await keyboardBlock.getByLabel("Wrap long lines").uncheck();
@@ -504,6 +527,7 @@ try {
   }
   await page.locator('[data-workbench-view="session"]').click();
   await page.getByRole("button", { name: "Restart Python" }).click();
+  check(await page.locator(".xblock .wb-cell-artifact:not([hidden])").count() === 0, "restarting Python left stale cell results visible");
   await page.locator('[data-workbench-view="variables"]').click();
   await page.getByRole("button", { name: "All variables", exact: true }).click();
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
