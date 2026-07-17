@@ -641,7 +641,12 @@ def _url_is_example_or_lesson(url: str) -> bool:
     """True for intentionally fake URLs and security-demo URLs used as lesson material."""
     clean = url.replace("</code>", "").rstrip(".,);")
     from urllib.parse import urlparse
-    host = re.sub(r"^www\.", "", urlparse(clean).hostname or "")
+    try:
+        host = re.sub(r"^www\.", "", urlparse(clean).hostname or "")
+    except ValueError:
+        # Regex source can contain URL-shaped fragments such as ``https://[^``. A malformed
+        # literal is not an example URL and must remain visible to the caller as a finding.
+        return False
     return (host in _EXAMPLE_URL_HOSTS or any(part in clean for part in _EXAMPLE_URL_SUBSTRINGS)
             or any(clean.startswith(part) for part in _LESSON_URLS))
 
@@ -693,7 +698,7 @@ def constant_findings(scope: str):
                 continue
             url = u.group(0)
             if ("workers.dev" in url or "schema.org" in url or "w3.org" in url
-                    or _url_is_example_or_lesson(url) or _url_is_named_config(lines, idx)):
+                    or _url_is_named_config(lines, idx) or _url_is_example_or_lesson(url)):
                 continue
             _emit(out, rel, L.n + off, "embedded-url", f"{url[:60]}",
                   "A URL is hard-coded in the logic. Surface it as a named constant or a config value so "
