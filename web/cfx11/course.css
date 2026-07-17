@@ -235,7 +235,17 @@ main { min-width: 0; padding: clamp(1rem, 3vw, 3rem) clamp(1rem, 5vw, 5rem) 6rem
 .lesson-video-heading strong { font-size: 1.05rem; line-height: 1.3; }
 .lesson-video-eyebrow { color: var(--green-bright); font-size: .72rem; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
 .lesson-video-source-label { flex: 0 0 auto; padding: .22rem .5rem; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: .75rem; }
-.lesson-video video { display: block; width: 100%; max-height: min(70vh, 52rem); background: #000; aspect-ratio: 16 / 9; }
+.lesson-video-player { position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: var(--code-bg); }
+.lesson-video video { display: block; width: 100%; height: 100%; max-height: min(70vh, 52rem); background: #000; aspect-ratio: 16 / 9; }
+.lesson-video-preview { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: .7rem; width: 100%; border: 0; border-radius: 0; padding: clamp(1.25rem, 5vw, 3rem); color: var(--text); background: linear-gradient(145deg, color-mix(in srgb, var(--green) 18%, var(--panel-raised)), color-mix(in srgb, var(--blue) 10%, var(--code-bg))); cursor: pointer; text-align: center; }
+.lesson-video-preview[hidden] { display: none; }
+.lesson-video-preview:hover, .lesson-video-preview:focus-visible { background: linear-gradient(145deg, color-mix(in srgb, var(--green) 26%, var(--panel-raised)), color-mix(in srgb, var(--blue) 16%, var(--code-bg))); }
+.lesson-video-preview-icon { display: grid; place-items: center; width: 4rem; height: 4rem; border: 2px solid currentColor; border-radius: 50%; padding-left: .18rem; font-size: 1.5rem; }
+.lesson-video-preview strong { font-size: clamp(1.05rem, 2vw, 1.35rem); }
+.lesson-video-preview-status { max-width: 42rem; color: var(--muted); font-size: .9rem; }
+.lesson-video-preview[data-state="loading"] .lesson-video-preview-icon { animation: video-preview-pulse 1s ease-in-out infinite alternate; }
+.lesson-video-preview[data-state="error"] { color: var(--error); }
+@keyframes video-preview-pulse { to { transform: scale(.9); opacity: .55; } }
 .lesson-video figcaption { padding: .75rem 1rem .9rem; color: var(--muted); font-size: .9rem; line-height: 1.5; }
 .lesson-video figcaption p { margin: 0; }
 .lesson-video-links { margin-top: .35rem !important; }
@@ -281,6 +291,7 @@ main { min-width: 0; padding: clamp(1rem, 3vw, 3rem) clamp(1rem, 5vw, 5rem) 6rem
 @media (prefers-reduced-motion: reduce) {
   .wb-cell-progress-mark { animation: none; border-color: var(--blue); }
   .wb-cell-progress-track::after { left: 0; width: 42%; animation: none; }
+  .lesson-video-preview[data-state="loading"] .lesson-video-preview-icon { animation: none; }
 }
 .CodeMirror { width: 100%; min-width: 0; max-width: 100%; height: auto; min-height: 3.5rem; max-height: 38rem; contain: inline-size layout paint; background: var(--code-bg); color: var(--code-text); font: .86rem/1.55 var(--mono); }
 .CodeMirror-scroll { min-height: 3.5rem; max-height: 38rem; }
@@ -363,14 +374,6 @@ main { min-width: 0; padding: clamp(1rem, 3vw, 3rem) clamp(1rem, 5vw, 5rem) 6rem
 .cell-output details { margin: .7rem .85rem; color: var(--muted); }
 .cell-output details pre { max-height: 18rem; overflow: auto; }
 
-dialog { width: min(36rem, calc(100% - 2rem)); border: 1px solid var(--line); border-radius: .8rem; background: var(--panel); color: var(--text); padding: 0; box-shadow: 0 1.5rem 5rem rgb(0 0 0 / .4); }
-dialog::backdrop { background: rgb(0 0 0 / .62); backdrop-filter: blur(3px); }
-dialog form { padding: 1.2rem; }
-.dialog-heading { display: flex; justify-content: space-between; gap: 1rem; align-items: start; }
-.dialog-heading h2 { margin: .2rem 0 1.2rem; }
-dialog label { display: block; margin-bottom: .35rem; font-weight: 700; }
-dialog input { width: 100%; padding: .7rem .8rem; border: 1px solid var(--line); border-radius: .45rem; background: var(--bg); color: var(--text); font-family: var(--mono); }
-dialog p { color: var(--muted); font-size: .9rem; }
 .fatal { padding: 1rem; border: 1px solid var(--error); color: var(--error); }
 
 .operation-badge { display: block; margin-top: .18rem; color: var(--muted); font: .62rem/1.2 var(--mono); }

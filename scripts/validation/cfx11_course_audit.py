@@ -284,6 +284,8 @@ def audit(course: Path = COURSE) -> list[str]:
     boundary = runtime + runner + operations + client + compatibility + learner_shell
     if boundary.count("https://integrate.api.nvidia.com/v1") < 2:
         findings.append("direct NVIDIA API boundary is not explicit in both runtime and learner settings")
+    if 'id="settings-dialog"' in learner_shell or 'id="open-settings"' in learner_shell:
+        findings.append("browser course must not expose a documentation-only global settings dialog")
     forbidden = ["openclaw-cors-proxy", "CF_Authorization", "_pomerium"]
     for token in forbidden:
         if token in boundary:
@@ -316,6 +318,7 @@ def audit(course: Path = COURSE) -> list[str]:
         "visible model connection test": (learner_shell + client, 'id="test-api-key"'),
         "compact saved model connection": (learner_shell + client, 'id="connection-details"'),
         "non-secret connection summary": (learner_shell + client, 'id="connection-summary-status"'),
+        "task-owned model connection action": (learner_shell + client, 'id="environment-settings"'),
         "auth-sensitive model connection test": (client, '`${baseUrl}/chat/completions`'),
         "one-token model connection test": (client, "max_tokens: 1"),
         "bounded model fallback": (client + runtime, "MODEL_PROBE_CANDIDATES"),
@@ -394,6 +397,9 @@ def audit(course: Path = COURSE) -> list[str]:
         "source-compatible walkthrough placement": (client, "function markerHtml(raw, videoSupplement"),
         "accessible walkthrough controls": (client, "video.controls = true"),
         "learner-initiated walkthrough loading": (client, 'video.preload = "none"'),
+        "deferred walkthrough source": (client, "source.dataset.src = reviewedVideoUrl(record)"),
+        "contextual walkthrough preview": (client, 'preview.className = "lesson-video-preview"'),
+        "walkthrough preview presentation": (styles, ".lesson-video-preview {"),
         "responsive walkthrough presentation": (styles, ".lesson-video video"),
         "opinionated Markdown anchors": (client + styles, "heading-anchor"),
         "client billing attribution": (client, '"X-BILLING-INVOKE-ORIGIN": BILLING_INVOKE_ORIGIN'),

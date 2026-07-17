@@ -204,7 +204,7 @@ globalThis.courseHttpRequest = async function courseHttpRequest(requestJson) {
     response = await fetch(url, { method, credentials: "omit", headers, body: requestBody });
   } catch (error) {
     const origin = self.location.origin === "null" ? "a local file" : self.location.origin;
-    throw new Error(`The browser could not reach ${url.origin} from ${origin}. Open Model connection settings and choose the DLI browser relay for a staging or unregistered origin, then retry. ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`The browser could not reach ${url.origin} from ${origin}. Open Model connection and choose the DLI browser relay for a staging or unregistered origin, then retry. ${error instanceof Error ? error.message : String(error)}`);
   }
   const stream = headers.get("accept")?.includes("text/event-stream") || false;
   const responseBytes = await readResponseBytes(response, stream && isNvidiaModelUrl(url));
@@ -423,7 +423,7 @@ async function runAssistant(message) {
   activeModelBase = modelBaseUrl;
   const url = new URL(`${modelBaseUrl}/chat/completions`);
   const candidates = [...new Set((message.configuration?.modelCandidates || []).map(String).filter(Boolean))];
-  if (!candidates.length) throw new Error("No bounded runtime-guide model candidates are configured.");
+  if (!candidates.length) throw new Error("No compatible runtime-guide models are configured.");
   activeRequestId = message.id;
   try {
     const failures = [];

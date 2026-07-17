@@ -143,13 +143,25 @@ try {
       check(await player.getAttribute("controls") !== null, `${lesson.id} walkthrough has no learner controls`);
       check(await player.getAttribute("autoplay") === null, `${lesson.id} walkthrough unexpectedly autoplays`);
       check(await player.getAttribute("preload") === "none", `${lesson.id} walkthrough loads before the learner asks it to play`);
-      check(await source.getAttribute("src") === expectedVideo.media_url, `${lesson.id} walkthrough changed its reviewed media URL`);
+      check(await source.getAttribute("src") === null, `${lesson.id} walkthrough assigned a media source before the learner pressed play`);
+      check(await source.getAttribute("data-src") === expectedVideo.media_url, `${lesson.id} walkthrough changed its reviewed media URL`);
+      const preview = videos.getByRole("button", { name: `Play recorded walkthrough for ${expectedVideo.lesson_title}`, exact: true });
+      check(await preview.isVisible(), `${lesson.id} walkthrough did not show a contextual preview before playback`);
+      check((await preview.innerText()).includes(expectedVideo.lesson_title), `${lesson.id} walkthrough preview omitted the lesson title`);
       const sourceNotebookHref = await videos.getByRole("link", { name: "View source notebook", exact: true }).getAttribute("href");
       check(sourceNotebookHref?.includes(videoManifest.source.commit), `${lesson.id} walkthrough source link is not commit-bound: ${sourceNotebookHref}`);
     }
   }
   check(renderedVideos.size === videoManifest.entries.length, "full lesson traversal did not render every invoked source walkthrough");
   check(videoRequests === 0, `lesson traversal fetched ${videoRequests} large walkthrough file(s) before the learner pressed play`);
+  const previewRecord = videoManifest.entries[0];
+  await page.goto(`http://127.0.0.1:${port}/web/cfx11/index.html?lesson=${encodeURIComponent(previewRecord.lesson_id)}`, { waitUntil: "domcontentloaded", timeout });
+  await page.waitForFunction(expected => document.querySelector("#lesson-title")?.textContent === expected, previewRecord.lesson_title, { timeout });
+  const mediaResponse = page.waitForResponse(previewRecord.media_url, { timeout });
+  await page.getByRole("button", { name: `Play recorded walkthrough for ${previewRecord.lesson_title}`, exact: true }).click();
+  await mediaResponse;
+  check(videoRequests === 1, `pressing the walkthrough preview issued ${videoRequests} media requests instead of one`);
+  check(await page.locator(".lesson-video source").getAttribute("src") === previewRecord.media_url, "walkthrough play did not activate its reviewed media URL");
   check(mermaidRequests > 0, "Mermaid source fences were not upgraded to rendered diagrams during full lesson traversal");
   await page.goto(url, { waitUntil: "domcontentloaded", timeout });
   await waitForCourseReady(page, "Runnable Functions interaction audit");
@@ -203,6 +215,15 @@ try {
   check(await page.locator("#connection-details").getAttribute("open") !== null, "an unset model connection did not expose its key editor");
   check(await page.locator("#api-key").isVisible(), "the learner API key field must be visible in the lesson flow");
   check(await page.locator("#theme-toggle").isVisible(), "the course must expose an explicit theme control");
+  check(await page.locator("#open-settings, #settings-dialog").count() === 0, "the course retained a documentation-only global settings surface");
+  check(await page.getByText("Course settings", { exact: true }).count() === 0, "the course retained the decorative Course settings label");
+  check(await page.locator('[data-panel-view="activity"] > p:not([id]), [data-panel-view="variables"] > p, [data-panel-view="streams"] > p, [data-panel-view="environment"] > p').count() === 0,
+    "runtime views retained explanatory prose that duplicates their controls and live state");
+  await page.getByRole("button", { name: "Environment", exact: false }).click();
+  await page.getByRole("button", { name: "Model connection", exact: true }).click();
+  check(await page.locator("#runtime-panel").isHidden(), "the Environment model action left the runtime panel over the connection controls");
+  check(await page.locator("#connection-details").getAttribute("open") !== null, "the Environment model action did not reveal the real connection controls");
+  await page.waitForFunction(() => document.activeElement?.id === "api-key", null, { timeout });
   await page.locator("#api-key").fill("saved-without-probing");
   await page.getByRole("button", { name: "Save and close", exact: true }).click();
   check(await page.locator("#connection-details").getAttribute("open") === null, "saving a learner key did not collapse the prominent editor");

@@ -55,7 +55,7 @@ const state = {
 
 const elements = Object.fromEntries([
   "course-nav", "lesson-title", "lesson-meta", "lesson-body", "runtime-status", "run-all",
-  "stop-runtime", "reset-runtime", "settings-dialog", "api-key", "api-status", "open-settings",
+  "stop-runtime", "reset-runtime", "api-key", "api-status",
   "previous-lesson", "next-lesson", "progress-value", "progress-label", "theme-toggle",
   "clear-api-key", "kernel-status", "queue-status", "kernel-variables", "inspect-runtime",
   "restart-runtime", "test-api-key", "save-api-key", "model-route", "route-status", "runtime-panel",
@@ -367,7 +367,7 @@ function buildVideoSupplement(record) {
   copy.append(eyebrow, title);
   const durationNote = document.createElement("span");
   durationNote.className = "lesson-video-source-label";
-  durationNote.textContent = "Optional companion";
+  durationNote.textContent = "Video";
   heading.append(copy, durationNote);
 
   const video = document.createElement("video");
@@ -376,13 +376,52 @@ function buildVideoSupplement(record) {
   video.playsInline = true;
   video.setAttribute("aria-label", `Recorded walkthrough for ${record.lesson_title}`);
   const source = document.createElement("source");
-  source.src = reviewedVideoUrl(record);
+  source.dataset.src = reviewedVideoUrl(record);
   source.type = record.media_type;
   video.append(source);
 
+  const player = document.createElement("div");
+  player.className = "lesson-video-player";
+  const preview = document.createElement("button");
+  preview.type = "button";
+  preview.className = "lesson-video-preview";
+  preview.setAttribute("aria-label", `Play recorded walkthrough for ${record.lesson_title}`);
+  const playIcon = document.createElement("span");
+  playIcon.className = "lesson-video-preview-icon";
+  playIcon.setAttribute("aria-hidden", "true");
+  playIcon.textContent = "▶";
+  const previewLabel = document.createElement("strong");
+  previewLabel.textContent = "Play walkthrough";
+  const previewStatus = document.createElement("span");
+  previewStatus.className = "lesson-video-preview-status";
+  previewStatus.textContent = record.lesson_title;
+  preview.append(playIcon, previewLabel, previewStatus);
+  player.append(video, preview);
+
+  const resetPreview = message => {
+    preview.hidden = false;
+    preview.dataset.state = "error";
+    previewLabel.textContent = "Try video again";
+    previewStatus.textContent = message;
+  };
+  preview.addEventListener("click", () => {
+    if (preview.dataset.state === "loading") return;
+    preview.dataset.state = "loading";
+    previewLabel.textContent = "Loading walkthrough";
+    previewStatus.textContent = record.lesson_title;
+    if (!source.hasAttribute("src")) source.src = source.dataset.src;
+    video.load();
+    const playback = video.play();
+    if (playback && typeof playback.catch === "function") {
+      playback.catch(() => resetPreview("Playback did not start. You can also open the video below."));
+    }
+  });
+  video.addEventListener("playing", () => { preview.hidden = true; });
+  video.addEventListener("error", () => resetPreview("Video unavailable. Try the direct link below."));
+
   const caption = document.createElement("figcaption");
   const note = document.createElement("p");
-  note.textContent = "This recording accompanies the adjacent instructor-led course. The current code, available models, and model responses may differ.";
+  note.textContent = "Optional. Code, available models, and responses may differ from the recording.";
   const links = document.createElement("p");
   links.className = "lesson-video-links";
   const fallback = document.createElement("a");
@@ -398,7 +437,7 @@ function buildVideoSupplement(record) {
   sourceNotebook.textContent = "View source notebook";
   links.append(fallback, document.createTextNode(" · "), sourceNotebook);
   caption.append(note, links);
-  figure.append(heading, video, caption);
+  figure.append(heading, player, caption);
   return figure;
 }
 
@@ -1096,7 +1135,7 @@ async function loadLesson(lesson) {
   state.rawMarkdown = raw;
   const videoSupplement = state.videoByLesson.get(lesson.id) || null;
   elements["lesson-title"].textContent = lesson.title;
-  elements["lesson-meta"].textContent = `Lesson ${lessonNumber(lesson)} · ${unitTitle(lesson.unit)} · ${lesson.cells.length} source cells · reviewed source projection${videoSupplement ? " · recorded walkthrough" : ""}`;
+  elements["lesson-meta"].textContent = `Lesson ${lessonNumber(lesson)} · ${unitTitle(lesson.unit)} · ${lesson.cells.length} Python cells${videoSupplement ? " · video" : ""}`;
   elements["lesson-body"].replaceChildren(markdownFragment(markerHtml(raw, videoSupplement), markdownUrl));
   if (videoSupplement) mountVideoSupplement(videoSupplement);
 
@@ -1347,7 +1386,6 @@ function runtimeGuideContext() {
   return `Lesson: ${state.lesson?.title}\nFocused variable names: ${focused}\nRecent errors:\n${recentErrors}\n\nReviewed lesson excerpt:\n${lessonText}`;
 }
 
-elements["open-settings"].addEventListener("click", () => elements["settings-dialog"].showModal());
 applyTheme(currentTheme());
 elements["theme-toggle"].addEventListener("click", () => applyTheme(currentTheme() === "dark" ? "light" : "dark"));
 const savedModelRoute = sessionStorage.getItem(MODEL_ROUTE_STORAGE_KEY);
@@ -1444,7 +1482,7 @@ async function probeModelConnection(key) {
       } catch (error) {
         if (signal.aborted) throw error;
         attempts.push(`${model}: network error`);
-        recordRuntimeEvent("connection", `${model} could not be reached; trying the next bounded candidate.`);
+        recordRuntimeEvent("connection", `${model} could not be reached; trying the next model.`);
         continue;
       }
       if (response.ok) {
@@ -1459,7 +1497,7 @@ async function probeModelConnection(key) {
         throw new Error(`NVIDIA rejected this key (${response.status}). Check or replace it.`);
       }
       attempts.push(`${model}: HTTP ${response.status}`);
-      recordRuntimeEvent("connection", `${model} returned HTTP ${response.status}; trying the next bounded candidate.`);
+      recordRuntimeEvent("connection", `${model} returned HTTP ${response.status}; trying the next model.`);
     }
     throw new Error(`No connection-test model responded. ${attempts.join("; ")}.`);
   }, { timeoutMs: 30_000, kind: "model-probe" });
@@ -1473,7 +1511,7 @@ elements["test-api-key"].addEventListener("click", async () => {
     return;
   }
   elements["test-api-key"].disabled = true;
-  elements["api-status"].textContent = "Checking NVIDIA API access with bounded fallback…";
+  elements["api-status"].textContent = "Checking NVIDIA API access…";
   try {
     const model = await probeModelConnection(key);
     elements["api-status"].textContent = `Connected with ${model}. Rerun a lesson's model setup cell to apply this choice.`;
@@ -1571,7 +1609,15 @@ document.querySelectorAll("[data-variable-view]").forEach(button => button.addEv
 }));
 elements["clear-runtime-streams"].addEventListener("click", () => { state.streams = []; renderRuntimeStreams(); });
 elements["clear-runtime-operations"].addEventListener("click", () => state.operations.clearSettled());
-elements["environment-settings"].addEventListener("click", () => elements["settings-dialog"].showModal());
+elements["environment-settings"].addEventListener("click", () => {
+  runtimeWorkbench.close({ restoreFocus: false });
+  elements["connection-details"].open = true;
+  elements["connection-details"].scrollIntoView({ behavior: "smooth", block: "start" });
+  requestAnimationFrame(() => {
+    const target = elements["api-key"].value ? elements["model-choice"] : elements["api-key"];
+    target.focus({ preventScroll: true });
+  });
+});
 elements["runtime-agent-form"].addEventListener("submit", async event => {
   event.preventDefault();
   const prompt = elements["runtime-agent-input"].value.trim();
@@ -1636,7 +1682,7 @@ window.addEventListener("resize", () => {
 });
 
 state.operations.run("Open course", ({ signal, update }) => {
-  update("Loading the reviewed manifest and lesson bundle");
+  update("Loading course");
   return initialize(signal);
 }, { timeoutMs: 30_000, kind: "course-load" }).catch(error => {
   elements["lesson-body"].innerHTML = `<section class="fatal"><h2>Course could not start</h2><pre>${escapeHtml(error.stack || error.message)}</pre></section>`;

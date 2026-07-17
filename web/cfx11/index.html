@@ -32,7 +32,6 @@
     <div class="header-actions">
       <span id="runtime-status">Python loads when you run a cell</span>
       <button id="theme-toggle" type="button" aria-label="Switch color theme">Theme</button>
-      <button id="open-settings" type="button">Course settings</button>
     </div>
   </header>
 
@@ -41,7 +40,7 @@
       <div class="rail-intro">
         <span class="eyebrow">Browser course · c-fx-11-v1</span>
         <h1>Building LLM Applications With Prompt Engineering</h1>
-        <p>Original course text and Python, projected into runnable Markdown.</p>
+        <p>Work through each lesson and run its Python cells in your browser.</p>
       </div>
       <div class="course-progress">
         <progress id="progress-value" value="0" max="1"></progress>
@@ -71,7 +70,7 @@
           </summary>
           <div class="connection-body">
             <div>
-              <p>Model cells use a key that stays in this browser tab. Automatic mode tests compatible choices in order and shows which one it selected. You can pin one model when you need reproducible behavior; model outputs are not interchangeable.</p>
+              <p>Use Automatic unless a lesson requires a specific model. Responses vary between models.</p>
             </div>
             <div class="key-entry">
               <label for="api-key">NVIDIA API key</label>
@@ -102,7 +101,7 @@
         </details>
       </section>
       <article id="lesson-body" class="lesson-body" aria-live="polite">
-        <p>Loading the reviewed Markdown source for this lesson…</p>
+        <p>Loading lesson…</p>
       </article>
     </main>
   </div>
@@ -135,7 +134,6 @@
       </header>
       <section data-panel-view="activity" data-workbench-content="activity" hidden>
         <p id="operation-summary" class="operation-summary" aria-live="polite">No work is running.</p>
-        <p>Every queued, running, completed, cancelled, failed, or timed-out course workflow appears here—even after you change lessons.</p>
         <div class="kernel-actions"><button id="clear-runtime-operations" type="button">Clear finished</button></div>
         <ol id="runtime-operations" class="runtime-operations"><li>No operations yet.</li></ol>
       </section>
@@ -160,7 +158,6 @@
         </div>
       </section>
       <section data-panel-view="variables" data-workbench-content="variables" hidden>
-        <p>Focused shows names used by the last cell; All variables opens the complete namespace.</p>
         <div class="kernel-actions" role="group" aria-label="Variable scope">
           <button type="button" data-variable-view="focused" aria-pressed="true">Focused</button>
           <button type="button" data-variable-view="all" aria-pressed="false">All variables</button>
@@ -171,17 +168,15 @@
         </div>
       </section>
       <section data-panel-view="streams" data-workbench-content="streams" hidden>
-        <p>Recent stdout, stderr, model tokens, input prompts, and queue events. The bounded buffer stays in this tab.</p>
         <div class="kernel-actions"><button id="clear-runtime-streams" type="button">Clear streams</button></div>
         <ol id="runtime-streams" class="runtime-streams" aria-live="polite"><li>No runtime events yet.</li></ol>
       </section>
       <section data-panel-view="environment" data-workbench-content="environment" hidden>
-        <p>The environment view reports the active interpreter, lesson mount, scheduler, page origin, and model route.</p>
         <dl id="runtime-environment" class="runtime-facts"></dl>
-        <div class="kernel-actions"><button id="environment-settings" type="button">Connection settings</button></div>
+        <div class="kernel-actions"><button id="environment-settings" type="button">Model connection</button></div>
       </section>
       <section data-panel-view="agent" data-workbench-content="agent" hidden>
-        <p>Ask the NVIDIA-backed runtime guide about the current lesson, session, focused variable names, or a recent error. It cannot run cells.</p>
+        <p>Ask about this lesson, current variables, or a recent error. The guide cannot run cells.</p>
         <div id="runtime-agent-history" class="runtime-agent-history" aria-live="polite"><p>Ready when you are.</p></div>
         <form id="runtime-agent-form" class="runtime-agent-form">
           <label for="runtime-agent-input">Question</label>
@@ -191,20 +186,6 @@
       </section>
     </section>
   </aside>
-
-  <dialog id="settings-dialog">
-    <form method="dialog">
-      <div class="dialog-heading">
-        <div>
-          <span class="eyebrow">Learner-owned connection</span>
-          <h2>Course settings</h2>
-        </div>
-        <button value="close" aria-label="Close settings">Close</button>
-      </div>
-      <p>Use the visible key field above the lesson. Python receives the value only for an active model call. Direct mode calls <code>https://integrate.api.nvidia.com/v1</code>; relay mode uses the DLI browser relay without changing the learner-owned credential.</p>
-      <p>Run buttons join a single ordered queue. Python <code>input()</code> opens an answer field in the requesting cell. Each lesson gets a fresh kernel by default; the Session view can explicitly share one across lessons. Activity remains visible and reports queue waits, execution, cancellation, failure, and timeouts.</p>
-    </form>
-  </dialog>
 
   <script src="../shared/vendor/codemirror-5.65.21.js"></script>
   <script src="../shared/vendor/codemirror-mode-python-5.65.21.js"></script>

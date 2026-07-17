@@ -262,6 +262,8 @@ class CommittedCourseTests(unittest.TestCase):
             ("video-supplements.json", "d36m44n9vdbmda.cloudfront.net", "example.invalid", "NVIDIA MP4 boundary"),
             ("course.js", "video.controls = true", "video.controls = false", "accessible walkthrough controls"),
             ("course.js", 'video.preload = "none"', 'video.preload = "auto"', "learner-initiated walkthrough loading"),
+            ("course.js", "source.dataset.src = reviewedVideoUrl(record)", "source.src = reviewedVideoUrl(record)", "deferred walkthrough source"),
+            ("course.js", 'preview.className = "lesson-video-preview"', 'preview.className = "video-placeholder"', "contextual walkthrough preview"),
         ]
         for relative, before, after, expected in mutations:
             with self.subTest(relative=relative, expected=expected), tempfile.TemporaryDirectory() as temporary:
@@ -273,6 +275,16 @@ class CommittedCourseTests(unittest.TestCase):
                 path.write_text(source.replace(before, after, 1), encoding="utf-8")
                 findings = cfx11_course_audit.audit(course)
                 self.assertTrue(any(expected in finding for finding in findings), findings)
+
+    def test_documentation_only_global_settings_dialog_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            course = Path(temporary) / "cfx11"
+            shutil.copytree(ROOT / "web/cfx11", course)
+            shell = course / "index.html"
+            source = shell.read_text(encoding="utf-8")
+            shell.write_text(source.replace("</body>", '<dialog id="settings-dialog"><p>Runtime documentation.</p></dialog></body>'), encoding="utf-8")
+            findings = cfx11_course_audit.audit(course)
+            self.assertTrue(any("documentation-only global settings dialog" in finding for finding in findings), findings)
 
     def test_dynamic_content_keeps_a_strict_url_and_theme_boundary(self):
         client = (ROOT / "web/cfx11/course.js").read_text(encoding="utf-8")
