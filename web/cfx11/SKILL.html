@@ -26,7 +26,7 @@
     {
       "name": "Markdown course shell",
       "entry": "web/cfx11/index.html",
-      "contract": "Load one digest-checked lesson from the generated Pages-safe bundle, preserve source links, render Markdown and Mermaid coherently, and upgrade each Python fence through the same XBlock path. Every XBlock exposes a keyboard-editable CodeMirror source and defaults output below it. The result pane stays hidden until execution, clears before every new run, and safely renders bounded JSON, code, Markdown, HTML, tables, and images."
+      "contract": "Load one digest-checked lesson from the generated Pages-safe bundle, preserve source links, render Markdown and Mermaid coherently, and upgrade each Python fence through the same XBlock path. Every XBlock exposes a keyboard-editable CodeMirror source and defaults output below it. The result pane stays hidden until execution, opens as a compact visual progress surface, clears before every new run, and grows only when it has bounded JSON, code, Markdown, HTML, tables, images, errors, or a no-output completion note to show."
     },
     {
       "name": "Browser Python",
@@ -129,7 +129,7 @@
   <h1 id="skill-title">web/cfx11</h1>
   <p>Internal browser candidate for c-fx-11-v1, with digest-bound lesson delivery, executable XBlocks, and learner-owned NVIDIA API access.</p>
   <p><strong><a href="index.html">Open the course preview</a>, then review <a href="SOURCE_PROVENANCE.md">source provenance</a> and <a href="course.json">the fidelity manifest</a>.</strong> The imported course is an internal review candidate until its source license is confirmed. Open <a href="runtime/SKILL.html">runtime/</a> for the browser implementation. The <a href="content/SKILL.html">content/</a> directory holds the original cells and support files; <a href="assets/SKILL.html">assets/</a> identifies the local portability asset.</p>
-  <p>Each imported Python cell remains editable and shares one persistent kernel. Results start hidden, appear below the code after a run, and clear before the next run. The settings menu can move them beside the code and controls editor height, wrapping, line numbers, source restoration, copying, and output clearing. Shift/Ctrl/Command+Enter runs a cell. Ctrl/Command+/ toggles comments. Use <code>?</code> or <code>??</code> for inspection; <code>%magic</code> lists the bounded browser notebook commands.</p>
+  <p>Each imported Python cell remains editable and shares one persistent kernel. Results start hidden, open with a compact visual progress cue, and grow only when evidence arrives. A successful cell with no display value says so explicitly. Results clear before the next run and appear below code by default. The settings menu can move them beside the code and controls editor height, wrapping, line numbers, source restoration, copying, and output clearing. Shift/Ctrl/Command+Enter runs a cell. Ctrl/Command+/ toggles comments. Use <code>?</code> or <code>??</code> for inspection; <code>%magic</code> lists the bounded browser notebook commands.</p>
   <div class="skill-columns">
     <section><h2>Files</h2><ul>
       <li><a href="SOURCE_PROVENANCE.md"><code>SOURCE_PROVENANCE.md</code></a></li>

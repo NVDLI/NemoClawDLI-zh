@@ -154,6 +154,10 @@ class CommittedCourseTests(unittest.TestCase):
             ("runtime/runner.js", 'new CustomEvent("job-state"', 'new CustomEvent("hidden-state"', "complete job lifecycle"),
             ("index.html", 'data-runtime-panel="activity"', 'data-runtime-panel="hidden"', "visible workflow activity"),
             ("course.js", 'message.textContent = `Refresh failed:', 'message.textContent = `Silent refresh:', "observable variable refresh failure"),
+            ("course.js", 'progress.setAttribute("role", "status")', 'progress.setAttribute("role", "presentation")', "accessible execution progress"),
+            ("course.js", 'note.textContent = "Completed without output."', 'note.textContent = ""', "explicit no-output completion"),
+            ("course.css", ".wb-cell-artifact { min-height: 0; }", ".wb-cell-artifact { min-height: 9rem; }", "compact result pane"),
+            ("course.css", "prefers-reduced-motion: reduce", "removed-reduced-motion", "reduced-motion execution progress"),
         ]
         for relative, before, after, expected in mutations:
             with self.subTest(relative=relative, expected=expected), tempfile.TemporaryDirectory() as temporary:
@@ -165,6 +169,16 @@ class CommittedCourseTests(unittest.TestCase):
                 path.write_text(source.replace(before, after, 1), encoding="utf-8")
                 findings = cfx11_course_audit.audit(course)
                 self.assertTrue(any(expected in finding for finding in findings), findings)
+
+    def test_lesson_prose_rejects_character_width_hedges(self):
+        for rule in (".lesson-body > .lesson-lead { max-width: 80ch; }", ".lesson-body p { max-width: 92ch; }"):
+            with self.subTest(rule=rule), tempfile.TemporaryDirectory() as temporary:
+                course = Path(temporary) / "cfx11"
+                shutil.copytree(ROOT / "web/cfx11", course)
+                styles = course / "course.css"
+                styles.write_text(styles.read_text(encoding="utf-8") + f"\n{rule}\n", encoding="utf-8")
+                findings = cfx11_course_audit.audit(course)
+                self.assertTrue(any("character-width hedges" in finding for finding in findings), findings)
 
     def test_model_probe_requires_more_than_one_distinct_candidate(self):
         with tempfile.TemporaryDirectory() as temporary:

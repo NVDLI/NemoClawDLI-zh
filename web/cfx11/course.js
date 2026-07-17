@@ -479,7 +479,47 @@ function renderReply(block, reply) {
     details.append(summary, pre);
     block.output.append(details);
   }
+  if (reply.ok && !block.output.childElementCount) {
+    const note = document.createElement("p");
+    note.className = "wb-cell-result-note";
+    note.textContent = "Completed without output.";
+    block.output.append(note);
+  }
   if (reply.kernel) renderKernel(reply.kernel);
+}
+
+function setArtifactState(block, stateName) {
+  const labels = {
+    ready: "Ready",
+    queued: "Queued",
+    running: "Running",
+    complete: "Complete",
+    failed: "Needs attention",
+  };
+  block.artifactState.dataset.state = stateName;
+  block.artifactState.textContent = labels[stateName] || stateName;
+  const progressCopy = block.output.querySelector(".wb-cell-progress-copy");
+  if (progressCopy) progressCopy.textContent = stateName === "queued" ? "Waiting for Python…" : "Running this cell…";
+}
+
+function showArtifactProgress(block) {
+  const progress = document.createElement("div");
+  progress.className = "wb-cell-progress";
+  progress.setAttribute("role", "status");
+  progress.setAttribute("aria-live", "polite");
+  progress.setAttribute("aria-atomic", "true");
+  const mark = document.createElement("span");
+  mark.className = "wb-cell-progress-mark";
+  mark.setAttribute("aria-hidden", "true");
+  const copy = document.createElement("span");
+  copy.className = "wb-cell-progress-copy";
+  const track = document.createElement("span");
+  track.className = "wb-cell-progress-track";
+  track.setAttribute("aria-hidden", "true");
+  progress.append(mark, copy, track);
+  const stream = document.createElement("pre");
+  stream.className = "model-stream";
+  block.output.replaceChildren(progress, stream);
 }
 
 function renderKernel(kernel) {
@@ -561,6 +601,7 @@ function restartRuntime() {
     block.status.textContent = "Ready";
     block.output.replaceChildren();
     block.artifact.hidden = true;
+    setArtifactState(block, "ready");
   }
   elements["runtime-status"].textContent = "Python restarted · variables cleared";
   state.operations.settle(operationId, "succeeded", "Namespace cleared and worker replaced");
@@ -570,12 +611,10 @@ async function runBlock(block) {
   block.article.dataset.state = "queued";
   block.article.setAttribute("aria-busy", "true");
   block.status.textContent = "Queued";
-  block.output.replaceChildren();
   block.artifact.hidden = false;
-  block.article.dataset.outputState = "running";
-  const stream = document.createElement("pre");
-  stream.className = "model-stream";
-  block.output.append(stream);
+  block.article.dataset.outputState = "queued";
+  showArtifactProgress(block);
+  setArtifactState(block, "queued");
   try {
     const execution = state.runner.run(block.editor.getValue(), elements["api-key"].value.trim(), {
       label: `${state.lesson?.title || "Lesson"} · cell ${block.article.dataset.cellId.split(":").at(-1)}`,
@@ -585,6 +624,7 @@ async function runBlock(block) {
     renderReply(block, reply);
     block.article.dataset.state = reply.ok ? "passed" : "failed";
     block.article.dataset.outputState = reply.ok ? "complete" : "failed";
+    setArtifactState(block, reply.ok ? "complete" : "failed");
     block.status.textContent = reply.ok ? `Ran as In [${reply.execution_count}]` : "Failed";
     if (reply.ok) updateProgress(state.lesson.id, block.id);
     return reply.ok;
@@ -592,6 +632,7 @@ async function runBlock(block) {
     renderReply(block, { stderr: error.message, displays: [] });
     block.article.dataset.state = "failed";
     block.article.dataset.outputState = "failed";
+    setArtifactState(block, "failed");
     block.status.textContent = "Failed";
     return false;
   } finally {
@@ -748,7 +789,13 @@ function buildXBlocks() {
     artifactPane.hidden = true;
     const artifactLabel = document.createElement("div");
     artifactLabel.className = "wb-cell-pane-label";
-    artifactLabel.textContent = "Result and evidence";
+    const artifactTitle = document.createElement("span");
+    artifactTitle.textContent = "Result and evidence";
+    const artifactState = document.createElement("span");
+    artifactState.className = "wb-cell-artifact-state";
+    artifactState.dataset.state = "ready";
+    artifactState.textContent = "Ready";
+    artifactLabel.append(artifactTitle, artifactState);
     const output = document.createElement("div");
     output.className = "cell-output";
     artifactPane.append(artifactLabel, output);
@@ -788,7 +835,7 @@ function buildXBlocks() {
       },
     });
     editor.setSize("100%", "auto");
-    const block = { id: marker.dataset.cellId, article, status, artifact: artifactPane, output, editor, originalSource: source };
+    const block = { id: marker.dataset.cellId, article, status, artifact: artifactPane, artifactState, output, editor, originalSource: source };
     const settingsKey = `cfx11-cell-settings:${marker.dataset.cellId}`;
     const legacyLayout = sessionStorage.getItem(`cfx11-output-layout:${marker.dataset.cellId}`);
     let saved = {};
@@ -826,6 +873,7 @@ function buildXBlocks() {
       article.dataset.state = "ready";
       article.dataset.outputState = "hidden";
       status.textContent = "Ready";
+      setArtifactState(block, "ready");
     });
     layout.addEventListener("change", () => { cellSettings.output = layout.value; applySettings(); });
     editorHeight.addEventListener("change", () => { cellSettings.height = editorHeight.value; applySettings(); });
@@ -942,7 +990,9 @@ state.runner.addEventListener("job-start", event => {
   if (!block) return;
   block.article.dataset.state = "running";
   block.article.setAttribute("aria-busy", "true");
+  block.article.dataset.outputState = "running";
   block.status.textContent = "Running";
+  setArtifactState(block, "running");
 });
 
 state.runner.addEventListener("queue-change", event => {

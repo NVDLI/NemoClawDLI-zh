@@ -161,11 +161,10 @@ main { min-width: 0; padding: clamp(1rem, 3vw, 3rem) clamp(1rem, 5vw, 5rem) 6rem
 .kernel-variables code { white-space: pre-wrap; overflow-wrap: anywhere; }
 
 .lesson-body { max-width: 90rem; margin: 0 auto; }
-.lesson-body > .lesson-lead { max-width: 80ch; color: var(--muted); font-size: clamp(1.05rem, 2vw, 1.24rem); line-height: 1.62; }
+.lesson-body > .lesson-lead { color: var(--muted); font-size: clamp(1.05rem, 2vw, 1.24rem); line-height: 1.62; }
 .lesson-body > h1 { font-size: clamp(1.75rem, 4vw, 3rem); line-height: 1.08; }
 .lesson-body h2 { margin-top: 2.2em; border-bottom: 1px solid var(--line); padding-bottom: .3em; font-size: 1.5rem; line-height: 1.25; }
 .lesson-body h3 { margin-top: 1.7em; font-size: 1.16rem; }
-.lesson-body p, .lesson-body li { max-width: 92ch; }
 .lesson-body blockquote { margin: 1.2rem 0; padding: .75rem 1rem; border-left: 3px solid var(--green); background: color-mix(in srgb, var(--green) 7%, var(--panel)); }
 .lesson-body blockquote p { margin: .35rem 0; }
 .lesson-body img { display: block; max-width: 100%; height: auto; margin: 1.3rem auto; border-radius: .6rem; }
@@ -208,9 +207,24 @@ main { min-width: 0; padding: clamp(1rem, 3vw, 3rem) clamp(1rem, 5vw, 5rem) 6rem
 .wb-cell[data-editor-height="content"] .wb-cell-source .CodeMirror-scroll { max-height: 24rem; }
 .wb-cell[data-editor-height="tall"] .wb-cell-source .CodeMirror-scroll { height: 24rem; max-height: 24rem; }
 .wb-cell-source .CodeMirror-focused { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--blue) 70%, transparent); }
+.wb-cell-artifact { min-height: 0; }
 .wb-cell-artifact .cell-output { flex: 1; width: 100%; min-width: 0; max-width: 100%; max-height: 38rem; overflow: auto; overscroll-behavior: contain; border-top: 0; }
 .wb-cell-artifact[hidden] { display: none; }
-.wb-cell-artifact .model-stream { min-height: 2.5rem; }
+.wb-cell-artifact-state { flex: 0 0 auto; padding: .08rem .42rem; border: 1px solid var(--line); border-radius: 999px; color: var(--quiet); font-size: .6rem; letter-spacing: .03em; text-transform: none; }
+.wb-cell-artifact-state[data-state="queued"], .wb-cell-artifact-state[data-state="running"] { border-color: color-mix(in srgb, var(--blue) 55%, var(--line)); color: var(--blue); }
+.wb-cell-artifact-state[data-state="complete"] { border-color: color-mix(in srgb, var(--success) 55%, var(--line)); color: var(--success); }
+.wb-cell-artifact-state[data-state="failed"] { border-color: color-mix(in srgb, var(--error) 60%, var(--line)); color: var(--error); }
+.wb-cell-progress { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .42rem .62rem; align-items: center; padding: .62rem .72rem; color: var(--muted); font-size: .78rem; }
+.wb-cell-progress-mark { width: .72rem; height: .72rem; border: 2px solid color-mix(in srgb, var(--blue) 22%, var(--line)); border-top-color: var(--blue); border-radius: 50%; animation: cfx11-progress-spin .8s linear infinite; }
+.wb-cell-progress-track { position: relative; grid-column: 1 / -1; height: 2px; overflow: hidden; border-radius: 999px; background: color-mix(in srgb, var(--blue) 14%, var(--line)); }
+.wb-cell-progress-track::after { position: absolute; inset: 0 auto 0 -32%; width: 32%; border-radius: inherit; background: var(--blue); content: ""; animation: cfx11-progress-track 1.15s ease-in-out infinite; }
+.wb-cell-result-note { margin: 0; padding: .65rem .75rem; color: var(--muted); font-size: .8rem; }
+@keyframes cfx11-progress-spin { to { transform: rotate(360deg); } }
+@keyframes cfx11-progress-track { to { left: 100%; } }
+@media (prefers-reduced-motion: reduce) {
+  .wb-cell-progress-mark { animation: none; border-color: var(--blue); }
+  .wb-cell-progress-track::after { left: 0; width: 42%; animation: none; }
+}
 .CodeMirror { height: auto; min-height: 3.5rem; max-height: 38rem; background: var(--code-bg); color: var(--code-text); font: .86rem/1.55 var(--mono); }
 .CodeMirror-scroll { min-height: 3.5rem; max-height: 38rem; }
 .CodeMirror-gutters { background: var(--code-gutter); border-right-color: var(--line); }

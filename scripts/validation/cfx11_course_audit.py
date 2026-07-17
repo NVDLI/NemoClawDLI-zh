@@ -268,7 +268,12 @@ def audit(course: Path = COURSE) -> list[str]:
         "per-cell output layout": (client + shared_workbench_styles, "cellSettings.output"),
         "below-code output default": (client, 'legacyLayout === "beside" ? "beside" : "below"'),
         "hidden pre-run output": (client + styles, "artifactPane.hidden = true"),
-        "stale output cleared before execution": (client, 'block.output.replaceChildren();\n  block.artifact.hidden = false;'),
+        "stale output cleared before execution": (client, "block.output.replaceChildren(progress, stream)"),
+        "compact visual execution progress": (client + styles, "wb-cell-progress-track"),
+        "accessible execution progress": (client, 'progress.setAttribute("role", "status")'),
+        "compact result pane": (styles, ".wb-cell-artifact { min-height: 0; }"),
+        "explicit no-output completion": (client, "Completed without output."),
+        "reduced-motion execution progress": (styles, "prefers-reduced-motion: reduce"),
         "origin-aware model route": (client, "function defaultModelRoute"),
         "versioned model route preference": (client, 'const MODEL_ROUTE_STORAGE_KEY = "cfx11-model-route:v2"'),
         "per-cell editor height": (client + styles, "cellSettings.height"),
@@ -294,7 +299,7 @@ def audit(course: Path = COURSE) -> list[str]:
         "stable NVIDIA request headers": (runtime, '["accept", "authorization", "content-type"]'),
         "origin-specific transport error": (runtime, "choose the DLI browser relay"),
         "concise transport error presentation": (client, 'summary.textContent = "Full Python traceback"'),
-        "wide lesson reading surface": (styles, ".lesson-body p, .lesson-body li { max-width: 92ch; }"),
+        "wide lesson reading surface": (styles, ".lesson-body { max-width: 90rem;"),
         "theme-specific input palette": (styles, "--input-bg: #f2f8e9;"),
         "theme-specific code palette": (styles, "--code-bg: #f6f8fa;"),
         "fixed-color logo presentation": (styles, 'img[src$="/nvidia.png"]'),
@@ -307,6 +312,9 @@ def audit(course: Path = COURSE) -> list[str]:
     for label, (source, marker) in runtime_contracts.items():
         if marker not in source:
             findings.append(f"browser course omits {label}")
+    for selector in (r"\.lesson-body\s*>\s*\.lesson-lead", r"\.lesson-body\s+(?:p|li)"):
+        if re.search(selector + r"\s*\{[^}]*max-width\s*:", styles):
+            findings.append("browser course must not constrain lesson prose with character-width hedges")
     candidate_match = re.search(r"const MODEL_PROBE_CANDIDATES = Object\.freeze\(\[(.*?)\]\);", client, re.DOTALL)
     candidate_models = re.findall(r'"(nvidia/[^"\s]+)"', candidate_match.group(1) if candidate_match else "")
     if len(set(candidate_models)) < 2:

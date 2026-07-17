@@ -127,6 +127,9 @@ try {
   check(await page.locator(".xblock .wb-cell-artifact[hidden]").count() === 23, "pre-run cells must not reserve space for empty evidence panes");
   check(await page.locator('.xblock[data-output-layout="below"]').count() === 23, "new cells must default to output below the editable code");
   check(await page.locator(".xblock .wb-cell-empty").count() === 0, "pre-run cells must not render placeholder output");
+  const proseWidths = await page.locator(".lesson-body > .lesson-lead, .lesson-body > p, .lesson-body > ul > li, .lesson-body > ol > li")
+    .evaluateAll(nodes => nodes.map(node => getComputedStyle(node).maxWidth));
+  check(proseWidths.every(width => width === "none"), `lesson prose retained a character-width hedge: ${JSON.stringify(proseWidths)}`);
   check(await page.locator("#model-route").inputValue() === "direct", "the local validator origin must retain the direct NVIDIA route");
   check(await page.locator("#runtime-dock").getAttribute("data-workbench-ready") === "true", "runtime workbench did not mount");
   const activityTool = page.getByRole("button", { name: "Activity", exact: false });
@@ -199,6 +202,11 @@ try {
   await keyboardBlock.getByRole("button", { name: "Run", exact: true }).click();
   check(!(await keyboardBlock.locator(".cell-output").innerText()).includes("stale-result-that-must-clear"), "a new execution retained stale output");
   await waitForBlock(page, keyboardBlock);
+  await keyboardBlock.locator(".CodeMirror").evaluate(element => element.CodeMirror.setValue("assignment_only = 17"));
+  await keyboardBlock.getByRole("button", { name: "Run", exact: true }).click();
+  await waitForBlock(page, keyboardBlock);
+  check(await keyboardBlock.locator(".wb-cell-result-note").innerText() === "Completed without output.", "a successful assignment-only cell rendered a blank result pane");
+  check(await keyboardBlock.locator(".wb-cell-artifact-state").innerText() === "Complete", "the result pane did not expose its settled state");
   await keyboardBlock.getByRole("button", { name: "Clear output", exact: true }).click();
   check(await keyboardBlock.locator(".wb-cell-artifact").isHidden(), "Clear output did not return the cell to its compact pre-run state");
   check(await keyboardBlock.getAttribute("data-output-state") === "hidden", "Clear output did not reset the output lifecycle state");
@@ -279,6 +287,18 @@ try {
   await inputBlock.locator(".CodeMirror").evaluate(element => element.CodeMirror.setValue('student_name = input("Your name: ")\nconnection_config = {"api_key": "nvapi-this-must-not-render"}\n{"student": student_name, "kept": True}'));
   await inputBlock.getByRole("button", { name: "Run", exact: true }).click();
   await inputBlock.locator(".python-input").waitFor({ timeout });
+  check(await inputBlock.getAttribute("data-output-state") === "running", "an input-blocked execution did not retain its running result state");
+  check(await inputBlock.locator(".wb-cell-artifact-state").innerText() === "Running", "the result heading did not identify active execution");
+  check(await inputBlock.locator('.wb-cell-progress[role="status"]').isVisible(), "running a cell revealed a blank result pane instead of visual progress");
+  const progressGeometry = await inputBlock.locator(".wb-cell-artifact").evaluate(artifact => {
+    const style = getComputedStyle(artifact);
+    const progress = artifact.querySelector(".wb-cell-progress").getBoundingClientRect();
+    const mark = getComputedStyle(artifact.querySelector(".wb-cell-progress-mark"));
+    return { minHeight: style.minHeight, progressHeight: progress.height, animationName: mark.animationName };
+  });
+  check(progressGeometry.minHeight === "0px" && progressGeometry.progressHeight > 0 && progressGeometry.progressHeight < 80,
+    `the running result surface was not compact: ${JSON.stringify(progressGeometry)}`);
+  check(progressGeometry.animationName !== "none", `the running result surface had no motion cue: ${JSON.stringify(progressGeometry)}`);
   for (const theme of ["light", "dark"]) {
     await page.evaluate(value => document.documentElement.dataset.theme = value, theme);
     const inputPalette = await inputBlock.locator(".python-input").evaluate(form => {
@@ -287,16 +307,29 @@ try {
       return { panel: panel.backgroundColor, field: field.backgroundColor, text: field.color };
     });
     check(inputPalette.panel !== "rgba(0, 0, 0, 0)" && inputPalette.field !== inputPalette.panel && inputPalette.text, `${theme} Python input was not visually separated`);
+    const progressPalette = await inputBlock.locator(".wb-cell-progress").evaluate(progress => {
+      const copy = getComputedStyle(progress.querySelector(".wb-cell-progress-copy"));
+      const mark = getComputedStyle(progress.querySelector(".wb-cell-progress-mark"));
+      return { text: copy.color, marker: mark.borderTopColor };
+    });
+    check(progressPalette.text !== progressPalette.marker && progressPalette.marker !== "rgba(0, 0, 0, 0)", `${theme} running progress did not remain visually distinct`);
+    if (process.env.CFX11_SCREENSHOT_DIR) {
+      fs.mkdirSync(process.env.CFX11_SCREENSHOT_DIR, { recursive: true });
+      await inputBlock.screenshot({ path: path.join(process.env.CFX11_SCREENSHOT_DIR, `cfx11-running-${theme}.png`) });
+    }
   }
   const queuedBlock = page.locator('.xblock[data-cell-id$=":20"]');
   await queuedBlock.locator(".CodeMirror").evaluate(element => element.CodeMirror.setValue('queue_marker = "ran second"\nqueue_marker'));
   await queuedBlock.getByRole("button", { name: "Run", exact: true }).click();
   await page.waitForFunction(() => document.querySelector('#queue-status')?.textContent.includes("waiting"), null, { timeout });
   check(await queuedBlock.getAttribute("data-state") === "queued", "a second execution did not wait behind active input");
+  check(await queuedBlock.locator('.wb-cell-progress[role="status"]').isVisible(), "a queued cell did not expose visual waiting feedback");
+  check(await queuedBlock.locator(".wb-cell-artifact-state").innerText() === "Queued", "a queued result surface mislabeled its state");
   await inputBlock.locator(".python-input input").fill("Ada");
   await inputBlock.locator(".python-input button").click();
   await waitForBlock(page, inputBlock);
   await waitForBlock(page, queuedBlock);
+  check(await inputBlock.locator(".wb-cell-progress").count() === 0 && await inputBlock.locator(".wb-cell-artifact-state").innerText() === "Complete", "settled evidence retained its running progress treatment");
   const inputOutput = await inputBlock.locator(".cell-output").innerText();
   check(inputOutput.includes("Your name: Ada") && inputOutput.includes('"student": "Ada"'), `Python input did not return through the requesting cell:\n${inputOutput}`);
   check((await queuedBlock.locator(".cell-output").innerText()).includes("ran second"), "queued execution did not run after input completed");
