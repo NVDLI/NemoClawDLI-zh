@@ -73,25 +73,24 @@ def _suite_index(document: Any) -> dict[str, Any]:
     }
 
 
-def _history_allowances(root: Path, commit_range: str) -> tuple[set[str], bool]:
-    """Return baselines proven to predate the proposal and whether policy literals are safe.
+def _history_allowances(root: Path, commit_range: str) -> tuple[set[str], set[str], bool]:
+    """Return exact owner-declared baselines and whether policy literals are safe.
 
-    A contributor may document a previously existing specialized baseline. They may not add or
-    modify specialized code or registry suites and legalize that change in the same proposal.
+    An exception names the commit where the specialized bytes were reviewed. The file and suite
+    must still be byte-for-byte identical, and that commit must remain an ancestor of the proposal.
+    This permits an explicit migration baseline without letting a policy entry bless mutable code.
     """
-    base = _range_base(root, commit_range)
-    if not base:
-        return set(), False
+    range_base = _range_base(root, commit_range)
+    if not range_base:
+        return set(), set(), False
     try:
         policy = _load(root / POLICY.relative_to(ROOT))
         current_registry = _load(root / REGISTRY.relative_to(ROOT))
-        base_registry_raw = _git_file(root, base, REGISTRY.relative_to(ROOT).as_posix())
-        base_registry = json.loads(base_registry_raw) if base_registry_raw is not None else None
     except (OSError, json.JSONDecodeError):
-        return set(), False
+        return set(), set(), False
     current_suites = _suite_index(current_registry)
-    base_suites = _suite_index(base_registry)
     frozen: set[str] = set()
+    frozen_registry: set[str] = set()
     policy_safe = True
     entries = policy.get("entries", []) if isinstance(policy, dict) else []
     if not entries:
@@ -101,12 +100,27 @@ def _history_allowances(root: Path, commit_range: str) -> tuple[set[str], bool]:
             policy_safe = False
             continue
         entry_safe = True
+        baseline_commit = str(entry.get("baseline_commit", ""))
+        ancestor = _git(root, "merge-base", "--is-ancestor", baseline_commit, "HEAD")
+        if (
+            not re.fullmatch(r"[0-9a-f]{40}", baseline_commit)
+            or baseline_commit == _git(root, "rev-parse", "HEAD").stdout.strip()
+            or ancestor.returncode != 0
+        ):
+            entry_safe = False
+        base_registry_raw = _git_file(root, baseline_commit, REGISTRY.relative_to(ROOT).as_posix())
+        try:
+            base_registry = json.loads(base_registry_raw) if base_registry_raw is not None else None
+        except json.JSONDecodeError:
+            base_registry = None
+            entry_safe = False
+        base_suites = _suite_index(base_registry)
         files = entry.get("files", {})
         if not isinstance(files, dict) or not files:
             entry_safe = False
         else:
             for rel, expected in files.items():
-                baseline = _git_file(root, base, str(rel))
+                baseline = _git_file(root, baseline_commit, str(rel))
                 current = root / str(rel)
                 if (
                     baseline is None
@@ -124,9 +138,10 @@ def _history_allowances(root: Path, commit_range: str) -> tuple[set[str], bool]:
                     entry_safe = False
         if entry_safe:
             frozen.update(map(str, files))
+            frozen_registry.update(map(str, registry_ids))
         else:
             policy_safe = False
-    return frozen, policy_safe
+    return frozen, frozen_registry, policy_safe
 
 
 def _policy(root: Path, findings: list[str]) -> tuple[set[str], set[str]]:
@@ -154,7 +169,10 @@ def _policy(root: Path, findings: list[str]) -> tuple[set[str], set[str]]:
         if not isinstance(entry, dict):
             findings.append(f"{path.relative_to(root)}: exception entry must be an object")
             continue
-        required = {"id", "course", "dimension", "rationale", "owning_contract", "migration", "files", "registry_ids"}
+        required = {
+            "id", "course", "dimension", "rationale", "owning_contract", "migration",
+            "baseline_commit", "files", "registry_ids",
+        }
         if set(entry) != required:
             findings.append(f"{path.relative_to(root)}: exception fields must be exact")
             continue
@@ -165,6 +183,8 @@ def _policy(root: Path, findings: list[str]) -> tuple[set[str], set[str]]:
             findings.append(f"{path.relative_to(root)}: exception {entry['id']} has unknown course or dimension")
         if not all(isinstance(entry[key], str) and entry[key].strip() for key in ("rationale", "owning_contract", "migration")):
             findings.append(f"{path.relative_to(root)}: exception {entry['id']} needs rationale, owner contract, and migration")
+        if not re.fullmatch(r"[0-9a-f]{40}", str(entry["baseline_commit"])):
+            findings.append(f"{path.relative_to(root)}: exception {entry['id']} needs one full baseline commit")
         owner = root / entry["owning_contract"]
         if not owner.is_file():
             findings.append(f"{path.relative_to(root)}: owning contract is missing for {entry['id']}")
@@ -216,8 +236,18 @@ def audit(root: Path = ROOT, commit_range: str | None = None) -> list[str]:
                 findings.append(f"{REGISTRY.relative_to(ROOT)}: course-specialized suite {suite_id!r} is not a frozen exception")
 
     if commit_range:
-        history_allowed_files, policy_literals_safe = _history_allowances(root, commit_range)
+        history_allowed_files, history_allowed_registry, policy_literals_safe = _history_allowances(root, commit_range)
         policy_rel = POLICY.relative_to(ROOT).as_posix()
+        registry_rel = REGISTRY.relative_to(ROOT).as_posix()
+        specialized_registry = {
+            str(suite.get("id", ""))
+            for suite in registry.get("suites", [])
+            if isinstance(suite, dict) and (
+                name_pattern.search(str(suite.get("id", "")))
+                or any(key in " ".join(map(str, suite.get("argv", []))).lower() for key in keys)
+            )
+        }
+        registry_literals_safe = bool(specialized_registry) and specialized_registry <= history_allowed_registry
         proc = subprocess.run(
             ["git", "-C", str(root), "diff", "--unified=0", "--no-ext-diff", commit_range, "--", *SCAN_ROOTS],
             text=True, capture_output=True,
@@ -236,7 +266,8 @@ def audit(root: Path = ROOT, commit_range: str | None = None) -> list[str]:
                 if any(f"web/{key}" in lowered or re.search(rf"[\"']{re.escape(key)}[\"']", lowered) for key in keys):
                     allowed_history = current in history_allowed_files
                     allowed_policy = current == policy_rel and policy_literals_safe
-                    if not allowed_history and not allowed_policy:
+                    allowed_registry = current == registry_rel and registry_literals_safe
+                    if not allowed_history and not allowed_policy and not allowed_registry:
                         findings.append(f"{current}: proposed validator code adds a course-specific literal")
     return findings
 

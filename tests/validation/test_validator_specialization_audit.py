@@ -43,7 +43,7 @@ class ValidatorSpecializationAuditTests(unittest.TestCase):
             ["git", "-C", str(root), "rev-parse", "HEAD"], check=True, text=True, capture_output=True,
         ).stdout.strip()
 
-    def add_exception(self, root: Path, specialized: Path) -> None:
+    def add_exception(self, root: Path, specialized: Path, baseline_commit: str) -> None:
         registry_path = root / "scripts/validation/reacs_registry.json"
         registry_path.write_text(json.dumps({
             "suites": [{"id": "sample-browser", "argv": ["python", "generic_runner.py"]}],
@@ -57,6 +57,7 @@ class ValidatorSpecializationAuditTests(unittest.TestCase):
             "rationale": "Preserve a pre-existing source-fidelity check during generic migration.",
             "owning_contract": "web/sample/interface-inventory.json",
             "migration": "generic-form-factor-migration",
+            "baseline_commit": baseline_commit,
             "files": {
                 specialized.relative_to(root).as_posix(): hashlib.sha256(specialized.read_bytes()).hexdigest(),
             },
@@ -105,19 +106,45 @@ class ValidatorSpecializationAuditTests(unittest.TestCase):
             "suites": [{"id": "sample-browser", "argv": ["python", "generic_runner.py"]}],
         }), encoding="utf-8")
         base = self.commit(root, "existing specialized baseline")
-        self.add_exception(root, specialized)
+        self.add_exception(root, specialized, base)
         self.commit(root, "document frozen baseline")
         self.assertEqual([], audit.audit(root, f"{base}..HEAD"))
 
-    def test_policy_cannot_legalize_new_specialization_in_same_proposal(self) -> None:
+    def test_policy_can_record_an_exact_earlier_baseline_in_the_same_proposal(self) -> None:
         root = self.fixture()
         base = self.commit(root, "generic baseline")
         specialized = root / "tests/runtime/test_sample_browser.py"
         specialized.write_text("COURSE = 'sample'\n", encoding="utf-8")
-        self.add_exception(root, specialized)
-        self.commit(root, "smuggle specialized validator")
+        (root / "scripts/validation/reacs_registry.json").write_text(json.dumps({
+            "suites": [{"id": "sample-browser", "argv": ["python", "generic_runner.py"]}],
+        }), encoding="utf-8")
+        reviewed = self.commit(root, "owner-reviewed migration baseline")
+        self.add_exception(root, specialized, reviewed)
+        self.commit(root, "record exact migration baseline")
+        self.assertEqual([], audit.audit(root, f"{base}..HEAD"))
+
+    def test_policy_cannot_legalize_code_absent_from_its_baseline(self) -> None:
+        root = self.fixture()
+        base = self.commit(root, "generic baseline")
+        specialized = root / "tests/runtime/test_sample_browser.py"
+        specialized.write_text("COURSE = 'sample'\n", encoding="utf-8")
+        self.add_exception(root, specialized, base)
+        self.commit(root, "invalid migration baseline")
         findings = audit.audit(root, f"{base}..HEAD")
         self.assertTrue(any("proposed validator code" in item for item in findings))
+
+    def test_policy_cannot_hide_changes_after_the_recorded_baseline(self) -> None:
+        root = self.fixture()
+        base = self.commit(root, "generic baseline")
+        specialized = root / "tests/runtime/test_sample_browser.py"
+        specialized.write_text("COURSE = 'sample'\n", encoding="utf-8")
+        reviewed = self.commit(root, "owner-reviewed migration baseline")
+        self.add_exception(root, specialized, reviewed)
+        self.commit(root, "record exact migration baseline")
+        specialized.write_text("COURSE = 'sample'\nCHANGED = True\n", encoding="utf-8")
+        self.commit(root, "change frozen migration code")
+        findings = audit.audit(root, f"{base}..HEAD")
+        self.assertTrue(any("baseline changed" in item or "proposed validator code" in item for item in findings))
 
 
 if __name__ == "__main__":
