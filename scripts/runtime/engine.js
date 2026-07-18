@@ -27,8 +27,9 @@
   var SHIP_PREFIXES = ["web/nemoclaw/", "web/index", "web/courses", "docs/", "scripts/"];
   var SHIP_HUBS = setOf(["SKILL.html", "web/SKILL.html"]);
 
-  // Release contract: the courses the release foyer (web/index.html) can surface.
+  // Foyer contract: released courses and explicitly labeled internal previews.
   var RELEASED = ["nemoclaw"];
+  var PREVIEWS = ["cfx11"];
 
   // mats now live UNDER web/ (already a crawl root that recurses), so "mats" is no longer a separate top-level crawl root or shared TOPDIR.
   // It is still shared infra, detected by segment.
@@ -423,7 +424,7 @@
   // ── release-foyer contract ─────────────────────────────────────────────────
   function foyerReleaseCheck(proj) {
     var io = proj.io;
-    var out = { ok: false, released: RELEASED.slice(), exists: io.exists("web/index.html"), declared: null, declared_ok: false, entries_ok: true, surfaced_courses: [], violations: [] };
+    var out = { ok: false, released: RELEASED.slice(), previews: PREVIEWS.slice(), exists: io.exists("web/index.html"), declared: null, declared_previews: null, declared_ok: false, entries_ok: true, surfaced_courses: [], violations: [] };
     var raw = io.read("web/index.html");
     if (raw == null) { out.violations.push({ kind: "missing", detail: "web/index.html not found" }); return out; }
     var noComments = raw.replace(/<!--[\s\S]*?-->/g, " ");
@@ -433,13 +434,21 @@
       try {
         var meta = JSON.parse(m[1]);
         out.declared = meta.released || null;
-        out.declared_ok = JSON.stringify(meta.released || []) === JSON.stringify(RELEASED);
-        if (!out.declared_ok) out.violations.push({ kind: "declared_mismatch", detail: "foyer declares " + JSON.stringify(meta.released) + ", enforced " + JSON.stringify(RELEASED) });
+        out.declared_previews = meta.previews || null;
+        out.declared_ok = JSON.stringify(meta.released || []) === JSON.stringify(RELEASED)
+          && JSON.stringify(meta.previews || []) === JSON.stringify(PREVIEWS);
+        if (!out.declared_ok) out.violations.push({ kind: "declared_mismatch", detail: "foyer declares released=" + JSON.stringify(meta.released) + " previews=" + JSON.stringify(meta.previews) + ", enforced released=" + JSON.stringify(RELEASED) + " previews=" + JSON.stringify(PREVIEWS) });
         var entries = meta.entries || {};
         for (var cid in entries) {
           if (!has(entries, cid)) continue;
           var r = proj.resolve(entries[cid], "web/index.html");
           if (!((r.kind === "static_file" || r.kind === "lab_tree") && r.exists)) { out.entries_ok = false; out.violations.push({ kind: "dead_entry", detail: cid + " entry " + entries[cid] + " -> " + r.reason }); }
+        }
+        var previewEntries = meta.preview_entries || {};
+        for (var pid in previewEntries) {
+          if (!has(previewEntries, pid)) continue;
+          var pr = proj.resolve(previewEntries[pid], "web/index.html");
+          if (!((pr.kind === "static_file" || pr.kind === "lab_tree") && pr.exists)) { out.entries_ok = false; out.violations.push({ kind: "dead_preview_entry", detail: pid + " preview entry " + previewEntries[pid] + " -> " + pr.reason }); }
         }
       } catch (e) { out.violations.push({ kind: "bad_meta", detail: "foyer-release JSON: " + e.message }); }
     }
@@ -456,7 +465,7 @@
     out.surfaced_courses = Object.keys(surfaced).sort();
     for (var c2 = 0; c2 < out.surfaced_courses.length; c2++) {
       var c = out.surfaced_courses[c2];
-      if (RELEASED.indexOf(c) < 0) out.violations.push({ kind: "unreleased_course", detail: "foyer surfaces unreleased course '" + c + "' via " + surfaced[c][0] });
+      if (RELEASED.indexOf(c) < 0 && PREVIEWS.indexOf(c) < 0) out.violations.push({ kind: "undeclared_course", detail: "foyer surfaces undeclared course '" + c + "' via " + surfaced[c][0] });
     }
     out.ok = out.violations.length === 0;
     return out;
@@ -523,6 +532,7 @@
         try {
           var fm = JSON.parse(fr[1]);
           if (JSON.stringify(fm.released || []) !== JSON.stringify(RELEASED)) findings.push({ kind: "contract", detail: "foyer-release 'released' drifted from RELEASED" });
+          if (JSON.stringify(fm.previews || []) !== JSON.stringify(PREVIEWS)) findings.push({ kind: "contract", detail: "foyer-release 'previews' drifted from PREVIEWS" });
         } catch (e2) { findings.push({ kind: "contract", detail: "foyer-release is not valid JSON: " + e2.message }); }
       }
       if (findings.length) out.push({ page: rel, findings: findings });
@@ -562,7 +572,7 @@
     r = proj.resolve("01b-loop.html", "web/nemoclaw/01a-loop.html");
     expect("relative link resolves within course", r.course === "nemoclaw", r.course);
     var fr = foyerReleaseCheck(proj);
-    expect("release foyer surfaces only RELEASED courses (contract honored)", fr.ok, "surfaced=" + JSON.stringify(fr.surfaced_courses) + " violations=" + JSON.stringify(fr.violations.map(function (v) { return v.kind; })));
+    expect("release foyer surfaces only declared releases and previews", fr.ok, "surfaced=" + JSON.stringify(fr.surfaced_courses) + " violations=" + JSON.stringify(fr.violations.map(function (v) { return v.kind; })));
     var embedded = replaceEmbeddedSnapshot("  let DATA = {};\n", { schema: "fixture/1" });
     expect("indented graph snapshot marker is replaceable",
       embedded === '  let DATA = {"schema":"fixture/1"};\n', embedded);
@@ -675,7 +685,7 @@
   }
 
   var api = {
-    DLI: DLI, RELEASED: RELEASED, Projection: Projection, Resolution: Resolution,
+    DLI: DLI, RELEASED: RELEASED, PREVIEWS: PREVIEWS, Projection: Projection, Resolution: Resolution,
     courseOf: courseOf, shipRelevant: shipRelevant, navSource: navSource,
     graphNavigable: graphNavigable, normUrl: normUrl, isCitation: isCitation,
     parseEntrypoint: parseEntrypoint,

@@ -8,6 +8,9 @@
 /scripts/validation/release_gate.py @vkudlay
 /scripts/validation/reacs_registry.py @vkudlay
 /scripts/validation/reacs_registry.json @vkudlay
+/scripts/validation/validator_specialization_audit.py @vkudlay
+/scripts/validation/reacs_specialization_exceptions.json @vkudlay
+/scripts/ci/ @vkudlay
 /scripts/git-hooks/ @vkudlay
 /.github/workflows/ @vkudlay
 /scripts/build/vendor_browser_dependencies.mjs @vkudlay

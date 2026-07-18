@@ -28,6 +28,7 @@ MANIFEST = VENDOR / "browser-dependencies.json"
 LOCK = ROOT / "scripts" / "browser-vendor" / "package-lock.json"
 PACKAGE = ROOT / "scripts" / "browser-vendor" / "package.json"
 EMBEDDED_EVIDENCE = ROOT / "scripts" / "browser-vendor" / "embedded-component-evidence.json"
+PYODIDE_CANDIDATE = ROOT / "scripts" / "pyodide" / "candidate-components.json"
 CI_CONFIG = ROOT / ".gitlab" / "ci" / "sca.yml"
 GITHUB_PROVENANCE_WORKFLOWS = (
     ROOT / ".github" / "workflows" / "pages.yml",
@@ -110,6 +111,28 @@ def inventory_size() -> int:
         len(data.get(key) or [])
         for key in ("packages", "embedded_components", "assets", "legal_notices")
     )
+
+
+def approved_runtime_package_urls(candidate_data: dict | None = None) -> set[tuple[str, str]]:
+    """Return exact inventory-bound package-CDN uses; everything else stays forbidden."""
+    if candidate_data is None:
+        try:
+            candidate = json.loads(PYODIDE_CANDIDATE.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return set()
+    else:
+        candidate = candidate_data
+    course = candidate.get("course_candidate") or {}
+    version = str((course.get("runtime") or {}).get("pyodide") or "")
+    entrypoint = str(course.get("entrypoint") or "")
+    base_url = str(course.get("base_url") or "")
+    if not entrypoint or not re.fullmatch(r"\d+\.\d+\.\d+", version):
+        return set()
+    expected = f"https://cdn.jsdelivr.net/pyodide/v{version}/full/"
+    if base_url != expected:
+        return set()
+    template_url = expected.replace(f"v{version}", "v${PYODIDE_VERSION}")
+    return {(entrypoint, template_url)}
 
 
 def source_references(files: list[Path], asset: str,
@@ -367,8 +390,11 @@ def audit(*, manifest_data: dict | None = None,
     for path in files:
         rel = path.relative_to(ROOT).as_posix()
         text = overrides.get(rel, path.read_text(encoding="utf-8", errors="replace"))
+        approved_runtime_urls = approved_runtime_package_urls()
         for url in re.findall(r"https://[^\s\"'<>`)]+", text):
-            if urlsplit(url.rstrip(".,;:]}")).hostname in PACKAGE_HOSTS:
+            normalized_url = url.rstrip(".,;:]}")
+            if (urlsplit(normalized_url).hostname in PACKAGE_HOSTS
+                    and (rel, normalized_url) not in approved_runtime_urls):
                 findings.append(f"runtime still pulls a package CDN: {rel}: {url}")
         for target in VENDOR_REF_RE.findall(text):
             if target not in asset_names and target not in {
@@ -433,6 +459,11 @@ def self_test() -> list[str]:
     sample = "web/nemoclaw/scripts/_chat.js"
     source = (ROOT / sample).read_text(encoding="utf-8")
     tests.append(("runtime CDN", manifest, {sample: source + '\n"https://cdn.jsdelivr.net/npm/demo@1/+esm";'},
+                  "runtime still pulls a package CDN"))
+    pyodide_worker = "web/cfx11/runtime/worker.js"
+    pyodide_source = (ROOT / pyodide_worker).read_text(encoding="utf-8")
+    tests.append(("inventory-bound runtime CDN", manifest,
+                  {pyodide_worker: pyodide_source.replace("/full/", "/unreviewed/")},
                   "runtime still pulls a package CDN"))
     dashboard = DASHBOARD.read_text(encoding="utf-8")
     tests.append(("dashboard wiring", manifest,
@@ -509,6 +540,21 @@ def self_test() -> list[str]:
         probe_path = Path(probe.name)
         if probe_path in browser_projection_sources():
             failures.append("working-tree discovery: transient figure shim was examined")
+    candidate = json.loads(PYODIDE_CANDIDATE.read_text(encoding="utf-8"))
+    expected_runtime = {(
+        "web/cfx11/runtime/worker.js",
+        "https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/",
+    )}
+    if approved_runtime_package_urls(candidate) != expected_runtime:
+        failures.append("inventory-bound runtime: exact course record was not approved")
+    changed_candidate = copy.deepcopy(candidate)
+    changed_candidate["course_candidate"]["runtime"]["pyodide"] = "314.0.1"
+    if approved_runtime_package_urls(changed_candidate):
+        failures.append("inventory-bound runtime: mismatched version and base URL were approved")
+    changed_candidate = copy.deepcopy(candidate)
+    changed_candidate["course_candidate"]["base_url"] = "https://example.invalid/pyodide/"
+    if approved_runtime_package_urls(changed_candidate):
+        failures.append("inventory-bound runtime: unreviewed host was approved")
     return failures
 
 

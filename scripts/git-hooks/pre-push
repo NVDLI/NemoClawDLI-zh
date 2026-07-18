@@ -57,6 +57,12 @@ if [ -f "$RELEASE_REMINDER" ] && ! python3 "$RELEASE_REMINDER" --commit-range "$
     exit 1
 fi
 
+SPECIALIZATION_AUDIT="$T1/scripts/validation/validator_specialization_audit.py"
+if [ -f "$SPECIALIZATION_AUDIT" ] && ! python3 "$SPECIALIZATION_AUDIT" --commit-range "$RANGE"; then
+    echo "pre-push: REFUSING PUSH - proposed history adds repository-specialized validator logic."
+    exit 1
+fi
+
 # One canonical deterministic gate. Mutation suites are change-aware; current-tree audits
 # remain complete. If this exact clean commit already passed the same local gate, reuse that
 # result instead of replaying several minutes. Fresh CI never receives the worktree cache.

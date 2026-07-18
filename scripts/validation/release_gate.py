@@ -75,6 +75,7 @@ SOURCE_LICENSE_CONTRACT_TESTS = py(
 )
 PYODIDE_RUNTIME_SMOKE = ("bash", "scripts/runtime/run_node.sh", "scripts/pyodide/runtime_smoke.mjs", "--cdn")
 REACS_REGISTRY_TESTS = py("-m", "unittest", "-v", "tests.validation.test_reacs_registry")
+PRIVILEGED_COURSE_OPS_TESTS = py("-m", "unittest", "-v", "tests.validation.test_privileged_course_ops")
 STANDARD_TEST_DISCOVERY = py("-m", "unittest", "discover", "-v", "-s", "tests/validation")
 
 
@@ -129,12 +130,16 @@ FAST_COMMANDS: tuple[tuple[str, ...], ...] = (
     unit_test("sbom_evidence"),
     py("scripts/compliance/sbom_evidence.py", "--check"),
     py("scripts/validation/tenets.py", "--check"),
-    py("scripts/runtime/module_check.py", "--dir", "web/nemoclaw"),
-    py("scripts/runtime/module_check.py", "--dir", "web"),
+    py("scripts/runtime/module_check.py"),
+    py("scripts/validation/interface_inventory_audit.py"),
     COLOR_THEME_TESTS,
     THEME_RUNTIME_CONTRACT_TESTS,
     py("scripts/validation/color_theme.py"),
     STANDARD_TEST_DISCOVERY,
+    py("scripts/validation/cfx11_course_audit.py"),
+    ("bash", "scripts/runtime/run_node.sh", "tests/runtime/test_cfx11_workflow.mjs"),
+    py("scripts/validation/validator_specialization_audit.py"),
+    PRIVILEGED_COURSE_OPS_TESTS,
     py("scripts/validation/validate_bundle.py", "--scope", "ship", "--no-write"),
 )
 
@@ -224,12 +229,18 @@ SHIP_COMMANDS: tuple[tuple[str, ...], ...] = (
     py("scripts/security/audit_sbom_policy.py", "--self-test"),
     py("scripts/build/package_release.py", "--self-test"),
     py("scripts/validation/tenets.py", "--check"),
-    py("scripts/runtime/module_check.py", "--dir", "web/nemoclaw"),
-    py("scripts/runtime/module_check.py", "--dir", "web"),
+    py("scripts/runtime/module_check.py"),
+    py("scripts/validation/interface_inventory_audit.py"),
     COLOR_THEME_TESTS,
     THEME_RUNTIME_CONTRACT_TESTS,
     py("scripts/validation/color_theme.py"),
     STANDARD_TEST_DISCOVERY,
+    py("scripts/validation/cfx11_course_audit.py"),
+    ("bash", "scripts/runtime/run_node.sh", "tests/runtime/test_cfx11_workflow.mjs"),
+    ("bash", "scripts/runtime/run_node.sh", "tests/runtime/test_cfx11_browser.mjs"),
+    py("scripts/validation/interface_inventory_browser_audit.py", "--site-root", "."),
+    py("scripts/validation/validator_specialization_audit.py"),
+    PRIVILEGED_COURSE_OPS_TESTS,
     py("scripts/validation/validate_bundle.py", "--scope", "ship"),
 )
 
@@ -384,6 +395,10 @@ MUTATION_IMPACTS: dict[tuple[str, ...], tuple[str, ...]] = {
     unit_test("gitlab_ci_policy"): (
         ".gitlab-ci.yml", ".gitlab/ci/*", ".gitlab/CODEOWNERS",
         "scripts/validation/gitlab_ci_policy.py", "scripts/validation/release_gate.py",
+    ),
+    PRIVILEGED_COURSE_OPS_TESTS: (
+        "scripts/ci/*", "tests/validation/test_privileged_course_ops.py",
+        ".gitlab-ci.yml", ".gitlab/ci/privileged.yml", "docs/pages_deploy.md",
     ),
     py("scripts/validation/branch_preview_manifest_audit.py", "--self-test"): (
         "scripts/validation/branch_preview_manifest_audit.py", "scripts/build/build_branch_manifest.py",

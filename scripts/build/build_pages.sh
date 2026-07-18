@@ -11,6 +11,7 @@
 # What it produces (everything experienceable in a browser, no server logic):
 #   public/index.html         landing page (the release picker, Pages-relative links)
 #   public/nemoclaw/           the course, self-contained standalone bundle
+#   public/<preview>/          each declared internal preview and its shared browser assets
 #   public/engine.js           the link-graph + self-test engine (UMD, runs in-browser)
 #   public/link-graph.html     the link-graph viewer (engine.js + embedded snapshot)
 #   public/tests.html          client-side test runner (engine smoke + SKILL self-tests + CI gate)
@@ -119,6 +120,55 @@ for c in nemoclaw; do
     done
     echo "[build_pages]   $c -> $course_out/ ($(find "$course_out" -name '*.html' | wc -l) pages)"
 done
+
+# Declared previews are review surfaces, not releases, but a foyer link must still resolve in the
+# built artifact. Project every preview named by the machine-readable foyer contract beside the
+# released course prefix. The copied tree stays byte-identical to its reviewed browser source.
+python3 - "$T1" "$OUT" "$COURSE_PREFIX" <<'PROJ'
+import json
+import re
+import shutil
+import sys
+from pathlib import Path
+
+root, output, prefix = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3].strip("/")
+foyer = (root / "web/index.html").read_text(encoding="utf-8")
+foyer = re.sub(r"<!--.*?-->", "", foyer, flags=re.S)
+match = re.search(r'<script\b(?=[^>]*\bid="foyer-release")[^>]*>(.*?)</script>', foyer, re.S)
+if not match:
+    raise SystemExit("[build_pages] ERROR: web/index.html has no foyer-release contract")
+manifest = json.loads(match.group(1))
+previews = manifest.get("previews", [])
+entries = manifest.get("preview_entries", {})
+target_root = output / prefix if prefix else output
+
+for name in previews:
+    if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9][a-z0-9-]*", name):
+        raise SystemExit(f"[build_pages] ERROR: unsafe preview name: {name!r}")
+    if entries.get(name) != f"/lab/static/{name}/index.html":
+        raise SystemExit(f"[build_pages] ERROR: preview entry does not match its source directory: {name}")
+    source = root / "web" / name
+    if not (source / "index.html").is_file() or not (source / "SKILL.html").is_file():
+        raise SystemExit(f"[build_pages] ERROR: declared preview is incomplete: web/{name}")
+    shutil.copytree(source, target_root / name, dirs_exist_ok=True)
+
+    if name == "cfx11":
+        import subprocess
+        subprocess.run([
+            sys.executable,
+            str(root / "scripts/notebook-import/build_content_bundle.py"),
+            "--course", str(source),
+            "--output", str(target_root / name / "content-bundle.json"),
+        ], check=True)
+
+if previews:
+    shared = root / "web/shared"
+    if not shared.is_dir():
+        raise SystemExit("[build_pages] ERROR: declared previews require web/shared")
+    shutil.copytree(shared, target_root / "shared", dirs_exist_ok=True)
+    shutil.copy2(root / "web/_skill_explorer.js", target_root / "_skill_explorer.js")
+    print(f"[build_pages] previews -> {target_root} ({', '.join(previews)})")
+PROJ
 
 # ── 2. Link-graph viewer (engine.js runs client-side; offline = embedded snapshot) ──
 cp "$T1/scripts/runtime/engine.js" "$OUT/engine.js"
@@ -238,12 +288,16 @@ echo "[build_pages] validation.html (framer report mode) written"
 # build:deploy-tools marker. The Pages site never points at /lab.
 cp "$T1/web/index.html" "$OUT/index.html"
 python3 - "$OUT/index.html" "$COURSE_PREFIX" <<'PROJ'
-import sys, re
+import json, sys, re
 p, course_prefix = sys.argv[1], sys.argv[2].strip("/")
 s = open(p).read().replace("/lab/static/", "")   # authoritative /lab/static -> Pages-relative
 if course_prefix:
-    s = s.replace('href="nemoclaw/', 'href="' + course_prefix + '/nemoclaw/')
-    s = s.replace('"nemoclaw": "nemoclaw/', '"nemoclaw": "' + course_prefix + '/nemoclaw/')
+    document = re.sub(r"<!--.*?-->", "", s, flags=re.S)
+    contract = re.search(r'<script\b(?=[^>]*\bid="foyer-release")[^>]*>(.*?)</script>', document, re.S)
+    manifest = json.loads(contract.group(1)) if contract else {}
+    for course in [*manifest.get("released", []), *manifest.get("previews", [])]:
+        s = s.replace(f'href="{course}/', f'href="{course_prefix}/{course}/')
+        s = s.replace(f'"{course}": "{course}/', f'"{course}": "{course_prefix}/{course}/')
 tools = ('      <a href="validation.html">Validation report &rarr;</a>\n'
          '      <a href="tests.html">Test harness &rarr;</a>')
 s = re.sub(r'<!-- build:deploy-tools[^>]*-->', tools, s)
@@ -297,11 +351,17 @@ if [ "$LANGS" = 1 ] && [ -d "$T1/i18n" ]; then
         fi
         # the language foyer is its own translated web/index.html, /lab/static -> relative
         if [ -f "$locale_tmp/web/index.html" ]; then
-            python3 - "$locale_tmp/web/index.html" "$OUT/$lang/index.html" <<'PROJ'
-import sys, re
-src, out = sys.argv[1], sys.argv[2]
+            python3 - "$locale_tmp/web/index.html" "$OUT/$lang/index.html" "$COURSE_PREFIX" <<'PROJ'
+import json, sys, re
+src, out, course_prefix = sys.argv[1], sys.argv[2], sys.argv[3].strip("/")
 s = open(src).read()
 s = s.replace("/lab/static/nemoclaw/", "nemoclaw/")
+document = re.sub(r"<!--.*?-->", "", s, flags=re.S)
+contract = re.search(r'<script\b(?=[^>]*\bid="foyer-release")[^>]*>(.*?)</script>', document, re.S)
+manifest = json.loads(contract.group(1)) if contract else {}
+if course_prefix:
+    for course in manifest.get("previews", []):
+        s = s.replace(f"/lab/static/{course}/", f"../{course_prefix}/{course}/")
 s = s.replace("/lab/static/", "../")
 s = re.sub(r'<!-- build:deploy-tools[^>]*-->', '', s)   # the Pages-only tool links are root-only
 open(out, "w").write(s)

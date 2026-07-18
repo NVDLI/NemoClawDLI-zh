@@ -153,9 +153,9 @@
   },
   "reviews": {
     "web/index.html": {
-      "source_sha256": "21f28a5540329bc1d09b4a56054126d06f19ac5992249b4e3b5ed175f78a50a7",
-      "target_sha256": "18b46357f8871dd981cc7190b06dff3a7d9c4ae63d628820967a7e6f43a0d59b",
-      "reviewed_on": "2026-07-10"
+      "source_sha256": "c507f0474030601d9d7798fd3ef8454825055acc67eb87b24c35be211516de6c",
+      "target_sha256": "0e306f39ab2e348494d0970b6cd9eaf440997afa854e3c0abe3de6bf64de1055",
+      "reviewed_on": "2026-07-16"
     },
     "web/courses.html": {
       "source_sha256": "40badad44c7c40891d91fb3a078227812a1f5137fec19d8a2fb3e78383d69b4d",
@@ -220,10 +220,10 @@
       "reviewed_on": "2026-07-10"
     },
     "web/nemoclaw/04a-safety.html": {
-      "source_sha256": "e81d0181beb116e9977824def12b099ff7e837c9fffad34328b74932f552f87f",
-      "translation_sha256": "258bf1f601380ca0b3fdbc7e8f0b2c195bb0c2a1b6fec7aa571548f58e3d3280",
-      "target_sha256": "eb486f2a78ec1a400ab943773bcf3342d0dcbc48b4bea41a63b3470a3ebf1ae2",
-      "reviewed_on": "2026-07-10"
+      "source_sha256": "878e1ed7df7f9ecc6c96c16a8a8eee3019dbb8d725f59a91d42f25f5577a395f",
+      "translation_sha256": "fd95e699c9a0612b33e22fa095fb0e04c14c40415884c7058a474618edac404e",
+      "target_sha256": "328cc2f2e8a13ffad066663c6b5fb36d14e288eaef2a1bd59388d11ea1ad994b",
+      "reviewed_on": "2026-07-18"
     },
     "web/nemoclaw/04b-modern-clis.html": {
       "source_sha256": "009ea8eb2364c3692e70f21b7b5160ed619dec007611eabf329d73a245ffe2df",

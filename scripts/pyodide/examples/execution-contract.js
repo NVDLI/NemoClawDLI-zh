@@ -8,12 +8,18 @@
 import ast
 import asyncio
 import contextlib
+import dataclasses
 import html as html_lib
 import io
 import inspect
+import importlib.metadata
 import json as jsonlib
+import os
+import pathlib
 import pprint
 import re
+import shlex
+import time
 import traceback
 
 stdout = io.StringIO()
@@ -40,6 +46,85 @@ reply = {
 course_displays = []
 background_tasks = scope.setdefault("__course_background_tasks", {})
 DISPLAY_WIDTH = 100
+STRUCTURED_DEPTH_LIMIT = 12
+_UNSTRUCTURED = object()
+
+def _model_dump(value):
+    """Use Pydantic's public serialization protocol without inspecting object internals."""
+    try:
+        method = getattr(value, "model_dump", None)
+    except Exception:
+        return _UNSTRUCTURED
+    if not callable(method):
+        return _UNSTRUCTURED
+    try:
+        return method(mode="json")
+    except Exception:
+        return _UNSTRUCTURED
+
+def _structured_json_value(value, depth=0, seen=None):
+    """Normalize explicit structured objects into bounded, JSON-safe notebook output."""
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    if depth >= STRUCTURED_DEPTH_LIMIT:
+        return f"<{type(value).__name__}: display depth limit>"
+    if seen is None:
+        seen = set()
+    identity = id(value)
+    if identity in seen:
+        return f"<{type(value).__name__}: circular reference>"
+
+    dumped = _model_dump(value)
+    if dumped is not _UNSTRUCTURED:
+        seen.add(identity)
+        try:
+            return _structured_json_value(dumped, depth + 1, seen)
+        finally:
+            seen.discard(identity)
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
+        seen.add(identity)
+        try:
+            return {
+                field.name: _structured_json_value(getattr(value, field.name), depth + 1, seen)
+                for field in dataclasses.fields(value)
+            }
+        finally:
+            seen.discard(identity)
+    if isinstance(value, tuple) and hasattr(value, "_fields") and callable(getattr(value, "_asdict", None)):
+        seen.add(identity)
+        try:
+            return _structured_json_value(value._asdict(), depth + 1, seen)
+        finally:
+            seen.discard(identity)
+    if isinstance(value, dict):
+        seen.add(identity)
+        try:
+            return {
+                key if isinstance(key, (str, int, float, bool)) or key is None else repr(key):
+                    _structured_json_value(item, depth + 1, seen)
+                for key, item in value.items()
+            }
+        finally:
+            seen.discard(identity)
+    if isinstance(value, (list, tuple)):
+        seen.add(identity)
+        try:
+            return [_structured_json_value(item, depth + 1, seen) for item in value]
+        finally:
+            seen.discard(identity)
+    return repr(value)
+
+def _structured_root(value):
+    dumped = _model_dump(value)
+    if dumped is not _UNSTRUCTURED:
+        return _structured_json_value(dumped)
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
+        return _structured_json_value(value)
+    if isinstance(value, (dict, list)):
+        return _structured_json_value(value)
+    if isinstance(value, tuple) and hasattr(value, "_fields") and callable(getattr(value, "_asdict", None)):
+        return _structured_json_value(value)
+    return _UNSTRUCTURED
 
 def _language_name(value):
     language = str(value or "text").strip().lower()
@@ -73,7 +158,7 @@ class JSON(_DisplayObject):
     def __init__(self, data, expanded=True, indent=2):
         self.value = data
         self.expanded = bool(expanded)
-        rendered = jsonlib.dumps(data, ensure_ascii=False, indent=max(0, int(indent)), default=str)
+        rendered = jsonlib.dumps(_structured_json_value(data), ensure_ascii=False, indent=max(0, int(indent)))
         super().__init__(rendered, "application/json", "json")
 
 class Artifact(_DisplayObject):
@@ -102,8 +187,9 @@ def _display_record(value):
     json_method = getattr(value, "_repr_json_", None)
     if callable(json_method):
         return JSON(json_method())._course_display_()
-    if isinstance(value, (dict, list)):
-        return JSON(value)._course_display_()
+    structured = _structured_root(value)
+    if structured is not _UNSTRUCTURED:
+        return JSON(structured)._course_display_()
     if isinstance(value, (tuple, set, frozenset)):
         return {
             "type": "text/x-code",
@@ -211,6 +297,138 @@ def clear_output(wait=False):
         stream.seek(0)
         stream.truncate(0)
 
+def inspect_object(expression, detail=1):
+    """Inspect a live expression with notebook-style ? or ?? detail."""
+    text = str(expression or "").strip()
+    if not text:
+        raise ValueError("Enter an expression before ? or ??")
+    value = eval(compile(text, "<notebook-inspect>", "eval"), scope, scope)
+    record = {
+        "expression": text,
+        "type": f"{type(value).__module__}.{type(value).__qualname__}",
+        "value": pprint.pformat(value, width=DISPLAY_WIDTH, sort_dicts=False),
+    }
+    try:
+        record["signature"] = str(inspect.signature(value))
+    except (TypeError, ValueError):
+        pass
+    doc = inspect.getdoc(value)
+    if doc:
+        record["documentation"] = doc
+    if int(detail) > 1:
+        try:
+            record["source"] = inspect.getsource(value)
+        except (OSError, TypeError):
+            record["source"] = "Source is unavailable for this runtime object."
+    return record
+
+def _browser_shell_stage(command, incoming=""):
+    parts = shlex.split(command)
+    if not parts:
+        return incoming
+    name, args = parts[0], parts[1:]
+    if name == "echo":
+        return " ".join(args) + "\n"
+    if name == "pwd":
+        return os.getcwd() + "\n"
+    if name == "ls":
+        target = pathlib.Path(args[0] if args else ".")
+        return "\n".join(sorted(item.name + ("/" if item.is_dir() else "") for item in target.iterdir())) + "\n"
+    if name == "cat":
+        if not args:
+            return incoming
+        return "".join(pathlib.Path(path).read_text(encoding="utf-8") for path in args)
+    if name in {"head", "tail"}:
+        count, paths = 10, list(args)
+        if len(paths) >= 2 and paths[0] == "-n":
+            count, paths = int(paths[1]), paths[2:]
+        text = "".join(pathlib.Path(path).read_text(encoding="utf-8") for path in paths) if paths else incoming
+        lines = text.splitlines()
+        selected = lines[:count] if name == "head" else lines[-count:]
+        return "\n".join(selected) + ("\n" if selected else "")
+    if name == "rev":
+        return "\n".join(line[::-1] for line in incoming.splitlines()) + ("\n" if incoming else "")
+    if name == "tr" and len(args) == 2:
+        def expand_range(value):
+            if len(value) == 3 and value[1] == "-" and ord(value[0]) <= ord(value[2]):
+                return "".join(chr(code) for code in range(ord(value[0]), ord(value[2]) + 1))
+            return value
+        source_chars, target_chars = (expand_range(value) for value in args)
+        return incoming.translate(str.maketrans(source_chars, target_chars))
+    if name == "sort":
+        return "\n".join(sorted(incoming.splitlines())) + ("\n" if incoming else "")
+    if name == "uniq":
+        values = []
+        for line in incoming.splitlines():
+            if not values or values[-1] != line:
+                values.append(line)
+        return "\n".join(values) + ("\n" if values else "")
+    if name == "grep" and args:
+        return "\n".join(line for line in incoming.splitlines() if args[0] in line) + "\n"
+    if name == "wc":
+        return f"{len(incoming.splitlines())} {len(incoming.split())} {len(incoming.encode())}\n"
+    if name == "python" and args == ["--version"]:
+        import platform
+        return f"Python {platform.python_version()} (Pyodide browser runtime)\n"
+    if name == "which" and args == ["python"]:
+        return "python (Pyodide browser runtime; no host process)\n"
+    if name == "pip" and args == ["list"]:
+        rows = sorted((dist.metadata.get("Name", "unknown"), dist.version) for dist in importlib.metadata.distributions())
+        return "Package Version\n" + "\n".join(f"{package} {version}" for package, version in rows) + "\n"
+    raise ValueError(f"Unsupported browser-shell command: {name}. Run %magic for supported notebook syntax.")
+
+def browser_shell(command):
+    """Run a bounded shell-like pipeline against the browser's virtual filesystem."""
+    text = str(command or "").strip()
+    if not text:
+        return None
+    if any(token in text for token in ("&&", "||", ";", ">", "<", chr(96), "$(")):
+        raise ValueError("Browser shell supports simple commands and | pipelines, not host-shell control or redirection.")
+    output = ""
+    for stage in text.split("|"):
+        output = _browser_shell_stage(stage.strip(), output)
+    if output:
+        print(output, end="" if output.endswith("\n") else "\n")
+    return None
+
+def notebook_who(details=False):
+    hidden = set(helper_defaults) | {"inputs"}
+    names = sorted(name for name in scope if not name.startswith("_") and name not in hidden)
+    if not details:
+        return names
+    return [{"name": name, "type": type(scope[name]).__name__, "value": pprint.pformat(scope[name], width=60)[:240]} for name in names]
+
+def notebook_pwd():
+    return os.getcwd()
+
+def notebook_ls(path="."):
+    target = pathlib.Path(str(path or ".")).expanduser()
+    return [{"name": item.name, "kind": "directory" if item.is_dir() else "file"} for item in sorted(target.iterdir())]
+
+def notebook_cd(path="."):
+    os.chdir(str(path or "."))
+    return os.getcwd()
+
+def notebook_pip_list():
+    return [{"package": dist.metadata.get("Name", "unknown"), "version": dist.version} for dist in sorted(importlib.metadata.distributions(), key=lambda item: item.metadata.get("Name", "").lower())]
+
+def notebook_time(expression, repeat=1):
+    runs = max(1, min(int(repeat), 20))
+    code = compile(str(expression), "<notebook-time>", "eval")
+    started = time.perf_counter()
+    value = None
+    for _ in range(runs):
+        value = eval(code, scope, scope)
+    elapsed = time.perf_counter() - started
+    return {"runs": runs, "total_ms": round(elapsed * 1000, 3), "per_run_ms": round(elapsed * 1000 / runs, 3), "value": value}
+
+def notebook_magic():
+    return [
+        "value? / value?? — inspect a live object", "!command / %%bash — bounded browser-shell commands",
+        "%%time — time a cell", "%who / %whos — inspect the live namespace", "%pwd / %ls / %cd — use the virtual filesystem",
+        "%pip list — list installed browser packages", "%time / %timeit — time an expression", "%magic — show this list",
+    ]
+
 helper_defaults = {
     "display": display,
     "display_text": display_text,
@@ -225,6 +443,15 @@ helper_defaults = {
     "background_status": background_status,
     "wait_background": wait_background,
     "cancel_background": cancel_background,
+    "inspect_object": inspect_object,
+    "browser_shell": browser_shell,
+    "notebook_who": notebook_who,
+    "notebook_pwd": notebook_pwd,
+    "notebook_ls": notebook_ls,
+    "notebook_cd": notebook_cd,
+    "notebook_pip_list": notebook_pip_list,
+    "notebook_time": notebook_time,
+    "notebook_magic": notebook_magic,
     "HTML": HTML,
     "Markdown": Markdown,
     "Code": Code,
@@ -247,24 +474,34 @@ scope.update({
 
 async def run_course_cell():
     tree = ast.parse(__cell_source, filename="<course-cell>", mode="exec")
+    instrument_tree = scope.get("__course_instrument_tree__")
+    if callable(instrument_tree):
+        tree = instrument_tree(tree, __execution_count)
+        ast.fix_missing_locations(tree)
     final_expression = tree.body.pop() if tree.body and isinstance(tree.body[-1], ast.Expr) else None
     flags = ast.PyCF_ALLOW_TOP_LEVEL_AWAIT
-    with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-        statements = eval(compile(tree, "<course-cell>", "exec", flags=flags), scope, scope)
-        if inspect.isawaitable(statements):
-            await statements
-        if final_expression:
-            expression = ast.Expression(final_expression.value)
-            ast.fix_missing_locations(expression)
-            value = eval(compile(expression, "<course-cell>", "eval", flags=flags), scope, scope)
-            if inspect.isawaitable(value):
-                value = await value
-            record = _display_record(value)
-            reply["value"] = value
-            reply["display_type"] = record["type"]
-            reply["display"] = record["data"]
-            reply["display_language"] = record.get("language", "")
-            reply["has_value"] = value is not None
+    namespace_before = {name: id(value) for name, value in scope.items()}
+    try:
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            statements = eval(compile(tree, "<course-cell>", "exec", flags=flags), scope, scope)
+            if inspect.isawaitable(statements):
+                await statements
+            if final_expression:
+                expression = ast.Expression(final_expression.value)
+                ast.fix_missing_locations(expression)
+                value = eval(compile(expression, "<course-cell>", "eval", flags=flags), scope, scope)
+                if inspect.isawaitable(value):
+                    value = await value
+                record = _display_record(value)
+                reply["value"] = value
+                reply["display_type"] = record["type"]
+                reply["display"] = record["data"]
+                reply["display_language"] = record.get("language", "")
+                reply["has_value"] = value is not None
+    finally:
+        record_namespace = scope.get("__course_record_namespace__")
+        if callable(record_namespace):
+            record_namespace(namespace_before, scope, __execution_count)
 
 try:
     await run_course_cell()
@@ -313,6 +550,9 @@ jsonlib.dumps(reply, default=str)
     ["background_status", "background_status(name=None)", "Inspect one registered task or list every task and its state."],
     ["wait_background", "await wait_background(name)", "Wait for a registered task and return its result record."],
     ["cancel_background", "await cancel_background(name)", "Cancel a registered task; Stop and Reset terminate the whole worker."],
+    ["inspect_object", "inspect_object(expression, detail=1)", "Inspect a live expression; notebook ? and ?? syntax calls this helper."],
+    ["browser_shell", "browser_shell(command)", "Run bounded shell-like commands inside the browser virtual filesystem; no host process is started."],
+    ["notebook_who", "notebook_who(details=False)", "List the learner variables in the persistent Python namespace."],
   ].map(([name, signature, description]) => Object.freeze({
     name, signature, description, source: definitionSource(name),
   }));

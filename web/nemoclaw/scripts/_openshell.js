@@ -455,6 +455,7 @@ export function annotatePolicyYaml(yaml) {
 export function mountPolicyMap(sel, { policy = OPENSHELL_POLICY_HARDENED, binaries, snapshotDate = "2026-06-17" } = {}) {
   const root = typeof sel === "string" ? document.querySelector(sel) : sel;
   if (!root) return;
+  root.dataset.state = "ready";
   const BINS = binaries || [
     { path: "/usr/bin/curl", label: "curl" },
     { path: "/usr/local/bin/openclaw", label: "openclaw" },
@@ -560,6 +561,7 @@ export function mountPolicyMap(sel, { policy = OPENSHELL_POLICY_HARDENED, binari
     detail.dataset.bin = binPath;
   }
   function showDetail(i) {
+    root.dataset.state = "selected";
     const t = targets[i], binPath = detail.dataset.bin, v = verdictFor(t, binPath);
     const binLabel = (BINS.find(b => b.path === binPath) || {}).label || binPath;
     const allowedBins = t.policy ? ((policy.network_policies[t.policy] || {}).binaries || []).map(b => b.path) : [];
@@ -580,7 +582,7 @@ export function mountPolicyMap(sel, { policy = OPENSHELL_POLICY_HARDENED, binari
        <div style="margin-top:.4em;font-size:.8rem">${why}</div>`;
     focusSource(t);   // scroll the policy source to this rule and highlight it
   }
-  bin.addEventListener("change", () => render(bin.value));
+  bin.addEventListener("change", () => { root.dataset.state = "selected"; render(bin.value); });
   sb.addEventListener("click", e => { const g = e.target.closest(".pmap-t"); if (g) showDetail(+g.dataset.i); });
 
   // ── Observability: show the exact policy every edge is computed from ─────────

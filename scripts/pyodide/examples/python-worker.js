@@ -3,6 +3,7 @@
 
 import { loadRuntime } from "./runtime-loader.js";
 import "./execution-contract.js";
+import "./notebook-syntax.js";
 
 const PACKAGE_PROFILES = Object.freeze({
   core: [],
@@ -37,10 +38,13 @@ async function prepareRuntime(profile = "core") {
 async function runCell({ source, inputs = {}, profile = "core" }) {
   const pyodide = await prepareRuntime(profile);
   executionCount += 1;
-  pyodide.globals.set("__cell_source", source);
+  const normalized = globalThis.PYODIDE_NOTEBOOK_SYNTAX.normalize(source);
+  pyodide.globals.set("__cell_source", normalized.source);
   pyodide.globals.set("__cell_inputs", inputs);
   pyodide.globals.set("__execution_count", executionCount);
-  return JSON.parse(String(await pyodide.runPythonAsync(EXECUTE_CELL)));
+  const reply = JSON.parse(String(await pyodide.runPythonAsync(EXECUTE_CELL)));
+  if (reply.error_line && normalized.lineOffset) reply.error_line = Math.max(1, reply.error_line - normalized.lineOffset);
+  return reply;
 }
 
 self.addEventListener("message", async ({ data }) => {

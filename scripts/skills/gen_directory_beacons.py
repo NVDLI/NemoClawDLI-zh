@@ -42,6 +42,28 @@ SUMMARIES = {
     "web/nemoclaw/mats/glossary_raw/images": "Images retained with the versioned glossary source material.",
     "web/nemoclaw/vendor": "Pinned same-origin browser dependencies, generated metadata, and license evidence.",
     "web/nemoclaw/vendor/licenses": "Exact license texts shipped for pinned browser dependencies.",
+    "scripts/notebook-import": "Deterministic Jupyter-to-Markdown projection with cell-level source fidelity evidence.",
+    "scripts/ci": "Fixed-vocabulary internal GitLab operations for exact artifact retrieval, secret-isolated live review, language-selective publication planning, and the root-installed devbox publisher.",
+    "web/cfx11": "Internal browser candidate for c-fx-11-v1, with reviewed Markdown source, executable XBlocks, and direct learner-owned NVIDIA API access.",
+    "web/cfx11/content": "Verbatim notebook cells projected into Markdown and bound to the reviewed source archive by course.json.",
+    "web/cfx11/runtime": "Pyodide worker, execution client, and narrow compatibility layer that run the imported Python against the direct NVIDIA API.",
+    "web/cfx11/content/6-Assessment/data": "Reviewed synthetic assessment emails copied from the source archive and mounted read-only into the browser Python lesson.",
+    "web/shared": "Pinned browser libraries and course-authored interface primitives shared without creating sibling-course dependencies.",
+    "web/shared/vendor": "Byte-identical publisher browser assets with version, license, digest, and reviewed-copy evidence.",
+    "web/shared/vendor/licenses": "Complete upstream license texts for the shared browser assets.",
+}
+
+GUIDANCE = {
+    "scripts/ci": '''
+  <section aria-labelledby="operator-flow"><h2 id="operator-flow">Operator flow</h2>
+    <ol>
+      <li><strong>Select evidence:</strong> use an exact branch, full commit SHA, and successful gate job. Live review also selects provider-matched launchables; publication selects languages and immutable or stable delivery.</li>
+      <li><strong>Acquire without candidate execution:</strong> the protected child job verifies GitLab metadata and emits only the bounded archive and request record.</li>
+      <li><strong>Exercise or publish:</strong> a separate secret-free job builds the pinned browser runtime without opening candidate content. Candidate browsers run without protected variables. Live probes receive only environment-scoped file secrets. CDN preparation has no AWS authority; the root-installed devbox publisher accepts only its hash plan.</li>
+    </ol>
+    <p><a href="../../docs/pages_deploy.md">Open the exact <code>glab</code> branch/language commands and runner provisioning steps.</a></p>
+    <p>These operations are internal GitLab capabilities. Public GitHub receives the source and ordinary validation, but no trigger, secret, protected environment, devbox runner, or AWS authority.</p>
+  </section>''',
 }
 
 
@@ -107,6 +129,7 @@ def page(rel: Path, files: list[Path], directories: list[Path]) -> str:
     )
     title = title_for(rel)
     summary = summary_for(rel)
+    guidance = "\n" + GUIDANCE[str(rel)] if str(rel) in GUIDANCE else ""
     explorer_rel = os.path.relpath(ROOT / "web" / "_skill_explorer.js", absolute)
     home_rel = os.path.relpath(ROOT / "web" / "index.html", absolute)
     map_rel = os.path.relpath(ROOT / "SKILL.html", absolute)
@@ -196,7 +219,7 @@ def page(rel: Path, files: list[Path], directories: list[Path]) -> str:
   <nav aria-label="Skill navigation"><a href="{html.escape(home_rel)}">Course home</a> · <a href="{html.escape(parent_skill)}">Parent contract</a> · <a data-skill-nav="map" href="{html.escape(map_rel)}">Repository map</a></nav>
   </header>
   <h1 id="skill-title">{html.escape(title)}</h1>
-  <p>{html.escape(summary)}</p>
+  <p>{html.escape(summary)}</p>{guidance}
   <div class="skill-columns">
     <section><h2>Files</h2><ul>
 {file_links}

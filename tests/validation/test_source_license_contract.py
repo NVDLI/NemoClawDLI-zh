@@ -96,6 +96,25 @@ class SourceLicenseContractTests(unittest.TestCase):
                 },
             ],
         }), encoding="utf-8")
+        shared_vendor = self.root / "web/shared/vendor"
+        (shared_vendor / "licenses").mkdir(parents=True)
+        self.shared_file = shared_vendor / "library.js"
+        self.shared_file.write_bytes(self.library_file.read_bytes())
+        (shared_vendor / "licenses/library--1.0.0.txt").write_text("MIT License\n", encoding="utf-8")
+        self.shared_manifest = shared_vendor / "browser-dependencies.json"
+        self.shared_manifest.write_text(json.dumps({
+            "schema": "dli-shared-browser-dependencies/1",
+            "packages": [{
+                "name": "library", "version": "1.0.0", "license": "MIT",
+                "license_file": "licenses/library--1.0.0.txt",
+            }],
+            "assets": [{
+                "file": "library.js", "package": "library@1.0.0",
+                "sha256": hashlib.sha256(self.shared_file.read_bytes()).hexdigest(),
+                "bytes": self.shared_file.stat().st_size,
+                "reviewed_copy": "web/nemoclaw/vendor/library.js",
+            }],
+        }), encoding="utf-8")
 
     def tearDown(self) -> None:
         self.temp.cleanup()
@@ -162,6 +181,9 @@ class SourceLicenseContractTests(unittest.TestCase):
     def test_publisher_minified_upstream_copy_is_accepted(self) -> None:
         data = json.loads(self.manifest.read_text(encoding="utf-8"))
         self.library_file.rename(self.library_file.with_name("library.min.js"))
+        shared = json.loads(self.shared_manifest.read_text(encoding="utf-8"))
+        shared["assets"][0]["reviewed_copy"] = "web/nemoclaw/vendor/library.min.js"
+        self.shared_manifest.write_text(json.dumps(shared), encoding="utf-8")
         data["assets"][0].update({
             "file": "library.min.js",
             "distribution_form": "upstream-file-copy",
@@ -239,6 +261,22 @@ class SourceLicenseContractTests(unittest.TestCase):
         self.upstream_file.write_bytes(b"different publisher bytes\n")
         failures = self.audit(verify_browser_upstream=True)
         self.assertTrue(any("publisher byte identity failed" in item for item in failures), failures)
+
+    def test_shared_vendor_byte_mutation_is_rejected(self) -> None:
+        self.shared_file.write_bytes(b"changed shared bytes\n")
+        self.assert_rejected("shared browser vendor: delivered asset hash or size differs")
+
+    def test_shared_vendor_unmanifested_asset_is_rejected(self) -> None:
+        (self.shared_file.parent / "extra.js").write_text("extra\n", encoding="utf-8")
+        self.assert_rejected("manifest must exhaustively describe every delivered asset")
+
+    def test_shared_vendor_reviewed_copy_drift_is_rejected(self) -> None:
+        self.library_file.write_bytes(b"reviewed source changed\n")
+        self.assert_rejected("differs from its reviewed publisher copy")
+
+    def test_shared_vendor_license_evidence_is_required(self) -> None:
+        (self.shared_file.parent / "licenses/library--1.0.0.txt").unlink()
+        self.assert_rejected("missing license evidence")
 
     def test_header_fixer_preserves_shebang(self) -> None:
         target = self.root / "tests/unlicensed.js"

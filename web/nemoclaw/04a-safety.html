@@ -185,7 +185,6 @@
     </div>
   </details>
 
-  <div id="sandbox-mechanisms"></div>
   <h2>How the sandbox mechanisms answer testable questions</h2>
   <p>This launchable combines four operating-system mechanisms. Each answers a
      question you can test, and together they apply policy at more than one
@@ -470,7 +469,7 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
     fresh.
   </div>
 
-  <div id="sbx-pick"></div>
+  <div id="sbx-pick" data-dli-interface="scenario-picker"></div>
   <script type="module">
     // Picker writes window.__sbxAction, then auto-runs Predict.
     window.__SBX_SCENARIOS = [
@@ -486,6 +485,7 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
     const SCEN = window.__SBX_SCENARIOS;
     window.__sbxAction = SCEN[0].a;
     const host = document.querySelector("#sbx-pick");
+    host.dataset.state = "ready";
     host.style.cssText = "margin:0 0 8px";
     const describe = (a) => a.binary + " → " + a.host + ":" + a.port + (a.path ? "  " + (a.method || "GET") + " " + a.path : "");
     const runPredict = () => { const b = document.querySelector("#cell-predict-confirm .cf-panel[data-id='predict'] .cf-panel-runone"); if (b) b.click(); };
@@ -494,6 +494,7 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
     disp.style.cssText = "font-size:.78rem;color:var(--tf,#8a8a8a);margin-top:4px";
 
     const pick = (s, run) => {
+      host.dataset.state = run ? "selected" : "ready";
       window.__sbxAction = s.a;
       Object.values(btns).forEach((b) => b.classList.remove("on"));
       btns[s.id].classList.add("on");

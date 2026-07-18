@@ -11,6 +11,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const MANIFEST = JSON.parse(await readFile(path.join(HERE, "candidate-components.json"), "utf8"));
 await import(pathToFileURL(path.join(HERE, "examples/cell-examples.js")));
 await import(pathToFileURL(path.join(HERE, "examples/execution-contract.js")));
+await import(pathToFileURL(path.join(HERE, "examples/notebook-syntax.js")));
 const EXAMPLES = globalThis.PYODIDE_CELL_EXAMPLES;
 const EXECUTE_CELL = globalThis.PYODIDE_EXECUTION_CONTRACT.source;
 const CDN_BASE = `https://cdn.jsdelivr.net/pyodide/v${MANIFEST.runtime.pyodide}/full/`;
@@ -67,10 +68,13 @@ let executionCount = 0;
 
 async function execute(source, inputs) {
   executionCount += 1;
-  pyodide.globals.set("__cell_source", source);
+  const normalized = globalThis.PYODIDE_NOTEBOOK_SYNTAX.normalize(source);
+  pyodide.globals.set("__cell_source", normalized.source);
   pyodide.globals.set("__cell_inputs", inputs);
   pyodide.globals.set("__execution_count", executionCount);
-  return JSON.parse(String(await pyodide.runPythonAsync(EXECUTE_CELL)));
+  const reply = JSON.parse(String(await pyodide.runPythonAsync(EXECUTE_CELL)));
+  if (reply.error_line && normalized.lineOffset) reply.error_line = Math.max(1, reply.error_line - normalized.lineOffset);
+  return reply;
 }
 
 if (!Array.isArray(EXAMPLES) || EXAMPLES.length < 8) {
@@ -135,10 +139,52 @@ const stateNext = await execute("repl_value += 1\nrepl_value", {});
 if (stateStart.display !== "41" || stateNext.display !== "42" || stateNext.execution_count !== stateStart.execution_count + 1) {
   throw new Error("Python namespace or execution counter did not persist between runs");
 }
+const inspectReply = await execute("??repl_value", {});
+if (!inspectReply.ok || !inspectReply.display.includes("builtins.int") || !inspectReply.display.includes('"value": "42"')) {
+  throw new Error("Notebook ?? inspection did not resolve a persistent value");
+}
+const shellReply = await execute("!echo hello pipes | rev | tr 'a-z' 'A-Z'", {});
+if (!shellReply.ok || !shellReply.stdout.includes("SEPIP OLLEH")) {
+  throw new Error(`Bounded browser-shell pipeline did not execute: ${JSON.stringify(shellReply)}`);
+}
+const magicReply = await execute("%magic", {});
+if (!magicReply.ok || !magicReply.display.includes("value? / value??")) {
+  throw new Error("Notebook magic help did not render");
+}
 const prettyReply = await execute("{'outer': {'numbers': list(range(12)), 'ready': True}}", {});
 if (prettyReply.display_type !== "application/json" || prettyReply.display_language !== "json"
     || JSON.parse(prettyReply.display).outer.ready !== true || !prettyReply.display.includes("\n")) {
   throw new Error("Container output was not emitted as indented JSON");
+}
+const structuredObjectReply = await execute(`from dataclasses import dataclass
+@dataclass
+class Usage:
+    input_tokens: int
+    output_tokens: int
+class Message:
+    def model_dump(self, mode="python"):
+        if mode != "json":
+            raise ValueError("JSON mode is required")
+        return {
+            "type": "ai",
+            "content": "Structured response",
+            "usage": Usage(18, 23),
+        }
+[Message(), {"nested": Message()}]`, {});
+const structuredObjects = JSON.parse(structuredObjectReply.display);
+if (structuredObjectReply.display_type !== "application/json"
+    || structuredObjects[0].type !== "ai"
+    || structuredObjects[0].usage.input_tokens !== 18
+    || structuredObjects[1].nested.content !== "Structured response"
+    || structuredObjectReply.display.includes("Message object at")) {
+  throw new Error("Explicit structured Python objects were not recursively emitted as JSON");
+}
+const ordinaryObjectReply = await execute(`class Ordinary:
+    def __repr__(self):
+        return "Ordinary(display-only)"
+Ordinary()`, {});
+if (ordinaryObjectReply.display_type !== "text/plain" || ordinaryObjectReply.display !== "Ordinary(display-only)") {
+  throw new Error("Ordinary Python objects no longer retain their plain repr fallback");
 }
 const richReply = await execute(`display_markdown("**Markdown works**")
 display_html("<strong>HTML works</strong>")
@@ -164,7 +210,7 @@ console.log(JSON.stringify({
   examples: results,
   coverage: [...coverage].sort(),
   stdout: "captured",
-  display: "highlight-ready JSON, code, Markdown, HTML, and table MIME output",
+  display: "highlight-ready structured objects, JSON, code, Markdown, HTML, and table MIME output",
   helpers: "editable display override persisted",
   background: "registered, completed, inspected, and cancelled named asyncio tasks",
   artifact: "generated JSON preview retained exact downloadable content",

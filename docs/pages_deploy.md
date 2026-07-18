@@ -99,7 +99,7 @@ stage when their rules select them.
 
 ### GitLab Pages (private pre-release)
 
-The inert `.gitlab-ci.yml` includes owner-gated core and SCA modules. `.gitlab/ci/core.yml`
+The inert `.gitlab-ci.yml` includes exact owner-gated core, SCA, and internal-operations modules. `.gitlab/ci/core.yml`
 defines `test`, `deploy`, `verify`, and `review` stages. The required `test` job builds the
 proposal candidate after its gates pass; the manual `pages` job copies those bytes into either a
 production root or branch preview instead of rebuilding the proposal.
@@ -163,6 +163,116 @@ The preview job keeps both cleanup controls:
 This is not a parallel-preview system. Production refs and environments must remain
 protected because a branch may still propose changes to the workflow itself. Migrate to a
 separate staging project or true parallel Pages deployments when the host supports them.
+
+### Protected live review and DLI CDN publication
+
+**Design goal:** a requested operation may choose a reviewed source branch and language subset,
+but it cannot choose its executable code, credential destination, bucket, prefix, shell command,
+or AWS identity.
+
+Both operations start a new pipeline on protected internal GitLab `main`. `main` supplies the
+trusted harness; the selected branch supplies only the exact successful `test` artifact named by
+ref, full SHA, and job ID. The job metadata, archive bounds, candidate manifest, and commit binding
+must all agree before any interface runs or any file enters a publication plan.
+
+The parent job is runnerless. It maps only the documented request fields into a static child
+pipeline and disables pipeline-variable forwarding. Process controls such as `BASH_ENV`, `PATH`,
+tracing, checkout strategy, AWS variables, and secret file paths do not cross that boundary.
+
+Configure these protected **file** variables on the `live-interface-review` environment; do not
+pass their contents through `glab`:
+
+- `COURSE_GITLAB_API_URL_FILE`, containing the internal GitLab `/api/v4` URL; scope it to
+  `dli-source-review` and `live-interface-review`
+- `COURSE_GITLAB_READ_TOKEN_FILE` with project-scoped `read_api` only; scope the same file variable
+  to `dli-source-review` and `live-interface-review`
+- `LIVE_NVIDIA_API_KEY_FILE`
+- `LIVE_BUILD_API_KEY_FILE`
+- `LIVE_CLAW_SESSION_1_FILE`
+- `LIVE_CLAW_SESSION_2_FILE` when a second launchable is requested
+
+Then request the fixed live matrix. It exercises candidate browser interfaces without credentials,
+and exercises model request/stream plus OpenClaw gateway, terminal, chat, and cron transports from
+trusted default-branch code. A separate credential-free job resolves the pinned browser runtime;
+it never opens candidate content, and both browser jobs consume its short-lived artifact.
+
+Before either operation handles a candidate, trusted code reads the owner-managed API origin file,
+checks it against the pinned origin digest, rejects redirects, and verifies the actual child
+pipeline, project, current `main` head, checkout, commit, and job name. The project also keeps **Minimum role to
+use pipeline variables = Owner**.
+
+Only the acquisition job receives the read-only GitLab token. It verifies the selected branch head,
+latest paginated job evidence, and successful `test`, Pages, browser, and all three SCA jobs. Artifact
+bytes use the narrower child job token. Candidate JavaScript runs later with a scrubbed environment
+and receives only the verified archive and non-secret request record.
+
+```bash
+glab ci run -b main \
+  --variables "COURSE_OP:live-interface-review" \
+  --variables "CANDIDATE_REF:<reviewed-branch>" \
+  --variables "CANDIDATE_SHA:<full-40-character-sha>" \
+  --variables "CANDIDATE_TEST_JOB_ID:<successful-test-job-id>" \
+  --variables "CLAW_URL_1:https://<launchable-host>/" \
+  --variables "CLAW_ACCESS_PROVIDER_1:<cloudflare-or-pomerium>" \
+  --variables "CLAW_URL_2:https://<optional-second-launchable-host>/" \
+  --variables "CLAW_ACCESS_PROVIDER_2:<matching-provider>"
+```
+
+CDN publication accepts the same kind of source binding plus explicit course and language lists. `immutable`
+publishes under `/course-static/<full-sha>/`; `stable` publishes under `/course-static/nemoclaw/`
+and accepts only a branch in the devbox publisher's root-owned `stable_refs` allowlist. A branch
+name never becomes an S3 destination. `PUBLISH_COURSES` must include `nemoclaw`; `cfx11` enters an
+operation only when an owner names it explicitly. The comma-separated language list controls which
+NemoClaw language trees enter the operation; no hidden default adds a course or locale.
+
+```bash
+glab ci run -b main \
+  --variables "COURSE_OP:cdn-publish" \
+  --variables "PUBLISH_SOURCE_REF:<reviewed-branch>" \
+  --variables "PUBLISH_SOURCE_SHA:<full-40-character-sha>" \
+  --variables "PUBLISH_SOURCE_TEST_JOB_ID:<successful-test-job-id>" \
+  --variables "PUBLISH_COURSES:nemoclaw" \
+  --variables "PUBLISH_LANGUAGES:en,es" \
+  --variables "PUBLISH_CHANNEL:immutable"
+```
+
+`cdn_prepare` has no AWS authority. It emits only selected bytes and a complete SHA-256 plan.
+`cdn_publish` has no checkout, runs on the protected project-locked `dli-cdn-publisher` runner on
+`vk-devbox-cpu-1`, and invokes only the root-owned
+`/opt/dli-course-publisher/publish`. That program verifies every planned file, the configured AWS
+account, the fixed `cdn.dli.learn.nvidia.com/course-static` destination, and the allowed channel.
+It exposes no free-form shell, bucket, prefix, sync, or deletion input.
+
+The publisher uses a root-owned AWS executable, configuration, credentials, exact IAM user or
+delimiter-bound assumed-role rule, and fixed CloudFront distribution. It inventories every S3 page;
+malformed or repeated keys fail the operation. Immutable prefixes
+must contain only the exact reviewed manifest. Stable publication removes stale objects only from
+the fixed roots owned by the explicitly selected courses, then requires the remote key/size inventory
+to match. Selecting `nemoclaw` never grants authority over `cfx11/`. It waits for a CloudFront
+invalidation before comparing every served byte. The language list is the complete stable language
+set for NemoClaw, not an additive hint.
+
+Provision that runner once, outside CI, after reviewing the exact source commit:
+
+```bash
+bash scripts/ci/install_devbox_publisher.sh \
+  <expected-12-digit-aws-account-id> \
+  <exact-user-arn-or-assumed-role-prefix-ending-in-slash> \
+  <cloudfront-distribution-id> \
+  <project-locked-runner-group>
+```
+
+Set `DLI_STABLE_REFS` only during this root-owned installation when another reviewed branch may
+publish stable URLs. Set `DLI_AWS_CONFIG_SOURCE` and `DLI_AWS_CREDENTIALS_SOURCE` when the reviewed
+files are not under the installer account's default AWS directory.
+
+This capability is deliberately **internal GitLab only**. The reviewable source remains in the
+shared repository, but GitHub receives no workflow edge to it, protected variables, protected
+environment, devbox runner, root-owned publisher, AWS identity, or live-launchable session. The CI
+policy rejects internal authority vocabulary in public workflows. Host policy must not trust GitHub
+OIDC for the DLI CDN role or attach an internal runner to the public repository. GitHub may validate
+and publish its own public release artifacts; source availability never transfers DLI CDN or
+live-launchable authority.
 
 ### GitHub Pages (external release)
 

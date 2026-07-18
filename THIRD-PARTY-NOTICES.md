@@ -12,6 +12,11 @@ Use these records to review the third-party scope:
   output is a transformed bundle or a byte-for-byte upstream copy.
 - [`web/nemoclaw/vendor/licenses/`](web/nemoclaw/vendor/licenses/) contains the license text copied
   for every browser package and embedded source component represented in the generated vendor manifest.
+- [`web/shared/vendor/browser-dependencies.json`](web/shared/vendor/browser-dependencies.json)
+  records the course-neutral CodeMirror, Highlight.js, and Marked copies, including exact versions,
+  licenses, digests, byte counts, and the already-reviewed publisher copy for each file.
+- [`web/shared/vendor/licenses/`](web/shared/vendor/licenses/) contains the corresponding complete
+  upstream license texts.
 - [`scripts/browser-vendor/embedded-component-evidence.json`](scripts/browser-vendor/embedded-component-evidence.json)
   identifies utility source that LangChain copied into `@langchain/core`, pins the official LangChain
   tag and commit, and maps esbuild-preserved comments to full license evidence.

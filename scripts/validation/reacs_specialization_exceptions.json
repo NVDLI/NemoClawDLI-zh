@@ -1,0 +1,45 @@
+{
+  "schema": "reacs-specialization-exceptions/1",
+  "allowed_dimensions": [
+    "canonical-copy",
+    "course-prose-style",
+    "legacy-form-factor-migration",
+    "source-fidelity"
+  ],
+  "forbidden_dimensions": [
+    "accessibility",
+    "artifact-integrity",
+    "credential-boundary",
+    "dependency-security",
+    "html-links",
+    "syntax",
+    "theme"
+  ],
+  "entries": [
+    {
+      "id": "cfx11-specialized-validation-baseline",
+      "course": "cfx11",
+      "dimension": "legacy-form-factor-migration",
+      "rationale": "Freeze the imported course validator footprint while its source-fidelity, queue, and browser behaviors move into discovered form-factor suites. This exception adds checks and cannot suppress universal coverage.",
+      "owning_contract": "web/cfx11/interface-inventory.json",
+      "migration": "generic-form-factor-migration",
+      "baseline_commit": "57fc95a651dfa456e94d9039a49623515d9acfa0",
+      "files": {
+        "scripts/pyodide/candidate-components.json": "ff5a73fc7fd4666aca1d5986f7c63fccc73caba19c108117f1cf8c345b31cde6",
+        "scripts/pyodide/integration_audit.py": "18d9a80a5caeff55a19fbb02254049eeadb0afa8493198a2721c0444fcbb67c7",
+        "scripts/pyodide/verify_cfx11_wheels.py": "c9bfe965ad496dc67db7aae49b0bacc2cd4e722224076ebbd15d66654421a7a2",
+        "scripts/validation/cfx11_course_audit.py": "fa87d0458d487a66fe2e1730925579cd525d8efc4ffeb1f6160f98e04b86f91c",
+        "scripts/validation/course_dependency_integrity.py": "562adb0ab287a048a7f16740e711f81b72f583f7b7072dcca7804503157ecee6",
+        "tests/runtime/test_cfx11_browser.mjs": "e86557802f1041a220d4aab37e2f70e73332d4cbf3da4c6d38edb10cb14064f0",
+        "tests/runtime/test_cfx11_workflow.mjs": "fee0fe024386314bbbf0a684c3ef52d332de8d4be1304c3a9f2192081295b9e1",
+        "tests/validation/test_cfx11_course.py": "e427c027dfca2c8b1d427208457f39daf8dcf8e2d72c500ce958ac25417b6094",
+        "tests/validation/test_source_license_contract.py": "6dc8eaca7c0cb6d60fb29a086708645d31c3095d5b1595df4864415546d78817"
+      },
+      "registry_ids": [
+        "cfx11-browser-audit",
+        "cfx11-course-audit",
+        "cfx11-workflow-lifecycle"
+      ]
+    }
+  ]
+}

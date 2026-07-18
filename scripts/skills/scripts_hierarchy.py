@@ -17,11 +17,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "scripts"
 
-GROUP_SKILLS = (
-    "browser-vendor", "build", "compliance", "cors-proxy", "dev", "edx", "figures",
-    "git-hooks", "materials", "pyodide", "runtime", "security", "skills", "translate",
-    "validation",
-)
 ROOT_ALLOW = {".gitkeep", "SKILL.html", "_bootstrap.py"}
 SKIP_DIRS = {"__pycache__", ".figtools", "grounding_cache"}
 REQUIRED_RUNTIME_ASSETS = (
@@ -32,16 +27,15 @@ REQUIRED_RUNTIME_ASSETS = (
 
 def findings() -> list[str]:
     out: list[str] = []
-    for dirname in GROUP_SKILLS:
-        if not (SCRIPTS / dirname / "SKILL.html").is_file():
-            out.append(f"missing scripts/{dirname}/SKILL.html")
+    groups = sorted(path for path in SCRIPTS.iterdir() if path.is_dir() and path.name not in SKIP_DIRS)
+    for group in groups:
+        if not (group / "SKILL.html").is_file():
+            out.append(f"missing scripts/{group.name}/SKILL.html")
     for rel in REQUIRED_RUNTIME_ASSETS:
         if not (SCRIPTS / rel).is_file():
             out.append(f"missing required runtime asset scripts/{rel}")
     for p in SCRIPTS.iterdir():
         if p.is_dir():
-            if p.name not in GROUP_SKILLS and p.name not in SKIP_DIRS:
-                out.append(f"unexpected root scripts/ directory {p.name}; add a SKILL.html or classify it")
             continue
         if p.name not in ROOT_ALLOW:
             out.append(f"unexpected root scripts/ file {p.name}; move it into a grouped subdirectory")

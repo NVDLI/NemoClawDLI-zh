@@ -108,6 +108,32 @@ class ThemeRuntimeContractTests(unittest.TestCase):
         self.assertIn('BROWSER_TOOLS_REQUIRED: "1"', test_job)
         self.assertIn('cd scripts/runtime && pnpm install --frozen-lockfile --ignore-scripts', core)
 
+    def test_cfx11_browser_audit_resolves_the_pinned_repository_runtime(self) -> None:
+        source = (ROOT / "tests/runtime/test_cfx11_browser.mjs").read_text(encoding="utf-8")
+        self.assertIn('"../../scripts/runtime/node_modules/playwright-core"', source)
+        self.assertIn("require(repositoryPlaywright)", source)
+        self.assertNotIn('require("playwright-core")', source)
+        self.assertIn('viewport: { width: 1280, height: 720 }', source)
+        self.assertIn("the visible API-key action was not usable", source)
+        self.assertIn("key test fallback was not bounded to one non-streaming output token per candidate", source)
+
+    def test_declared_course_previews_are_projected_with_their_runtime_assets(self) -> None:
+        build = (ROOT / "scripts/build/build_pages.sh").read_text(encoding="utf-8")
+        for token in (
+            'previews = manifest.get("previews", [])',
+            'entries = manifest.get("preview_entries", {})',
+            'shutil.copytree(source, target_root / name, dirs_exist_ok=True)',
+            'shutil.copytree(shared, target_root / "shared", dirs_exist_ok=True)',
+            'shutil.copy2(root / "web/_skill_explorer.js", target_root / "_skill_explorer.js")',
+            'for course in [*manifest.get("released", []), *manifest.get("previews", [])]',
+            'for course in manifest.get("previews", [])',
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, build)
+        self.assertIn('entries.get(name) != f"/lab/static/{name}/index.html"', build)
+        self.assertEqual(3, build.count('re.sub(r"<!--.*?-->", "",'))
+        self.assertEqual(3, build.count(r'<script\b(?=[^>]*\bid="foyer-release")'))
+
     def test_required_worker_builds_the_candidate_once_for_pages(self) -> None:
         core = (ROOT / ".gitlab/ci/core.yml").read_text(encoding="utf-8")
         test_job = core_job("test", "external_integration_audit")
@@ -115,7 +141,9 @@ class ThemeRuntimeContractTests(unittest.TestCase):
         self.assertIn('bash scripts/build/build_pages.sh "$CI_PROJECT_DIR/candidate"', test_job)
         self.assertIn('git worktree add --quiet --detach "$candidate_source" "$CI_COMMIT_SHA"', test_job)
         self.assertIn('cp -a docs/validation/. "$candidate_source/docs/validation/"', test_job)
-        self.assertIn("- candidate/", test_job)
+        self.assertIn("tar -czf validated-candidate.tar.gz -C candidate .", test_job)
+        self.assertIn("- validated-candidate.tar.gz", test_job)
+        self.assertIn("--archive validated-candidate.tar.gz --extract-to candidate", pages)
         self.assertIn('cp -a candidate/. "public/$CI_COMMIT_REF_SLUG/"', pages)
         self.assertIn("cp -a candidate public", pages)
         self.assertIn('--expect-sha "$CI_COMMIT_SHA"', test_job)
@@ -334,10 +362,14 @@ class ScaTriggerContractTests(unittest.TestCase):
             job,
         )
         self.assertIn(
-            "cd scripts/runtime && pnpm audit --audit-level=moderate",
+            "npm audit --prefix .cache/runtime-npm-audit --package-lock-only --audit-level=moderate",
             job,
         )
-        self.assertIn("runtime-pnpm-audit.json", job)
+        self.assertIn("runtime-npm-audit.json", job)
+        self.assertIn(
+            "- scripts/security/reports/runtime-npm-audit.json",
+            job,
+        )
 
     def test_expensive_scans_remain_optional_in_unrelated_merge_requests(self) -> None:
         optional_rule = """- if: '$CI_PIPELINE_SOURCE == "merge_request_event"'

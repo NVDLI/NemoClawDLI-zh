@@ -26,15 +26,21 @@ Its implementation lives under [`examples/`](examples/):
    execution, Stop, Reset, and run-all behavior.
 9. [`execution-contract.js`](examples/execution-contract.js) is the single source for Python execution,
    MIME selection, display helpers, and the editable helper-source registry used by both workers.
+10. [`notebook-syntax.js`](examples/notebook-syntax.js) normalizes inspection, timing, namespace,
+    virtual-filesystem, package, and bounded browser-shell syntax before Python execution.
 
 [`runtime_smoke.mjs`](runtime_smoke.mjs) verifies exact asset hashes, executes every progressive cell
 with real Pyodide, proves persistent state, JSON/code/Markdown/HTML/table/artifact display output,
 helper overrides, background task completion and cancellation, captures stdout, and
 requires an `IndexError` traceback with its source line through the stderr result.
 
-The learner course does not contain or distribute Pyodide, CPython WebAssembly, Python wheels, or
-the assets named in [`candidate-components.json`](candidate-components.json). This scripts page
-fetches the pinned core runtime from the documented CDN only when a reader runs a cell.
+The repository does not copy Pyodide core or CPython WebAssembly. This scripts page fetches its
+pinned 0.27.7 core runtime only when a reader runs a cell. The internal `c-fx-11-v1`
+branch-staging candidate independently uses Pyodide 314.0.2 and ships the exact upstream wheels
+needed by its original LangChain, LangGraph, NVIDIA, OpenAI, Wikipedia, and contractions imports.
+The c-fx runtime index exposes `wheels.lock.json`, which records every copied wheel, source,
+hash, license expression, and direct/transitive relationship. The source course terms and
+external-release decision remain unresolved.
 
 ## Integration order
 
@@ -44,7 +50,8 @@ outbound requests or an OpenAI-compatible Python client.
 | Evaluated use | Includes | Use it for |
 |---|---|---|
 | Browser-only runtime (`core`) | Pyodide 0.27.7 and CPython 3.12.7 standard library | Python exercises that do not make network requests |
-| Future HTTP/API support (`network`) | Browser-only runtime plus the exact reviewed wheel closure | A future lesson that explicitly needs `requests` or an OpenAI-compatible Python client |
+| HTTP/API support (`network`) | Browser-only runtime plus the exact reviewed wheel closure | Optional cookbook HTTP/API examples; these rows remain separate from the course lock |
+| Internal course candidate | Pyodide 314.0.2, CPython 3.14.2, built-in packages, and 21 repository-copied wheels | Runs the source course's real packages from same-origin files; no public package is replaced by a compatibility shim |
 
 Keep the interpreter in a module worker. The page sends plain source and inputs, then receives a
 plain result. Stop terminates the worker. Reset starts a new worker and clears Python globals,
@@ -77,13 +84,26 @@ wheel metadata and bundled license files, and corroborate the exact upstream ver
 inventory records the evaluated set. OpenSSL 1.1.1w remains a named review item because the Pyodide
 recipe label and the exact upstream license do not agree.
 
+The course wheel set uses exact PyPI file URLs rather than a resolver at learner runtime:
+
+```bash
+python3 scripts/pyodide/verify_cfx11_wheels.py
+```
+
+The verifier rejects missing, extra, renamed, re-versioned, or hash-drifted wheels. Native
+`pyahocorasick` and `ormsgpack` wheels are built against the recorded Pyodide 314 ABI from their
+locked source archives. The recorded `ormsgpack` patch is the only downstream source change.
+
 ## Required implementation checks
 
 - Versioned same-origin assets match the checked manifest hashes.
 - License and notice files ship beside the applicable artifacts.
 - The generated CycloneDX SBOM matches the built artifact.
 - The scratch REPL and notebook cells share a namespace until Stop or Reset replaces the worker.
-- CodeMirror highlights Python and exposes line numbers in both themes.
+- CodeMirror highlights Python, wraps long lines, exposes line numbers and a visible theme-aware caret,
+  and supports run, comment, and indentation shortcuts in both themes.
+- Notebook inspection and magic syntax is shared by the canonical worker and course integrations.
+  Browser-shell commands operate only on the Pyodide virtual filesystem; they do not start a host process.
 - Shift+Enter runs and advances; Ctrl/Cmd+Enter runs in place.
 - Execution counters, automatic final-expression display, stdout, and tracebacks render with notebook prompts.
 - Dictionaries and lists render as indented, highlighted JSON; code output keeps its full width and scrolls instead of hard-wrapping.

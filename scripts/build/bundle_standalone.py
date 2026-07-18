@@ -789,9 +789,14 @@ def _copy_pyodide_review(out: Path) -> None:
     """Ship the complete declared Pyodide review surface and keep its local assets in-bounds."""
     destination = out / "pyodide"
     shutil.copytree(TASK1 / "scripts" / "pyodide", destination, dirs_exist_ok=True)
+    shared_destination = destination / "shared"
+    shared_destination.mkdir(parents=True, exist_ok=True)
+    for name in ("runtime-workbench.css", "runtime-workbench.js"):
+        shutil.copy2(TASK1 / "web" / "shared" / name, shared_destination / name)
     page = destination / "SKILL.html"
     source = page.read_text(encoding="utf-8")
     source = source.replace("../../web/nemoclaw/", "../")
+    source = source.replace("../../web/shared/", "./shared/")
     page.write_text(source, encoding="utf-8")
 
 
@@ -872,8 +877,42 @@ def _self_test() -> int:
         broken = (bundle / "SKILL.html").read_text(encoding="utf-8").replace('href="index.html"', 'href="../index.html"', 1)
         (bundle / "SKILL.html").write_text(broken, encoding="utf-8")
         assert any("escapes the deployment root" in str(item) for item in artifact_link_audit.audit(bundle))
+
+        source_course = root / "source-course"
+        linked_out = root / "linked-out"
+        source_course.mkdir(); linked_out.mkdir()
+        (source_course / "SKILL.html").write_text(
+            '<a href="interface-inventory.json">inventory</a><a href="../outside.json">outside</a>',
+            encoding="utf-8",
+        )
+        (source_course / "interface-inventory.json").write_text('{"schema":"fixture"}\n', encoding="utf-8")
+        (root / "outside.json").write_text("not copied\n", encoding="utf-8")
+        assert _copy_linked_course_files(source_course, linked_out) == ["interface-inventory.json"]
+        assert (linked_out / "interface-inventory.json").is_file()
+        assert not (linked_out / "outside.json").exists()
     print("bundle_standalone self-test: PASS")
     return 0
+
+
+def _copy_linked_course_files(source: Path, destination: Path) -> list[str]:
+    """Ship relative files linked by the course root SKILL without a filename allowlist."""
+    skill = source / "SKILL.html"
+    if not skill.is_file():
+        return []
+    copied: list[str] = []
+    refs = re.findall(r'\b(?:href|src)=["\']([^"\']+)["\']', skill.read_text(encoding="utf-8"), re.I)
+    for ref in refs:
+        parsed = urlsplit(ref)
+        relative = Path(parsed.path)
+        if parsed.scheme or parsed.netloc or not parsed.path or relative.is_absolute() or ".." in relative.parts:
+            continue
+        candidate = source / relative
+        target = destination / relative
+        if candidate.is_file() and not target.exists():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(candidate, target)
+            copied.append(relative.as_posix())
+    return sorted(copied)
 
 
 def _apply_svg_subs(html: str) -> str:
@@ -1091,6 +1130,10 @@ def main() -> int:
         dst.write_text(bundled, encoding="utf-8")
         kb = len(bundled.encode("utf-8")) / 1024
         print(f"  bundled {src.name:<28} → {dst.name}  ({kb:5.1f} KB)")
+
+    linked_course_files = _copy_linked_course_files(web, out)
+    if linked_course_files:
+        print(f"  copied SKILL-linked course files ({', '.join(linked_course_files)})")
 
     # Ship the shared ES modules as real files so the pages' kept `./scripts/_shared.js` import and the
     # per-section modules scripts/_shared.js imports in turn (e.g. _openshell.js) all resolve as siblings,

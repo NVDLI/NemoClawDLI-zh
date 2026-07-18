@@ -79,9 +79,19 @@ def chrome_js() -> list:
 
 
 def style_files() -> list:
-    """Every stylesheet under the course dir (glob, recursive), so a palette split into a new .css is
-    picked up for var-definition discovery without editing a list here."""
-    return [f for f in sorted(NEMO.rglob("*.css")) if _usable(f)]
+    """Every authored stylesheet under the served tree, discovered without a course allowlist."""
+    return [f for f in sorted(WEB.rglob("*.css"))
+            if _usable(f) and "vendor" not in f.parts]
+
+
+def scan_palette_contract(text: str) -> list[str]:
+    """Reject an OS-only light palette that cannot follow the course's explicit theme toggle."""
+    uses_os_light = bool(re.search(r"prefers-color-scheme\s*:\s*light", text, re.I))
+    has_explicit_light = bool(re.search(
+        r":root\s*\[\s*data-theme\s*=\s*[\"']light[\"']\s*\]", text, re.I
+    ))
+    return (["prefers-color-scheme light palette has no :root[data-theme=\"light\"] peer"]
+            if uses_os_light and not has_explicit_light else [])
 
 
 def page_html() -> list[Path]:
@@ -343,7 +353,11 @@ def run(verbose=True):
     will stay stuck on the dark palette when a student flips to light theme, with the file and
     property named. Returns {inline, undefined_var}; the report and exit code are derived from it."""
     defined = defined_vars()                          # the var names that actually have a definition to flip
-    inline, undef, bake = [], [], []
+    inline, undef, bake, palette = [], [], [], []
+    for css in style_files():
+        rel = str(css.relative_to(WEB.parent))
+        for reason in scan_palette_contract(css.read_text(errors="ignore")):
+            palette.append((rel, reason))
     for js in chrome_js():                            # every chrome module (whatever _shared.js was split into)
         t = js.read_text(errors="ignore")
         rel = str(js.relative_to(WEB.parent))
@@ -389,7 +403,7 @@ def run(verbose=True):
                 continue
             if name not in defined:                   # referenced but never declared: theme cannot reach it
                 undef.append((rel, name))
-    total = len(inline) + len(undef)
+    total = len(inline) + len(undef) + len(bake) + len(palette)
     if verbose:
         if inline:
             print(f"[inline hard-coded color] {len(inline)}")
@@ -403,11 +417,16 @@ def run(verbose=True):
             print(f"[render-time color bake] {len(bake)}")
             for rel, snippet, reason in bake:
                 print(f"        {rel}  «{snippet}»  {reason}")
+        if palette:
+            print(f"[theme palette contract] {len(palette)}")
+            for rel, reason in palette:
+                print(f"        {rel}  {reason}")
         print(f"\ncolor_theme: {total} non-theme-dynamic color use(s) "
-              f"(inline {len(inline)}, undefined-var {len(undef)}, render-bake {len(bake)})")
-    return {"inline": inline, "undefined_var": undef, "bake": bake}
+              f"(inline {len(inline)}, undefined-var {len(undef)}, render-bake {len(bake)}, "
+              f"palette {len(palette)})")
+    return {"inline": inline, "undefined_var": undef, "bake": bake, "palette": palette}
 
 
 if __name__ == "__main__":
     r = run()
-    sys.exit(1 if (len(r["inline"]) + len(r["undefined_var"]) + len(r["bake"])) else 0)
+    sys.exit(1 if any(r.values()) else 0)

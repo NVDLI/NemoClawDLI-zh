@@ -2,7 +2,7 @@
 # Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Audit the planned Pyodide integration boundary and its review evidence."""
+"""Audit Pyodide runtime adoption, distribution boundaries, and review evidence."""
 from __future__ import annotations
 
 import argparse
@@ -24,8 +24,12 @@ CELL_EXAMPLES = ROOT / "scripts/pyodide/examples/cell-examples.js"
 LIVE_PLAYGROUND = ROOT / "scripts/pyodide/examples/live-playground.js"
 NOTEBOOK_EDITOR = ROOT / "scripts/pyodide/examples/notebook-editor.js"
 EXECUTION_CONTRACT = ROOT / "scripts/pyodide/examples/execution-contract.js"
+NOTEBOOK_SYNTAX = ROOT / "scripts/pyodide/examples/notebook-syntax.js"
 RUNTIME_SMOKE = ROOT / "scripts/pyodide/runtime_smoke.mjs"
 USE_CASES = ROOT / "scripts/pyodide/cookbook-use-cases.json"
+COURSE_WHEEL_LOCK = ROOT / "web/cfx11/runtime/wheels.lock.json"
+SHARED_WORKBENCH = ROOT / "web/shared/runtime-workbench.js"
+SHARED_WORKBENCH_STYLES = ROOT / "web/shared/runtime-workbench.css"
 
 # These are the only core filenames evaluated from Pyodide's npm release.
 # A new filename changes the browser artifact even when the version does not.
@@ -60,9 +64,14 @@ EXAMPLE_MARKERS = {
     "examples/execution-contract.js": (
         "display_markdown", "display_html", "display_json", "display_code", "display_table",
         "application/json", "text/x-code", "DISPLAY_WIDTH = 100", "pprint.pformat",
+        "_structured_json_value", "model_dump", "dataclasses.is_dataclass",
         "error_line", "PyCF_ALLOW_TOP_LEVEL_AWAIT", "__course_helper_overrides", "definitionSource",
         "display_artifact", "application/x-course-artifact+json", "register_background",
         "background_status", "wait_background", "cancel_background", "__course_background_tasks",
+    ),
+    "examples/notebook-syntax.js": (
+        "PYODIDE_NOTEBOOK_SYNTAX", "value? / value??", "browser_shell", "inspect_object",
+        'name === "who"', 'name === "whos"', 'name === "magic"', 'text.startsWith("%%bash\\n")',
     ),
     "examples/worker-client.js": ("class PythonRunner", "reset()", "stop()", "setTimeout"),
     "examples/network-fetch.js": ("createCourseFetch", "allowedOrigins", "relayUrl"),
@@ -72,21 +81,23 @@ EXAMPLE_MARKERS = {
     ),
     "examples/notebook-editor.js": (
         'defineMode("course-python"', 'mode: "course-python"', "CodeMirror.fromTextArea",
-        "lineNumbers", "Shift-Enter", "Ctrl-Enter", "Cmd-Enter", "showError", "py-code-error-line",
+        "lineNumbers", "lineWrapping: true", "Shift-Enter", "Ctrl-Enter", "Cmd-Enter",
+        '"Ctrl-/"', '"Cmd-/"', '"Shift-Tab"', "showError", "py-code-error-line",
     ),
     "examples/live-playground.js": (
         "new Worker", "runAll", "runRepl", "data-python-cells", "runtimeMounted",
         "PYODIDE_NOTEBOOK_EDITOR", "__course_scope", "execution_count", "courseStreamChat",
         "courseWebSocketRoundTrip", "sanitizeRichOutput", "BLOCKED_RICH_TAGS", "makeDisplayNode",
         "application/json", "highlightElement", "applyHelper", "helperEditors", "py-artifact-output",
-        "data-artifact-url", "error_line",
+        "data-artifact-url", "error_line", "wb-cell-workspace", "pyodide:status",
+        "dli-pyodide-reference",
     ),
 }
 
 # These sentences are safety claims, not writing prompts.
 # The audit aligns the blueprint with the machine-readable state boundary.
 REQUIRED_BLUEPRINT_TEXT = (
-    "The learner course does not contain or distribute Pyodide",
+    "The repository does not copy Pyodide",
     "Start with the browser-only runtime. Add the HTTP/API package set only when a named lesson requires outbound requests",
     "Do not use unrestricted `micropip.install()`",
     "Stop terminates the worker. Reset starts a new worker",
@@ -123,7 +134,7 @@ def read_json(path: Path) -> dict:
 
 def snapshot_digest(data: dict) -> str:
     """Bind the reviewed runtime facts, profiles, assets, and components as one record."""
-    fields = ("source_pattern", "runtime", "live_demo", "profiles", "core_assets", "live_core_assets", "components")
+    fields = ("source_pattern", "runtime", "live_demo", "course_candidate", "profiles", "core_assets", "live_core_assets", "components")
     payload = {field: data.get(field) for field in fields}
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
     return hashlib.sha256(canonical.encode()).hexdigest()
@@ -187,8 +198,8 @@ def audit(
     # The status fields prevent design evidence from being mistaken for approval.
     if data.get("schema") != "pyodide-candidate-components/1.0":
         findings.append("Pyodide candidate inventory schema is missing or unsupported")
-    if data.get("status") != "planned-not-distributed":
-        findings.append("Pyodide candidate inventory no longer states that it is not distributed")
+    if data.get("status") != "mixed-runtime-fetch-and-course-wheel-distribution":
+        findings.append("Pyodide inventory no longer states its runtime-fetch and repository-copy boundary")
     if data.get("review_state") != "human-approval-required":
         findings.append("Pyodide candidate inventory overstates or omits human review ownership")
 
@@ -230,6 +241,35 @@ def audit(
         findings.append("Pyodide live demo CDN or pinned version drifted")
     if live_demo.get("profile") != "core" or "not copied into this repository" not in str(live_demo.get("distribution", "")):
         findings.append("Pyodide live demo distribution boundary drifted")
+    course_candidate = data.get("course_candidate") or {}
+    expected_direct = {
+        "contractions", "langchain", "langchain-core", "langchain-nvidia-ai-endpoints",
+        "langgraph", "openai", "pydantic", "requests", "Wikipedia-API",
+    }
+    if course_candidate.get("entrypoint") != "web/cfx11/runtime/worker.js":
+        findings.append("Pyodide course candidate entrypoint drifted")
+    if course_candidate.get("base_url") != "https://cdn.jsdelivr.net/pyodide/v314.0.2/full/":
+        findings.append("Pyodide course candidate CDN or pinned version drifted")
+    if "copied into and shipped" not in str(course_candidate.get("distribution", "")):
+        findings.append("Pyodide course candidate distribution boundary drifted")
+    if course_candidate.get("wheel_lock") != "web/cfx11/runtime/wheels.lock.json":
+        findings.append("Pyodide course candidate wheel lock drifted")
+    if set(course_candidate.get("direct_packages") or []) != expected_direct:
+        findings.append("Pyodide course candidate direct package set drifted")
+    try:
+        course_wheels = read_json(COURSE_WHEEL_LOCK)
+    except (OSError, json.JSONDecodeError) as exc:
+        findings.append(f"Pyodide course wheel lock cannot be read: {exc}")
+        course_wheels = {}
+    if course_wheels.get("runtime") != {
+        "pyodide": "314.0.2", "python": "3.14.2", "abi": "2026_0", "architecture": "wasm32",
+    }:
+        findings.append("Pyodide course wheel ABI tuple drifted")
+    locked_direct = {
+        item.get("name") for item in course_wheels.get("packages", []) if item.get("relationship") == "direct"
+    } | {"pydantic", "requests"}
+    if locked_direct != expected_direct:
+        findings.append("Pyodide course wheel lock and direct package set disagree")
 
     # Validate every serialized component uniformly.
     # The digest catches changes without a second package list in code.
@@ -308,7 +348,7 @@ def audit(
         "display_code()", "display_table()", "display_artifact()", "register_background()",
         "select a row to edit its real source",
         "runtime-loader.js", "python-worker.js", "worker-client.js",
-        "network-fetch.js", "learner-cell.py",
+        "network-fetch.js", "learner-cell.py", "data-reference-workbench",
     ):
         if phrase not in skill:
             findings.append(f"Pyodide SKILL page is missing its code-first contract: {phrase}")
@@ -331,7 +371,11 @@ def audit(
                 "editor": NOTEBOOK_EDITOR.read_text(encoding="utf-8"),
                 "playground": LIVE_PLAYGROUND.read_text(encoding="utf-8"),
                 "contract": EXECUTION_CONTRACT.read_text(encoding="utf-8"),
+                "syntax": NOTEBOOK_SYNTAX.read_text(encoding="utf-8"),
                 "smoke": RUNTIME_SMOKE.read_text(encoding="utf-8"),
+                "workbench": skill,
+                "workbench_controller": SHARED_WORKBENCH.read_text(encoding="utf-8"),
+                "workbench_styles": SHARED_WORKBENCH_STYLES.read_text(encoding="utf-8"),
             }
         except OSError as exc:
             findings.append(f"cannot read executable Pyodide contract: {exc}")
@@ -340,7 +384,11 @@ def audit(
     editor_source = implementation_texts.get("editor", "")
     playground_source = implementation_texts.get("playground", "")
     contract_source = implementation_texts.get("contract", "")
+    syntax_source = implementation_texts.get("syntax", "")
     smoke_source = implementation_texts.get("smoke", "")
+    workbench_source = implementation_texts.get("workbench", "")
+    workbench_controller = implementation_texts.get("workbench_controller", "")
+    workbench_styles = implementation_texts.get("workbench_styles", "")
     example_ids = re.findall(r'^\s+id:\s+"([a-z0-9-]+)"', cells_source, re.M)
     if len(example_ids) < 8 or len(example_ids) != len(set(example_ids)):
         findings.append("Pyodide cookbook needs at least eight uniquely identified progressive cells")
@@ -382,10 +430,15 @@ def audit(
         "display_json", "display_code", "display_table", "application/json", "text/x-code",
         "display_artifact", "application/x-course-artifact+json", "register_background",
         "background_status", "wait_background", "cancel_background", "__course_background_tasks",
-        "DISPLAY_WIDTH = 100", "__course_helper_overrides", "definitionSource",
+        "DISPLAY_WIDTH = 100", "__course_helper_overrides", "definitionSource", "inspect_object",
+        "browser_shell", "notebook_who", "notebook_time", "notebook_magic",
+        "_structured_json_value", "model_dump", "dataclasses.is_dataclass",
     ):
         if marker not in contract_source:
             findings.append(f"Pyodide execution contract lost display behavior: {marker}")
+    for marker in ("PYODIDE_NOTEBOOK_SYNTAX", "normalizeLine", "%%bash", "value? / value??", "%magic"):
+        if marker not in syntax_source:
+            findings.append(f"Pyodide notebook syntax lost executable behavior: {marker}")
     markdown_helper = re.search(r"def display_markdown\(source\):(?P<body>.*?)(?=\ndef display_html)", contract_source, re.S)
     if not markdown_helper or not all(
         marker in markdown_helper.group("body") for marker in ("course_displays.append", '"type": "text/markdown"', '"data": str(source)')
@@ -395,7 +448,8 @@ def audit(
         findings.append("Pyodide Markdown helper still relies on an opaque wrapper chain")
     for marker in (
         "CodeMirror.fromTextArea", 'mode: "course-python"', "lineNumbers: true",
-        '"Shift-Enter"', '"Ctrl-Enter"', '"Cmd-Enter"', "PYODIDE_NOTEBOOK_EDITOR",
+        '"Shift-Enter"', '"Ctrl-Enter"', '"Cmd-Enter"', '"Ctrl-/"', '"Shift-Tab"',
+        "lineWrapping: true", "PYODIDE_NOTEBOOK_EDITOR",
         "showError", "clearError", "py-code-error-line",
     ):
         if marker not in editor_source:
@@ -406,19 +460,44 @@ def audit(
         "SHA-256 mismatch", "expressionReply.display", "stateNext.display",
         "execution counter did not persist", "prettyReply.display_type", "richReply.displays",
         "errorReply.error_line !== 2", "Editable helper override did not persist",
+        "Notebook ?? inspection did not resolve a persistent value", "Bounded browser-shell pipeline did not execute",
         "Background registration did not produce the downloadable JSON artifact",
         "Background cancellation did not settle the registered task",
     ):
         if marker not in smoke_source:
             findings.append(f"Pyodide runtime verifier lost an assertion: {marker}")
+    for marker in (
+        "pyodide-playground", "data-python-cells", "data-reference-workbench",
+        "data-workbench-view", "data-workbench-content", "data-python-diagnostic",
+        "examples/live-playground.js", "runtime-workbench.js",
+    ):
+        if marker not in workbench_source:
+            findings.append(f"Pyodide course workbench reference lost executable behavior: {marker}")
+    for marker in (
+        "mountRuntimeWorkbench", "setSelection", "returnFocus", 'event.key !== "Escape"',
+        "workbench:viewchange",
+    ):
+        if marker not in workbench_controller:
+            findings.append(f"shared runtime workbench lost accessible behavior: {marker}")
+    for marker in ("--wb-panel: var(--panel, var(--e1", "--wb-text: var(--text, var(--tx", "color: var(--wb-muted)"):
+        if marker not in workbench_styles:
+            findings.append(f"shared runtime workbench lost cross-surface theme behavior: {marker}")
+    for marker in ('cell.output.dataset.state = "empty"', 'cell.output.dataset.state = "rendered"'):
+        if marker not in playground_source:
+            findings.append(f"Pyodide reset/output state lost its explicit contract: {marker}")
 
-    # Path and source scans prove that the current learner tree remains runtime-free.
+    # Path scans reject copied runtime binaries except the exact course wheel lock.
     paths = source_paths() if paths is None else paths
+    allowed_course_wheels = {
+        f"web/cfx11/runtime/{item.get('path')}" for item in course_wheels.get("packages", [])
+    }
     for path in paths:
         if path.startswith("scripts/pyodide/"):
             continue
         lowered = path.lower()
-        if "pyodide" in lowered and lowered.endswith((".wasm", ".whl", ".zip", "pyodide.mjs")):
+        if lowered.endswith(".whl") and path not in allowed_course_wheels:
+            findings.append(f"unlocked browser Python wheel appeared: {path}")
+        elif "pyodide" in lowered and lowered.endswith((".wasm", ".zip", "pyodide.mjs")):
             findings.append(f"Pyodide runtime artifact appeared outside the planned integration area: {path}")
 
     if runtime_texts is None:
@@ -430,9 +509,18 @@ def audit(
                 runtime_texts[path] = (ROOT / path).read_text(encoding="utf-8", errors="replace")
             except OSError:
                 continue
+    declared_entrypoint = str(course_candidate.get("entrypoint") or "")
     for path, text in runtime_texts.items():
         if any(marker in text for marker in RUNTIME_MARKERS):
-            findings.append(f"course source loads Pyodide while the candidate remains planned: {path}")
+            if path != declared_entrypoint:
+                findings.append(f"course source loads Pyodide outside the declared entrypoint: {path}")
+            else:
+                for marker in (
+                    'PYODIDE_VERSION = "314.0.2"', "LOCAL_WHEELS", "BUILTIN_PACKAGES",
+                    "await micropip.install(__course_local_wheels.to_py(), deps=False",
+                ):
+                    if marker not in text:
+                        findings.append(f"declared Pyodide course entrypoint lost its reviewed runtime contract: {marker}")
     return findings
 
 
@@ -447,7 +535,11 @@ def self_test() -> list[str]:
         "editor": NOTEBOOK_EDITOR.read_text(encoding="utf-8"),
         "playground": LIVE_PLAYGROUND.read_text(encoding="utf-8"),
         "contract": EXECUTION_CONTRACT.read_text(encoding="utf-8"),
+        "syntax": NOTEBOOK_SYNTAX.read_text(encoding="utf-8"),
         "smoke": RUNTIME_SMOKE.read_text(encoding="utf-8"),
+        "workbench": skill,
+        "workbench_controller": SHARED_WORKBENCH.read_text(encoding="utf-8"),
+        "workbench_styles": SHARED_WORKBENCH_STYLES.read_text(encoding="utf-8"),
     }
 
     use_cases = read_json(USE_CASES)
@@ -457,8 +549,8 @@ def self_test() -> list[str]:
     # Mutations cover scope, package, license, integrity, runtime, and approval drift.
     cases = []
     changed = copy.deepcopy(base)
-    changed["status"] = "distributed"
-    cases.append(("distributed status", changed, blueprint, skill, [], {}, implementation, use_cases))
+    changed["status"] = "repository-copied"
+    cases.append(("distribution status", changed, blueprint, skill, [], {}, implementation, use_cases))
     changed = copy.deepcopy(base)
     changed["components"] = changed["components"][:-1]
     cases.append(("missing component", changed, blueprint, skill, [], {}, implementation, use_cases))
@@ -470,6 +562,9 @@ def self_test() -> list[str]:
     cases.append(("hash drift", changed, blueprint, skill, [], {}, implementation, use_cases))
     cases.append(("runtime artifact", base, blueprint, skill, ["web/nemoclaw/pyodide.asm.wasm"], {}, implementation, use_cases))
     cases.append(("runtime loader", base, blueprint, skill, [], {"web/nemoclaw/example.js": "loadPyodide({})"}, implementation, use_cases))
+    changed = copy.deepcopy(base)
+    changed["course_candidate"]["direct_packages"].append("unreviewed-package")
+    cases.append(("undeclared direct course package", changed, blueprint, skill, [], {}, implementation, use_cases))
     changed = copy.deepcopy(base)
     changed["review_state"] = "approved"
     cases.append(("approval overclaim", changed, blueprint, skill, [], {}, implementation, use_cases))
@@ -506,6 +601,12 @@ def self_test() -> list[str]:
     broken = dict(implementation)
     broken["contract"] = broken["contract"].replace("register_background", "removed_background_helper")
     cases.append(("missing background helper", base, blueprint, skill, [], {}, broken, use_cases))
+    broken = dict(implementation)
+    broken["contract"] = broken["contract"].replace("_structured_json_value", "object_formatter_removed")
+    cases.append(("missing structured object display", base, blueprint, skill, [], {}, broken, use_cases))
+    broken = dict(implementation)
+    broken["workbench"] = broken["workbench"].replace("data-workbench-view", "removed-workbench-view")
+    cases.append(("missing course workbench controls", base, blueprint, skill, [], {}, broken, use_cases))
 
     changed_cases = copy.deepcopy(use_cases)
     changed_cases["cases"][0]["examples"].append("missing-cell")

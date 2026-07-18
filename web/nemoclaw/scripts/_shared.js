@@ -782,6 +782,7 @@ export function _escAttr(s) {
 export function mountJourneyMap(targetSel, current) {
   const target = typeof targetSel === "string" ? document.querySelector(targetSel) : targetSel;
   if (!target) return;
+  target.dataset.state = "ready";
   const idx  = _JM_STEPS.findIndex(s => s.id === current);
   const cur  = idx >= 0 ? _JM_STEPS[idx] : null;
   const prev = idx > 0                       ? _JM_STEPS[idx - 1] : null;
