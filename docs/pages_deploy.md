@@ -218,11 +218,12 @@ glab ci run -b main \
   --variables "CLAW_ACCESS_PROVIDER_2:<matching-provider>"
 ```
 
-CDN publication accepts the same kind of source binding plus an explicit language list. `immutable`
+CDN publication accepts the same kind of source binding plus explicit course and language lists. `immutable`
 publishes under `/course-static/<full-sha>/`; `stable` publishes under `/course-static/nemoclaw/`
 and accepts only a branch in the devbox publisher's root-owned `stable_refs` allowlist. A branch
-name never becomes an S3 destination. The comma-separated language list controls which language
-trees enter this operation; no hidden default adds another locale.
+name never becomes an S3 destination. `PUBLISH_COURSES` must include `nemoclaw`; `cfx11` enters an
+operation only when an owner names it explicitly. The comma-separated language list controls which
+NemoClaw language trees enter the operation; no hidden default adds a course or locale.
 
 ```bash
 glab ci run -b main \
@@ -230,6 +231,7 @@ glab ci run -b main \
   --variables "PUBLISH_SOURCE_REF:<reviewed-branch>" \
   --variables "PUBLISH_SOURCE_SHA:<full-40-character-sha>" \
   --variables "PUBLISH_SOURCE_TEST_JOB_ID:<successful-test-job-id>" \
+  --variables "PUBLISH_COURSES:nemoclaw" \
   --variables "PUBLISH_LANGUAGES:en,es" \
   --variables "PUBLISH_CHANNEL:immutable"
 ```
@@ -245,9 +247,10 @@ The publisher uses a root-owned AWS executable, configuration, credentials, exac
 delimiter-bound assumed-role rule, and fixed CloudFront distribution. It inventories every S3 page;
 malformed or repeated keys fail the operation. Immutable prefixes
 must contain only the exact reviewed manifest. Stable publication removes stale objects only from
-the fixed NemoClaw, C-FX-11, shared, Spanish, and Portuguese course roots, then requires the remote
-key/size inventory to match. It waits for a CloudFront invalidation before comparing every served
-byte. The language list is the complete stable language set, not an additive hint.
+the fixed roots owned by the explicitly selected courses, then requires the remote key/size inventory
+to match. Selecting `nemoclaw` never grants authority over `cfx11/`. It waits for a CloudFront
+invalidation before comparing every served byte. The language list is the complete stable language
+set for NemoClaw, not an additive hint.
 
 Provision that runner once, outside CI, after reviewing the exact source commit:
 

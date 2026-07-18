@@ -307,12 +307,19 @@ class PrivilegedRequestTests(unittest.TestCase):
             "COURSE_OP": "cdn-publish", "CI_PIPELINE_SOURCE": "web", "CI_COMMIT_BRANCH": "main",
             "CI_DEFAULT_BRANCH": "main", "CI_COMMIT_SHA": "a" * 40, "PUBLISH_SOURCE_REF": "main",
             "PUBLISH_SOURCE_SHA": "b" * 40, "PUBLISH_SOURCE_TEST_JOB_ID": "123", "PUBLISH_CHANNEL": "immutable",
-            "PUBLISH_LANGUAGES": "en,es",
+            "PUBLISH_COURSES": "nemoclaw", "PUBLISH_LANGUAGES": "en,es",
         }
 
     def test_bounded_cdn_request(self) -> None:
         result = privileged_request.validate("cdn-publish", self.base(), Path("."), self.context)
         self.assertEqual("b" * 40, result["destination"])
+        self.assertEqual(["nemoclaw"], result["courses"])
+
+    def test_cdn_request_never_infers_an_optional_course(self) -> None:
+        with self.assertRaisesRegex(ValueError, "PUBLISH_COURSES"):
+            privileged_request.validate(
+                "cdn-publish", self.base() | {"PUBLISH_COURSES": ""}, Path("."), self.context,
+            )
 
     def test_child_projection_drops_process_control_variables(self) -> None:
         projected = privileged_request.child_request_env({
@@ -369,13 +376,32 @@ class PublicationPreparationTests(unittest.TestCase):
             plan_path = root / "publication-plan.json"
             plan = prepare_cdn_publication.prepare(candidate, output, plan_path, {
                 "source_ref": "main", "source_sha": "a" * 40, "job_id": "1",
-                "channel": "immutable", "destination": "a" * 40, "languages": ["en"],
+                "channel": "immutable", "destination": "a" * 40,
+                "courses": [self.primary], "languages": ["en"],
             })
             self.assertTrue((output / self.primary / "index.html").is_file())
-            self.assertTrue((output / self.optional / "index.html").is_file())
+            self.assertFalse((output / self.optional).exists())
             self.assertFalse((output / "es").exists())
             self.assertTrue(plan_path.is_file())
             self.assertGreater(len(plan["files"]), 1)
+
+    def test_optional_course_requires_explicit_selection(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); candidate = root / "candidate"; output = root / "publication"
+            primary = candidate / "web" / self.primary
+            optional = candidate / "web" / self.optional
+            primary.mkdir(parents=True); (primary / "index.html").write_text("course")
+            optional.mkdir(); (optional / "index.html").write_text("preview")
+            (candidate / "languages.json").write_text(json.dumps({
+                "schema": "nemoclaw-languages/1",
+                "languages": [{"code": "en", "url": f"web/{self.primary}/"}],
+            }))
+            prepare_cdn_publication.prepare(candidate, output, root / "plan.json", {
+                "source_ref": "main", "source_sha": "a" * 40, "job_id": "1",
+                "channel": "immutable", "destination": "a" * 40,
+                "courses": [self.primary, self.optional], "languages": ["en"],
+            })
+            self.assertTrue((output / self.optional / "index.html").is_file())
 
     def test_non_english_subset_gets_a_working_entrypoint(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -389,7 +415,8 @@ class PublicationPreparationTests(unittest.TestCase):
             }))
             prepare_cdn_publication.prepare(candidate, output, root / "plan.json", {
                 "source_ref": "feature/es", "source_sha": "a" * 40, "job_id": "1",
-                "channel": "immutable", "destination": "a" * 40, "languages": ["es"],
+                "channel": "immutable", "destination": "a" * 40,
+                "courses": [self.primary], "languages": ["es"],
             })
             self.assertIn(f"url=es/{self.primary}/", (output / "index.html").read_text())
 
@@ -406,7 +433,8 @@ class PublicationPreparationTests(unittest.TestCase):
             }))
             prepare_cdn_publication.prepare(candidate, output, root / "plan.json", {
                 "source_ref": "main", "source_sha": "a" * 40, "job_id": "1",
-                "channel": "stable", "destination": "course-static", "languages": ["en"],
+                "channel": "stable", "destination": "course-static",
+                "courses": [self.primary], "languages": ["en"],
             })
             self.assertTrue((output / self.primary / "01a-loop.html").is_file())
 
@@ -427,7 +455,8 @@ class PublicationPreparationTests(unittest.TestCase):
             }))
             prepare_cdn_publication.prepare(candidate, output, root / "plan.json", {
                 "source_ref": "main", "source_sha": "a" * 40, "job_id": "1",
-                "channel": "stable", "destination": "course-static", "languages": ["en", "es"],
+                "channel": "stable", "destination": "course-static",
+                "courses": [self.primary], "languages": ["en", "es"],
             })
             self.assertTrue((output / self.primary / "index.html").is_file())
             self.assertTrue((output / "es" / self.primary / "index.html").is_file())
@@ -443,8 +472,8 @@ class PublisherBoundaryTests(unittest.TestCase):
         account_id = "".join(map(str, range(10))) + "01"
         plan = root / "plan.json"; config = root / "config.json"
         plan.write_text(json.dumps({
-            "schema": "dli-cdn-publication/1", "source_ref": "topic", "source_sha": "a" * 40,
-            "channel": "immutable", "destination": "a" * 40,
+            "schema": "dli-cdn-publication/2", "source_ref": "topic", "source_sha": "a" * 40,
+            "channel": "immutable", "destination": "a" * 40, "courses": ["nemoclaw"],
             "files": [{"path": "index.html", "bytes": 6, "sha256": digest}],
         }))
         config.write_text(json.dumps({
@@ -463,6 +492,11 @@ class PublisherBoundaryTests(unittest.TestCase):
             (publication / "extra.js").write_text("unexpected")
             with self.assertRaisesRegex(ValueError, "do not match"):
                 devbox_cdn_publisher.validate(publication, plan, config)
+
+    def test_stable_ownership_excludes_unselected_optional_course(self) -> None:
+        plan = {"courses": ["nemoclaw"]}
+        self.assertNotIn("cfx11/", devbox_cdn_publisher._stable_prefixes(plan))
+        self.assertIn("nemoclaw/", devbox_cdn_publisher._stable_prefixes(plan))
 
     @patch("scripts.ci.devbox_cdn_publisher._verify_cdn")
     @patch("scripts.ci.devbox_cdn_publisher._remote_owned")

@@ -12,7 +12,7 @@ import shutil
 from pathlib import Path
 
 
-SCHEMA = "dli-cdn-publication/1"
+SCHEMA = "dli-cdn-publication/2"
 PRIMARY_COURSE = "nemoclaw"
 OPTIONAL_COURSES = ("cfx11",)
 
@@ -36,8 +36,15 @@ def prepare(candidate: Path, output: Path, plan_path: Path, request: dict[str, o
     language_manifest = json.loads(languages_path.read_text(encoding="utf-8"))
     available = {item["code"]: item for item in language_manifest.get("languages", [])}
     requested = request.get("languages")
+    courses = request.get("courses")
     if not isinstance(requested, list) or not requested or not all(item in available for item in requested):
         raise ValueError("requested language is absent from the reviewed artifact")
+    allowed_courses = {PRIMARY_COURSE, *OPTIONAL_COURSES}
+    if (
+        not isinstance(courses, list) or not courses or len(courses) != len(set(courses))
+        or not set(courses).issubset(allowed_courses) or PRIMARY_COURSE not in courses
+    ):
+        raise ValueError("requested courses are outside the reviewed publication vocabulary")
     if output.exists():
         shutil.rmtree(output)
     output.mkdir(parents=True)
@@ -48,7 +55,7 @@ def prepare(candidate: Path, output: Path, plan_path: Path, request: dict[str, o
         # immutable uploads it at /course-static/<sha>/.
         _copy_tree(english_root / PRIMARY_COURSE, output / PRIMARY_COURSE)
         for optional in OPTIONAL_COURSES:
-            if (english_root / optional).is_dir():
+            if optional in courses:
                 _copy_tree(english_root / optional, output / optional)
         if (english_root / "shared").is_dir():
             _copy_tree(english_root / "shared", output / "shared")
@@ -94,6 +101,7 @@ def prepare(candidate: Path, output: Path, plan_path: Path, request: dict[str, o
         "source_job_id": request["job_id"],
         "channel": request["channel"],
         "destination": request["destination"],
+        "courses": courses,
         "languages": requested,
         "files": files,
     }

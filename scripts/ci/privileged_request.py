@@ -20,12 +20,13 @@ JOB = re.compile(r"^[1-9][0-9]{0,11}$")
 LANG = re.compile(r"^[a-z]{2}(?:-[a-z0-9]+)?$")
 OPERATIONS = {"live-interface-review", "cdn-publish"}
 CHANNELS = {"immutable", "stable"}
+COURSES = {"nemoclaw", "cfx11"}
 PROVIDERS = {"cloudflare", "pomerium"}
 CHILD_KEYS = (
     "COURSE_OP", "CANDIDATE_REF", "CANDIDATE_SHA", "CANDIDATE_TEST_JOB_ID",
     "CLAW_URL_1", "CLAW_ACCESS_PROVIDER_1", "CLAW_URL_2", "CLAW_ACCESS_PROVIDER_2",
     "PUBLISH_SOURCE_REF", "PUBLISH_SOURCE_SHA", "PUBLISH_SOURCE_TEST_JOB_ID",
-    "PUBLISH_LANGUAGES", "PUBLISH_CHANNEL",
+    "PUBLISH_COURSES", "PUBLISH_LANGUAGES", "PUBLISH_CHANNEL",
 )
 
 
@@ -81,13 +82,19 @@ def validate(operation: str, env: dict[str, str], root: Path, context: dict[str,
         result["targets"] = targets
     else:
         channel = env.get("PUBLISH_CHANNEL", "")
+        courses = [item.strip() for item in env.get("PUBLISH_COURSES", "").split(",") if item.strip()]
         requested = [item.strip() for item in env.get("PUBLISH_LANGUAGES", "").split(",") if item.strip()]
         if channel not in CHANNELS:
             errors.append("PUBLISH_CHANNEL must be immutable or stable")
         if not requested or len(requested) != len(set(requested)) or not all(LANG.fullmatch(item) for item in requested):
             errors.append("PUBLISH_LANGUAGES must be a unique comma-separated language list")
+        if (
+            not courses or len(courses) != len(set(courses))
+            or not set(courses).issubset(COURSES) or "nemoclaw" not in courses
+        ):
+            errors.append("PUBLISH_COURSES must explicitly include nemoclaw and may include only cfx11")
         result.update({
-            "channel": channel, "languages": requested,
+            "channel": channel, "courses": courses, "languages": requested,
             "destination": sha if channel == "immutable" else "course-static",
         })
     if errors:

@@ -22,13 +22,16 @@ import urllib.request
 from pathlib import Path, PurePosixPath
 
 
-SCHEMA = "dli-cdn-publication/1"
+SCHEMA = "dli-cdn-publication/2"
 BUCKET = "cdn.dli.learn.nvidia.com"
 PREFIX = "course-static"
 SHA = re.compile(r"^[0-9a-f]{40}$")
 CONFIG = Path("/etc/dli-course-publisher.json")
 CDN = "https://cdn.dli.learn.nvidia.com"
-STABLE_PREFIXES = ("nemoclaw/", "cfx11/", "shared/", "es/nemoclaw/", "pt/nemoclaw/")
+COURSE_PREFIXES = {
+    "nemoclaw": ("nemoclaw/", "shared/", "es/nemoclaw/", "pt/nemoclaw/"),
+    "cfx11": ("cfx11/",),
+}
 STABLE_ROOT_FILES = {
     "index.html", "languages.json", "branches.json", "LICENSE",
     "THIRD_PARTY_LICENSES.md", "THIRD-PARTY-NOTICES.md",
@@ -41,6 +44,17 @@ def _digest(path: Path) -> str:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             value.update(chunk)
     return value.hexdigest()
+
+
+def _stable_prefixes(plan: dict[str, object]) -> tuple[str, ...]:
+    courses = plan.get("courses")
+    if (
+        not isinstance(courses, list) or not courses or len(courses) != len(set(courses))
+        or not all(isinstance(course, str) and course in COURSE_PREFIXES for course in courses)
+        or "nemoclaw" not in courses
+    ):
+        raise ValueError("publication plan has an invalid course selection")
+    return tuple(dict.fromkeys(prefix for course in courses for prefix in COURSE_PREFIXES[course]))
 
 
 def validate(publication: Path, plan_path: Path, config_path: Path = CONFIG) -> tuple[dict[str, object], dict[str, str]]:
@@ -60,6 +74,7 @@ def validate(publication: Path, plan_path: Path, config_path: Path = CONFIG) -> 
         raise ValueError("stable publication source or destination is not approved")
     if channel not in {"immutable", "stable"}:
         raise ValueError("publication channel is invalid")
+    stable_prefixes = _stable_prefixes(plan)
     rows = plan.get("files")
     if not isinstance(rows, list) or not rows:
         raise ValueError("publication plan has no files")
@@ -87,7 +102,7 @@ def validate(publication: Path, plan_path: Path, config_path: Path = CONFIG) -> 
     if actual != expected:
         raise ValueError("publication bytes do not match the reviewed plan")
     if channel == "stable" and any(
-        rel not in STABLE_ROOT_FILES and not any(rel.startswith(prefix) for prefix in STABLE_PREFIXES)
+        rel not in STABLE_ROOT_FILES and not any(rel.startswith(prefix) for prefix in stable_prefixes)
         for rel in expected
     ):
         raise ValueError("stable publication plan leaves the fixed course-owned roots")
@@ -170,7 +185,7 @@ def _remote_owned(plan: dict[str, object], aws: str, env: dict[str, str]) -> dic
     if plan["channel"] == "immutable":
         return _list_prefix(aws, env, f"{PREFIX}/{plan['destination']}/")
     out: dict[str, int] = {}
-    for relative in STABLE_PREFIXES:
+    for relative in _stable_prefixes(plan):
         out.update(_list_prefix(aws, env, f"{PREFIX}/{relative}"))
     for relative in STABLE_ROOT_FILES:
         exact = f"{PREFIX}/{relative}"
@@ -255,7 +270,7 @@ def publish(publication: Path, plan_path: Path, config_path: Path = CONFIG) -> N
         distribution = bounded["cloudfront_distribution"]
         if not re.fullmatch(r"E[A-Z0-9]{8,20}", distribution):
             raise ValueError("stable publication requires the fixed CloudFront distribution")
-        paths = [f"/{PREFIX}/{prefix}*" for prefix in STABLE_PREFIXES]
+        paths = [f"/{PREFIX}/{prefix}*" for prefix in _stable_prefixes(plan)]
         paths.extend(f"/{PREFIX}/{path}" for path in sorted(STABLE_ROOT_FILES))
         invalidation = _aws_json(
             bounded["aws"], env, "cloudfront", "create-invalidation",
