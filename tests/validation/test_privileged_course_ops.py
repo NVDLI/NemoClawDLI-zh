@@ -307,13 +307,13 @@ class PrivilegedRequestTests(unittest.TestCase):
             "COURSE_OP": "cdn-publish", "CI_PIPELINE_SOURCE": "web", "CI_COMMIT_BRANCH": "main",
             "CI_DEFAULT_BRANCH": "main", "CI_COMMIT_SHA": "a" * 40, "PUBLISH_SOURCE_REF": "main",
             "PUBLISH_SOURCE_SHA": "b" * 40, "PUBLISH_SOURCE_TEST_JOB_ID": "123", "PUBLISH_CHANNEL": "immutable",
-            "PUBLISH_COURSES": "nemoclaw", "PUBLISH_LANGUAGES": "en,es",
+            "PUBLISH_COURSES": prepare_cdn_publication.PRIMARY_COURSE, "PUBLISH_LANGUAGES": "en,es",
         }
 
     def test_bounded_cdn_request(self) -> None:
         result = privileged_request.validate("cdn-publish", self.base(), Path("."), self.context)
         self.assertEqual("b" * 40, result["destination"])
-        self.assertEqual(["nemoclaw"], result["courses"])
+        self.assertEqual([prepare_cdn_publication.PRIMARY_COURSE], result["courses"])
 
     def test_cdn_request_never_infers_an_optional_course(self) -> None:
         with self.assertRaisesRegex(ValueError, "PUBLISH_COURSES"):
@@ -473,7 +473,8 @@ class PublisherBoundaryTests(unittest.TestCase):
         plan = root / "plan.json"; config = root / "config.json"
         plan.write_text(json.dumps({
             "schema": "dli-cdn-publication/2", "source_ref": "topic", "source_sha": "a" * 40,
-            "channel": "immutable", "destination": "a" * 40, "courses": ["nemoclaw"],
+            "channel": "immutable", "destination": "a" * 40,
+            "courses": [prepare_cdn_publication.PRIMARY_COURSE],
             "files": [{"path": "index.html", "bytes": 6, "sha256": digest}],
         }))
         config.write_text(json.dumps({
@@ -494,9 +495,11 @@ class PublisherBoundaryTests(unittest.TestCase):
                 devbox_cdn_publisher.validate(publication, plan, config)
 
     def test_stable_ownership_excludes_unselected_optional_course(self) -> None:
-        plan = {"courses": ["nemoclaw"]}
-        self.assertNotIn("cfx11/", devbox_cdn_publisher._stable_prefixes(plan))
-        self.assertIn("nemoclaw/", devbox_cdn_publisher._stable_prefixes(plan))
+        primary = prepare_cdn_publication.PRIMARY_COURSE
+        optional = prepare_cdn_publication.OPTIONAL_COURSES[0]
+        plan = {"courses": [primary]}
+        self.assertNotIn(f"{optional}/", devbox_cdn_publisher._stable_prefixes(plan))
+        self.assertIn(f"{primary}/", devbox_cdn_publisher._stable_prefixes(plan))
 
     @patch("scripts.ci.devbox_cdn_publisher._verify_cdn")
     @patch("scripts.ci.devbox_cdn_publisher._remote_owned")
