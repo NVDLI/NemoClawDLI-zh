@@ -18,6 +18,11 @@ MAC_BROWSERS = (
     Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"),
     Path("/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"),
 )
+PLAYWRIGHT_BROWSER_NAMES = (
+    "chrome-headless-shell-linux64/chrome-headless-shell",
+    "chrome-linux/chrome",
+    "chrome-linux64/chrome",
+)
 
 
 class BrowserRuntimeError(RuntimeError):
@@ -55,10 +60,32 @@ def resolve_chrome() -> str:
         found = executable(name)
         if found:
             return found
+    roots = (
+        Path(os.environ.get("PLAYWRIGHT_BROWSERS_PATH", "/tmp/pw-browsers")),
+        Path("/sandbox/.cache/ms-playwright"),
+        Path(os.environ.get("HOME", "/root")) / ".cache/ms-playwright",
+    )
+    for root in roots:
+        if not root.is_dir():
+            continue
+        for revision in sorted(root.iterdir()):
+            for name in PLAYWRIGHT_BROWSER_NAMES:
+                found = executable(str(revision / name))
+                if found:
+                    return found
     for path in MAC_BROWSERS:
         if path.is_file() and os.access(path, os.X_OK):
             return str(path)
     raise BrowserRuntimeError("Chromium or compatible Chrome is required; install it or set CHROME_BIN")
+
+
+def main() -> int:
+    try:
+        print(resolve_chrome())
+    except BrowserRuntimeError as exc:
+        print(f"browser runtime: {exc}")
+        return 2
+    return 0
 
 
 def environment(**values: str | Path | None) -> dict[str, str]:
@@ -85,3 +112,7 @@ def run_node(
         timeout=timeout,
         check=False,
     )
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -58,6 +58,7 @@ const MOBILE_FIGURE_BREAKPOINT = 600;
 const MOBILE_FIGURE_MIN_WIDTH = 720;
 function _lightbox() {
   if (_lb) return _lb;
+  let source = null;
   const root = document.createElement("div");
   root.className = "fig-lightbox";
   root.hidden = true;
@@ -65,13 +66,28 @@ function _lightbox() {
                  + '<p class="fig-lightbox-hint">Swipe to pan</p>'
                  + '<div class="fig-lightbox-stage" role="dialog" aria-modal="true" aria-label="Enlarged figure"></div>';
   const stage = root.querySelector(".fig-lightbox-stage");
-  const close = () => { root.hidden = true; stage.innerHTML = ""; document.body.style.overflow = ""; };
+  const close = () => {
+    root.hidden = true;
+    stage.innerHTML = "";
+    document.body.style.overflow = "";
+    if (source) {
+      source.dataset.state = "ready";
+      source.setAttribute("aria-expanded", "false");
+      source.focus();
+      source = null;
+    }
+  };
   root.addEventListener("click", e => { if (e.target === root || e.target === stage) close(); });
   root.querySelector(".fig-lightbox-x").addEventListener("click", close);
   document.addEventListener("keydown", e => { if (e.key === "Escape" && !root.hidden) close(); });
   document.body.appendChild(root);
   _lb = {
-    open(svg) {
+    open(svg, trigger = null) {
+      source = trigger;
+      if (source) {
+        source.dataset.state = "selected";
+        source.setAttribute("aria-expanded", "true");
+      }
       stage.innerHTML = "";
       svg.removeAttribute("style");
       svg.style.display = "block";
@@ -98,9 +114,9 @@ function _lightbox() {
   return _lb;
 }
 
-export function openFigureLightbox(svg) {
+export function openFigureLightbox(svg, trigger = null) {
   if (!svg) return;
-  _lightbox().open(svg.cloneNode(true));
+  _lightbox().open(svg.cloneNode(true), trigger);
 }
 
 export function wireFigureZoom(host, svg = null) {
@@ -112,8 +128,10 @@ export function wireFigureZoom(host, svg = null) {
   clickHost.classList.add("fig-zoom-host");
   clickHost.setAttribute("role", "button");
   clickHost.setAttribute("tabindex", "0");
+  clickHost.dataset.state = "ready";
+  clickHost.setAttribute("aria-expanded", "false");
   clickHost.setAttribute("aria-label", (targetSvg.getAttribute("aria-label") || "Figure") + ", click to enlarge");
-  const open = () => openFigureLightbox(targetSvg);
+  const open = () => openFigureLightbox(targetSvg, clickHost);
   clickHost.addEventListener("click", open);
   clickHost.addEventListener("keydown", e => {
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); }

@@ -140,10 +140,10 @@
     {
       "path": "web/nemoclaw/04a-safety.html",
       "file": "04a-safety.html",
-      "source_sha256": "258bf1f601380ca0b3fdbc7e8f0b2c195bb0c2a1b6fec7aa571548f58e3d3280",
-      "reviewed_source_sha256": "258bf1f601380ca0b3fdbc7e8f0b2c195bb0c2a1b6fec7aa571548f58e3d3280",
-      "target_sha256": "eb486f2a78ec1a400ab943773bcf3342d0dcbc48b4bea41a63b3470a3ebf1ae2",
-      "reviewed_target_sha256": "eb486f2a78ec1a400ab943773bcf3342d0dcbc48b4bea41a63b3470a3ebf1ae2",
+      "source_sha256": "fd95e699c9a0612b33e22fa095fb0e04c14c40415884c7058a474618edac404e",
+      "reviewed_source_sha256": "fd95e699c9a0612b33e22fa095fb0e04c14c40415884c7058a474618edac404e",
+      "target_sha256": "328cc2f2e8a13ffad066663c6b5fb36d14e288eaef2a1bd59388d11ea1ad994b",
+      "reviewed_target_sha256": "328cc2f2e8a13ffad066663c6b5fb36d14e288eaef2a1bd59388d11ea1ad994b",
       "status": "current",
       "quality": []
     },
@@ -170,7 +170,7 @@
     {
       "path": "web/nemoclaw/SKILL.html",
       "file": "SKILL.html",
-      "source_sha256": "2cbd4fb6ff8a3fdece6fb381f8e1e14a8b47525b4d0c01e6cb13050036377b24",
+      "source_sha256": "a5aea8cd6439b62853985dca3613532e6c1e7961f38b98f70b83cf0ab7616fe0",
       "reviewed_source_sha256": null,
       "target_sha256": null,
       "reviewed_target_sha256": null,

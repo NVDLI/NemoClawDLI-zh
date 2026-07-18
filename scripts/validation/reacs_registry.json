@@ -8,7 +8,11 @@
     "scripts/validation/release_gate.py",
     ".gitlab-ci.yml",
     ".gitlab/ci/*",
-    ".github/workflows/*"
+    ".github/workflows/*",
+    "scripts/ci/*",
+    "scripts/validation/interface_inventory_audit.py",
+    "scripts/validation/validator_specialization_audit.py",
+    "scripts/validation/reacs_specialization_exceptions.json"
   ],
   "suites": [
     {
@@ -1175,7 +1179,7 @@
       "parallel_safe": false
     },
     {
-      "id": "module-check-dir-nemoclaw",
+      "id": "module-check-discovered-web",
       "tiers": [
         "fast",
         "ship"
@@ -1187,14 +1191,12 @@
       "mode": "current-tree",
       "argv": [
         "{python}",
-        "scripts/runtime/module_check.py",
-        "--dir",
-        "web/nemoclaw"
+        "scripts/runtime/module_check.py"
       ],
       "parallel_safe": false
     },
     {
-      "id": "module-check-dir-web",
+      "id": "interface-inventory-audit",
       "tiers": [
         "fast",
         "ship"
@@ -1206,9 +1208,7 @@
       "mode": "current-tree",
       "argv": [
         "{python}",
-        "scripts/runtime/module_check.py",
-        "--dir",
-        "web"
+        "scripts/validation/interface_inventory_audit.py"
       ],
       "parallel_safe": false
     },
@@ -1311,12 +1311,29 @@
       ]
     },
     {
+      "id": "validator-specialization-audit",
+      "tiers": [
+        "fast",
+        "ship"
+      ],
+      "order": {
+        "fast": 59,
+        "ship": 88
+      },
+      "mode": "current-tree",
+      "argv": [
+        "{python}",
+        "scripts/validation/validator_specialization_audit.py"
+      ],
+      "parallel_safe": false
+    },
+    {
       "id": "validate-bundle-scope-ship-no-write",
       "tiers": [
         "fast"
       ],
       "order": {
-        "fast": 59
+        "fast": 61
       },
       "mode": "current-tree",
       "argv": [
@@ -2016,7 +2033,7 @@
         "ship"
       ],
       "order": {
-        "ship": 87
+        "ship": 90
       },
       "mode": "current-tree",
       "argv": [
@@ -2090,6 +2107,53 @@
       "parallel_safe": false,
       "exclusive_resources": [
         "browser"
+      ]
+    },
+    {
+      "id": "interface-inventory-browser-audit",
+      "tiers": [
+        "ship"
+      ],
+      "order": {
+        "ship": 87
+      },
+      "mode": "current-tree",
+      "argv": [
+        "{python}",
+        "scripts/validation/interface_inventory_browser_audit.py",
+        "--site-root",
+        "."
+      ],
+      "parallel_safe": false,
+      "exclusive_resources": [
+        "browser"
+      ]
+    },
+    {
+      "id": "test-privileged-course-ops",
+      "tiers": [
+        "fast",
+        "ship"
+      ],
+      "order": {
+        "fast": 60,
+        "ship": 89
+      },
+      "mode": "mutation",
+      "argv": [
+        "{python}",
+        "-m",
+        "unittest",
+        "-v",
+        "tests.validation.test_privileged_course_ops"
+      ],
+      "parallel_safe": true,
+      "impacts": [
+        "scripts/ci/*",
+        "tests/validation/test_privileged_course_ops.py",
+        ".gitlab-ci.yml",
+        ".gitlab/ci/privileged.yml",
+        "docs/pages_deploy.md"
       ]
     }
   ]

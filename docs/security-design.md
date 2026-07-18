@@ -34,9 +34,8 @@ change and requires architecture and security-control review before it can enter
 
 ## Threat-analysis invariants
 
-Use these statements as the canonical Target of Evaluation summary. A generated summary that
-contradicts one of them must be corrected before its risk labels or requirement statuses are
-accepted.
+These statements are the canonical Target of Evaluation summary. Correct any generated
+contradiction before accepting its risk labels or requirement statuses.
 
 - The subject is the DLI course repository and its static course artifact. The NemoClaw product,
   source host and CI service, static host, launchable, runtime, model service, browser environment,
@@ -49,11 +48,13 @@ accepted.
   values retained in `localStorage`; browser storage is not a vault. A compromised browser context
   can read them. HttpOnly cookies require a same-origin broker, and proof-of-possession requires
   issuer and service support.
-- Proposed-change validation executes untrusted repository code only in read-only jobs. Those jobs
-  hold no signing key, model API credential, runtime credential, production-service secret, or
-  deployment key. A no-checkout job receives only the compared manifest before requesting signing
-  OIDC. The protected deploy job executes only a pinned action; a later read-only job compares live
-  bytes. Required protected-environment review is live host evidence, not a repository fact.
+- Untrusted code remains read-only and secret-free. Candidate interfaces run egress-denied after
+  acquisition drops its read token. A runnerless child blocks pipeline variables; a separate
+  secret-free job builds the pinned browser runtime without candidate content. Trusted code owns
+  live probes and rejects unclassified capability. Public signing remains no-checkout. CDN
+  preparation lacks AWS authority; only an exact plan reaches the isolated
+  publisher. Protected-environment review remains host evidence.
+  These jobs hold no signing key, model API credential, runtime credential, or deployment key.
 - CI does not write Git refs or repository content. Logs and test results are job artifacts or
   external records. Branch and merge-request validation is normal; protected annotated tags only
   identify release candidates.
@@ -190,6 +191,11 @@ Repository workflow definitions validate source, build the static artifact, chec
 and record human ownership. They request isolated branch previews and manifest-preserving Pages
 deployment; live source-host enforcement remains operator evidence. A separate tag workflow produces
 deterministic archives, a release manifest, an SBOM, and checksums.
+
+Internal GitLab may prepare a language-selected CDN plan from an exact successful artifact without
+AWS authority. The isolated publisher accepts neither destination nor command input, uses root-owned
+AWS configuration, paginates fixed course roots, invalidates caches, and compares served bytes.
+Protected environments, runner state, AWS identity, and installation still require live evidence.
 
 Host Python, Node.js, and Chromium support local authoring and tests; they are not production nodes.
 Direct Python dependencies support material and validation tools, not the production browser runtime. Direct

@@ -111,7 +111,21 @@
       "name": "vendor",
       "path": "web/nemoclaw/vendor/SKILL.html"
     }
-  ]
+  ],
+  "interface_inventory": {
+    "schema": "dli-interface-inventory/1",
+    "source": "interface-inventory.json"
+  },
+  "validation_profile": {
+    "schema": "reacs-form-factor/1",
+    "form_factors": [
+      "browser-course",
+      "editable-code-cells",
+      "interactive-diagrams",
+      "openclaw-client",
+      "remote-model-client"
+    ]
+  }
 }
 </script>
 <script type="application/json" id="explorer-config">
@@ -273,6 +287,76 @@
           "desc": "Pinned same-origin browser packages, metadata, SBOM, and license texts."
         }
       ]
+    },
+    {
+      "title": "Interfaces",
+      "items": [
+        {
+          "label": "interface inventory",
+          "href": "interface-inventory.json",
+          "desc": "Factories, explicit roots, generated instances, authority classes, and required lifecycle states."
+        },
+        {
+          "label": "course-progress",
+          "href": "interface-inventory.json",
+          "desc": "Authority: none. Required states: ready, current."
+        },
+        {
+          "label": "credential-controls",
+          "href": "interface-inventory.json",
+          "desc": "Authority: learner-secret. Required states: empty, ready, failed."
+        },
+        {
+          "label": "editable-code-cell",
+          "href": "interface-inventory.json",
+          "desc": "Authority: bounded-browser. Required states: ready, running, succeeded, failed, reset."
+        },
+        {
+          "label": "gateway-console",
+          "href": "interface-inventory.json",
+          "desc": "Authority: openclaw-operator. Required states: blocked, ready, running, stopped, succeeded, failed."
+        },
+        {
+          "label": "interactive-diagram",
+          "href": "interface-inventory.json",
+          "desc": "Authority: none. Required states: ready, selected."
+        },
+        {
+          "label": "model-probe",
+          "href": "interface-inventory.json",
+          "desc": "Authority: learner-model. Required states: blocked, running, succeeded, failed."
+        },
+        {
+          "label": "ordered-flow",
+          "href": "interface-inventory.json",
+          "desc": "Authority: bounded-browser. Required states: blocked, ready, running, stopped, succeeded, failed, reset."
+        },
+        {
+          "label": "policy-map",
+          "href": "interface-inventory.json",
+          "desc": "Authority: openclaw-operator. Required states: empty, ready, selected, failed."
+        },
+        {
+          "label": "runtime-probe",
+          "href": "interface-inventory.json",
+          "desc": "Authority: openclaw-operator. Required states: blocked, running, succeeded, failed."
+        },
+        {
+          "label": "scenario-picker",
+          "href": "interface-inventory.json",
+          "desc": "Authority: none. Required states: ready, selected."
+        },
+        {
+          "label": "streaming-chat",
+          "href": "interface-inventory.json",
+          "desc": "Authority: bounded-browser. Required states: blocked, ready, running, stopped, succeeded, failed."
+        },
+        {
+          "label": "terminal-console",
+          "href": "interface-inventory.json",
+          "desc": "Authority: openclaw-operator. Required states: blocked, ready, running, stopped, succeeded, failed."
+        }
+      ]
     }
   ],
   "nav": {
@@ -331,6 +415,22 @@
   <ul>
     <li><a href="standalone/SKILL.html">standalone export</a></li>
     <li><a href="vendor/SKILL.html">browser vendor</a></li>
+  </ul>
+  <h2>Interfaces</h2>
+  <ul>
+    <li><a href="interface-inventory.json">interface inventory</a></li>
+    <li><a href="interface-inventory.json">course-progress</a></li>
+    <li><a href="interface-inventory.json">credential-controls</a></li>
+    <li><a href="interface-inventory.json">editable-code-cell</a></li>
+    <li><a href="interface-inventory.json">gateway-console</a></li>
+    <li><a href="interface-inventory.json">interactive-diagram</a></li>
+    <li><a href="interface-inventory.json">model-probe</a></li>
+    <li><a href="interface-inventory.json">ordered-flow</a></li>
+    <li><a href="interface-inventory.json">policy-map</a></li>
+    <li><a href="interface-inventory.json">runtime-probe</a></li>
+    <li><a href="interface-inventory.json">scenario-picker</a></li>
+    <li><a href="interface-inventory.json">streaming-chat</a></li>
+    <li><a href="interface-inventory.json">terminal-console</a></li>
   </ul>
 </noscript>
 <script src="../_skill_explorer.js"></script>

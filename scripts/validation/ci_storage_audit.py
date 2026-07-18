@@ -67,7 +67,9 @@ def main() -> int:
         (test, r"allow_failure:\s*false", "test gate must block Pages deployment on required-tier failures"),
         (test, r"release_gate\.py --tier ship", "test job must run the shared ship gate"),
         (test, r'build_pages\.sh "\$CI_PROJECT_DIR/candidate"', "test job must build the Pages candidate without another worker stage"),
-        (test, r"- candidate/", "test job must hand the Pages candidate to publication"),
+        (test, r"tar -czf validated-candidate\.tar\.gz -C candidate \.", "test job must archive the validated Pages candidate"),
+        (test, r"- validated-candidate\.tar\.gz", "test job must hand the validated candidate archive to publication"),
+        (pages, r"--archive validated-candidate\.tar\.gz --extract-to candidate", "pages job must validate and extract the tested candidate archive"),
         (pages, r'cp -a candidate/\. "public/\$CI_COMMIT_REF_SLUG/"', "preview publication must copy the tested candidate"),
         (gate, r'branch_preview_manifest_audit\.py", "--self-test"', "shared gate must self-test branch availability detection"),
         (smoke, r"needs:\s*\[\"pages\"\]", "live Pages smoke must wait for the deploy job"),
@@ -98,6 +100,8 @@ def main() -> int:
         findings.append("classic pages job must not use pages.path_prefix on this GitLab instance")
     if "expire_in: 3 days" not in pages:
         findings.append("pages job must keep 3-day downloadable artifact expiry")
+    if re.search(r"(?m)^\s*- candidate/\s*$", test):
+        findings.append("test job must not expose the unpacked candidate as a cross-job artifact")
     if not re.search(r"stages:\s*\[[^\]]*verify[^\]]*\]", text):
         findings.append("pipeline must retain a post-deploy verify stage")
 

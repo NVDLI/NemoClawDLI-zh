@@ -66,7 +66,10 @@ def probe_frame_findings(openclaw: str) -> list[str]:
     hide_fn = re.search(r"function hideHtmlFrame\(clear = false\) \{([\s\S]*?)\n  \}", openclaw)
     if not hide_fn or "fr.hidden = true" not in hide_fn.group(1) or 'fr.removeAttribute("srcdoc")' not in hide_fn.group(1):
         findings.append("web/nemoclaw/scripts/_openclaw.js must hide the probe frame and clear srcdoc when requested")
-    output_fn = re.search(r"function setOutput\(text, kind = \"\"\) \{([\s\S]*?)\n  \}\n\n  // Used by runAction", openclaw)
+    output_fn = re.search(
+        r"function setOutput\(text, kind = \"\"(?:, [^)]*)?\) \{([\s\S]*?)\n  \}\n\n  // Used by runAction",
+        openclaw,
+    )
     if not output_fn or 'includes("HTML ·")' not in output_fn.group(1) or "hideHtmlFrame(true)" not in output_fn.group(1):
         findings.append("web/nemoclaw/scripts/_openclaw.js must clear the HTML frame before every non-HTML output")
     run_action = re.search(r"async function runAction\(action\) \{([\s\S]*?)\n  \}\n\n  actions\.forEach", openclaw)
