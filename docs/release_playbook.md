@@ -242,6 +242,14 @@ Use these for prepublication staging and the internal integration copy after cut
   and require that reviewer. Review environments remain isolated, manual, and short-lived
   without production authority.
 - Keep branch preview deploys manual, isolated under branch slug paths, built with production root from a protected ref, and blocked by the required test gate. On classic Pages, expose only preview paths present in the latest combined artifact.
+- Protect `live-interface-review` and `dli-cdn-production` environments. Limit both to named internal
+  operators; limit `dli-cdn-production` to the project-locked devbox runner. Source branch, exact
+  commit, successful gate job, language subset, and immutable/stable channel are the complete
+  operator vocabulary. Keep the publisher binary and AWS account configuration root-owned.
+- Keep protected live credentials and the read-only GitLab evidence token as environment-scoped
+  file variables. Keep AWS credentials outside GitLab in the root-owned isolated publisher on the
+  devbox. Owner-only `glab` inputs select reviewed refs and languages; they never carry credentials
+  or free-form process settings. Public GitHub receives no secret, runner, or CDN authority edge.
 - Use templates in `.gitlab/issue_templates/` and `.gitlab/merge_request_templates/`.
 - Use labels and milestones as the project-management source. Mirror the same taxonomy to GitHub.
 - Keep `docs/issue_standards.md` aligned with tracker labels, issue templates, and MR templates.

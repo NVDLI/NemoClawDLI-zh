@@ -46,7 +46,7 @@
         <progress id="progress-value" value="0" max="1"></progress>
         <span id="progress-label">No cells run yet.</span>
       </div>
-      <nav id="course-nav" aria-label="Course lessons"></nav>
+      <nav id="course-nav" data-dli-interface="course-navigation" data-state="ready" aria-label="Course lessons"></nav>
     </aside>
 
     <main>
@@ -63,7 +63,7 @@
         </div>
       </div>
       <section class="runtime-console" aria-label="NVIDIA model connection">
-        <details id="connection-details" class="connection-card">
+        <details id="connection-details" class="connection-card" data-dli-interface="model-connection" data-state="empty">
           <summary>
             <span><span class="eyebrow">Model connection</span><strong id="runtime-console-title">Connect to NVIDIA</strong></span>
             <span id="connection-summary-status">No key saved</span>
@@ -100,13 +100,13 @@
           </div>
         </details>
       </section>
-      <article id="lesson-body" class="lesson-body" aria-live="polite">
+      <article id="lesson-body" class="lesson-body" data-dli-interface="lesson-renderer" aria-live="polite">
         <p>Loading lesson…</p>
       </article>
     </main>
   </div>
 
-  <aside id="runtime-dock" class="wb-dock" data-runtime-workbench aria-label="Python runtime controls">
+  <aside id="runtime-dock" class="wb-dock" data-runtime-workbench data-dli-interface="runtime-workbench" aria-label="Python runtime controls">
     <nav class="wb-tools" aria-label="Runtime views">
       <button class="wb-tool" type="button" data-runtime-panel="activity" data-workbench-view="activity" aria-controls="runtime-panel" aria-pressed="false">
         <span class="wb-tool-icon" aria-hidden="true">ACT</span><span class="wb-tool-copy"><span>Activity</span><span id="operation-badge" class="operation-badge" data-state="idle">Idle</span></span>

@@ -353,6 +353,7 @@ function buildVideoSupplement(record) {
   const figure = document.createElement("figure");
   figure.className = "lesson-video";
   figure.dataset.videoId = record.id;
+  figure.dataset.state = "preview";
 
   const heading = document.createElement("div");
   heading.className = "lesson-video-heading";
@@ -399,6 +400,7 @@ function buildVideoSupplement(record) {
   player.append(video, preview);
 
   const resetPreview = message => {
+    figure.dataset.state = "failed";
     preview.hidden = false;
     preview.dataset.state = "error";
     previewLabel.textContent = "Try video again";
@@ -406,6 +408,7 @@ function buildVideoSupplement(record) {
   };
   preview.addEventListener("click", () => {
     if (preview.dataset.state === "loading") return;
+    figure.dataset.state = "loading";
     preview.dataset.state = "loading";
     previewLabel.textContent = "Loading walkthrough";
     previewStatus.textContent = record.lesson_title;
@@ -416,7 +419,14 @@ function buildVideoSupplement(record) {
       playback.catch(() => resetPreview("Playback did not start. You can also open the video below."));
     }
   });
-  video.addEventListener("playing", () => { preview.hidden = true; });
+  video.addEventListener("playing", () => {
+    figure.dataset.state = "playing";
+    preview.hidden = true;
+  });
+  video.addEventListener("pause", () => {
+    if (video.currentTime > 0 && !video.ended) figure.dataset.state = "stopped";
+  });
+  video.addEventListener("ended", () => { figure.dataset.state = "succeeded"; });
   video.addEventListener("error", () => resetPreview("Video unavailable. Try the direct link below."));
 
   const caption = document.createElement("figcaption");
@@ -447,7 +457,7 @@ function mountVideoSupplement(record) {
   marker.replaceWith(buildVideoSupplement(record));
 }
 
-function renderDisplay(record) {
+export function renderDisplay(record) {
   const type = record.type || "text/plain";
   if (type === "application/x-course-chat+json") return renderChatWidget(record.data);
   if (type === "image/svg+xml") {
@@ -497,6 +507,7 @@ function renderChatWidget(raw) {
   if (!/^chat-[1-9][0-9]*$/.test(payload.chat_id || "")) throw new Error("Chat widget identifier is invalid.");
   const section = document.createElement("section");
   section.className = "course-chat";
+  section.dataset.state = "ready";
   const heading = document.createElement("h3");
   heading.textContent = "Live browser chat";
   const history = document.createElement("div");
@@ -535,14 +546,17 @@ function renderChatWidget(raw) {
     input.value = "";
     const response = addMessage("assistant", "", true);
     send.disabled = true;
+    section.dataset.state = "running";
     state.activeChat = response;
     try {
       const reply = await state.runner.chat(payload.chat_id, prompt, elements["api-key"].value.trim(), { label: "Course chat response" });
       response.parentElement.dataset.pending = "false";
       response.textContent = reply.ok ? String(reply.value ?? reply.display ?? "") : reply.stderr;
+      section.dataset.state = reply.ok ? "succeeded" : "failed";
     } catch (error) {
       response.parentElement.dataset.pending = "false";
       response.textContent = error.message;
+      section.dataset.state = "failed";
     } finally {
       state.activeChat = null;
       send.disabled = false;
@@ -1432,6 +1446,7 @@ function updateConnectionSummary(status = "") {
 }
 elements["api-key"].addEventListener("input", () => {
   const value = elements["api-key"].value.trim();
+  elements["connection-details"].dataset.state = value ? "ready" : "empty";
   if (value) sessionStorage.setItem("cfx11-nvidia-key", value); else sessionStorage.removeItem("cfx11-nvidia-key");
   elements["api-status"].textContent = value ? "The key is held in this browser tab only." : "No key is stored in this browser tab.";
   updateConnectionSummary();
@@ -1512,13 +1527,16 @@ elements["test-api-key"].addEventListener("click", async () => {
     return;
   }
   elements["test-api-key"].disabled = true;
+  elements["connection-details"].dataset.state = "running";
   elements["api-status"].textContent = "Checking NVIDIA API access…";
   try {
     const model = await probeModelConnection(key);
     elements["api-status"].textContent = `Connected with ${model}. Rerun a lesson's model setup cell to apply this choice.`;
+    elements["connection-details"].dataset.state = "ready";
     updateConnectionSummary(`Connected · ${model}`);
     elements["connection-details"].open = false;
   } catch (error) {
+    elements["connection-details"].dataset.state = "failed";
     elements["api-status"].textContent = error.message;
     updateConnectionSummary("Connection needs attention");
     elements["connection-details"].open = true;

@@ -2,7 +2,7 @@
 # Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""module_check.py verifies ES-module import/export integrity across the web course.
+"""Verify ES-module import/export integrity across every discovered web course.
 
 The course pages and the _*.js modules import named bindings from ./_shared.js, and _shared.js
 re-exports the names it pulls from the extracted modules (_glossary.js, _openclaw.js, ...). When
@@ -11,24 +11,29 @@ an extraction drops a name from that re-export, every page importing it breaks a
 that in a real browser; this catches the same class statically in milliseconds with no browser, so
 it is cheap enough to run on every commit.
 
-Two checks per directory:
+Two checks per discovered directory:
   1. Every `import { a, b } from "./mod.js"` resolves to a real export of mod.js (re-exports
      count, since `export { a }` is itself an export).
   2. Every name a module lists in `export { ... }` is defined in that module or imported into
      it (no re-exporting a name you never brought in).
 
+Course roots are discovered from ``web/*/interface-inventory.json`` and the complete web tree is
+checked recursively. A newly added course therefore enters this gate without a registry edit or
+course-name allowlist. ``--dir`` remains available for focused diagnosis only.
+
 Usage:
-    python3 scripts/runtime/module_check.py                  # web/nemoclaw (default)
-    python3 scripts/runtime/module_check.py --dir web        # the bundle root
+    python3 scripts/runtime/module_check.py                  # web plus every discovered course
+    python3 scripts/runtime/module_check.py --dir web/cfx11  # focused diagnosis
 Exit non-zero on any unresolved import or dangling re-export, so it works as a gate.
 """
-import argparse, os, re, sys, glob
+import argparse, re, sys
 from pathlib import Path
 
 _DECL = re.compile(r'\bexport\s+(?:async\s+)?(?:function|const|let|var|class)\s+([A-Za-z_$][\w$]*)')
 _EXPORT_BLOCK = re.compile(r'\bexport\s*\{([^}]*)\}')
 _IMPORT_BLOCK = re.compile(r'\bimport\s*\{([^}]*)\}\s*from\s*["\']([^"\']+)["\']')
 _LOCAL_DECL = re.compile(r'\b(?:function|const|let|var|class)\s+([A-Za-z_$][\w$]*)')
+_DECLARATOR = re.compile(r'(?:\b(?:const|let|var)\s+|,)\s*([A-Za-z_$][\w$]*)\s*=')
 
 
 def _names_in_clause(clause, want="exported"):
@@ -65,7 +70,9 @@ def parse_imports(src):
 
 def local_bindings(src):
     """Names defined or imported in a module (for the honest-re-export check)."""
-    names = set(_LOCAL_DECL.findall(src))
+    # _LOCAL_DECL catches function/class and the first variable declarator. _DECLARATOR also
+    # catches later names in ``const a = 1, b = 2`` as emitted by reviewed minified ESM bundles.
+    names = set(_LOCAL_DECL.findall(src)) | set(_DECLARATOR.findall(src))
     for m in _IMPORT_BLOCK.finditer(src):
         names.update(_names_in_clause(m.group(1), "exported"))  # local alias is the binding name
     return names
@@ -88,45 +95,43 @@ def unused_imports(src):
     return [n for n in imported if not re.search(r'\b' + re.escape(n) + r'\b', body)]
 
 
-def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--dir", default="web/nemoclaw")
-    ap.add_argument("--dead", action="store_true", help="also report dead (never-referenced) imports, advisory only")
-    a = ap.parse_args()
-    root = Path(a.dir).resolve()
+def check_root(root: Path, *, dead: bool = False) -> tuple[list[str], int, list[str]]:
+    """Return integrity findings, module count, and advisory dead-import rows for one root."""
     if not root.is_dir():
-        sys.exit("module_check: no such dir: " + str(root))
-    module_root = root / "scripts" if (root / "scripts").is_dir() else root
-
-    # Export table for every module in the module dir.
-    exports = {}
-    for f in sorted(module_root.glob("*.js")):
-        exports[f.name] = parse_exports(f.read_text(encoding="utf-8"))
+        return ["module_check: no such dir: " + str(root)], 0, []
+    # Recursive discovery is deliberate: courses may keep modules in runtime/, scripts/, or a
+    # shared sibling. Relative imports are resolved to their actual file rather than flattened to
+    # a basename, so two courses may safely use the same module filename.
+    module_files = sorted(root.rglob("*.js"))
+    exports = {f.resolve(): parse_exports(f.read_text(encoding="utf-8")) for f in module_files}
 
     problems = []
 
     # Check 1: every relative-import name resolves.
-    files = sorted(root.glob("*.html")) + sorted(module_root.glob("*.js"))
+    files = sorted(root.rglob("*.html")) + module_files
     for f in files:
         src = f.read_text(encoding="utf-8")
         for mod, names in parse_imports(src):
             if not mod.startswith("."):
                 continue  # external (CDN) import
             target_path = (f.parent / mod).resolve()
-            try:
-                target = target_path.relative_to(module_root).name if target_path.parent == module_root else target_path.name
-            except ValueError:
-                target = target_path.name
-            if target not in exports:
-                problems.append("%s imports from %s, which is not a module in %s" % (f.name, mod, module_root))
+            if target_path not in exports:
+                # A focused --dir may import a shared sibling. Resolve that concrete module too,
+                # while still rejecting missing paths and never scanning an unrelated allowlist.
+                if target_path.is_file() and target_path.suffix == ".js":
+                    exports[target_path] = parse_exports(target_path.read_text(encoding="utf-8"))
+                else:
+                    problems.append("%s imports from %s, which does not resolve to a JavaScript module" % (f, mod))
+                    continue
+            if target_path not in exports:
                 continue
             for n in names:
-                if n not in exports[target]:
+                if n not in exports[target_path]:
                     problems.append("%s imports `%s` from %s, but %s does not export it"
-                                    % (f.name, n, mod, target))
+                                    % (f, n, mod, target_path))
 
     # Check 2: re-exported names are actually present in the module.
-    for f in sorted(module_root.glob("*.js")):
+    for f in module_files:
         name = f.name
         src = f.read_text(encoding="utf-8")
         local = local_bindings(src)
@@ -139,23 +144,48 @@ def main():
                 if n not in local:
                     problems.append("%s re-exports `%s` but never defines or imports it" % (name, n))
 
-    if a.dead:
-        dead_any = False
+    dead_rows = []
+    if dead:
         for f in files:
-            dead = unused_imports(f.read_text(encoding="utf-8"))
-            if dead:
-                dead_any = True
-                print("  · %s: dead import(s): %s" % (f.name, ", ".join(dead)))
-        if not dead_any:
-            print("  · no dead imports")
+            names = unused_imports(f.read_text(encoding="utf-8"))
+            if names:
+                dead_rows.append("%s: dead import(s): %s" % (f.name, ", ".join(names)))
 
-    nmods = len(exports)
-    if problems:
-        print("module_check: %d integrity problem(s) under %s" % (len(problems), a.dir))
-        for p in problems:
+    return problems, len(exports), dead_rows
+
+
+def discover_roots(web: Path) -> list[Path]:
+    """Require course contracts, then scan their shared served tree once."""
+    if not list(web.glob("*/interface-inventory.json")):
+        return []
+    return [web]
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--dir", action="append", help="focused root; repeat for several roots")
+    ap.add_argument("--web-root", default="web", help="bundle root used for exhaustive discovery")
+    ap.add_argument("--dead", action="store_true", help="also report dead (never-referenced) imports, advisory only")
+    a = ap.parse_args()
+    roots = [Path(value).resolve() for value in a.dir] if a.dir else discover_roots(Path(a.web_root).resolve())
+    if not roots:
+        sys.exit("module_check: no course interface inventories discovered under " + str(Path(a.web_root).resolve()))
+
+    total_modules = 0
+    all_problems = []
+    for root in roots:
+        problems, nmods, dead_rows = check_root(root, dead=a.dead)
+        total_modules += nmods
+        all_problems.extend(f"{root}: {problem}" for problem in problems)
+        for row in dead_rows:
+            print("  · %s: %s" % (root, row))
+
+    if all_problems:
+        print("module_check: %d integrity problem(s) across %d discovered root(s)" % (len(all_problems), len(roots)))
+        for p in all_problems:
             print("  ✗ " + p)
         sys.exit(1)
-    print("module_check: %d modules, all imports resolve and all re-exports are honest (%s)" % (nmods, a.dir))
+    print("module_check: %d modules across %d discovered root(s); all imports resolve and all re-exports are honest" % (total_modules, len(roots)))
 
 
 if __name__ == "__main__":

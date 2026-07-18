@@ -136,6 +136,7 @@ def _paragraphs(raw: str) -> list[str]:
     """Return narrative paragraphs without code, tables, headings, or list scaffolding."""
     blocks: list[str] = []
     fence_char = ""
+    list_continuation = False
     current: list[str] = []
     for line in raw.splitlines() + [""]:
         marker = re.match(r"^\s{0,3}(`{3,}|~{3,})", line)
@@ -149,11 +150,21 @@ def _paragraphs(raw: str) -> list[str]:
         if fence_char:
             continue
         if not line.strip():
+            list_continuation = False
             if current:
                 blocks.append(" ".join(part.strip() for part in current))
                 current = []
             continue
-        if line.startswith(("#", "|", "- ", "* ")) or re.match(r"^\d+\.\s", line):
+        if line.startswith(("- ", "* ")) or re.match(r"^\d+\.\s", line):
+            list_continuation = True
+            if current:
+                blocks.append(" ".join(part.strip() for part in current))
+                current = []
+            continue
+        if list_continuation and line[:1].isspace():
+            continue
+        list_continuation = False
+        if line.startswith(("#", "|")):
             if current:
                 blocks.append(" ".join(part.strip() for part in current))
                 current = []
@@ -538,6 +549,8 @@ def self_test() -> list[str]:
         return [f"baseline is not clean: {row['code']} {row['path']} {row['detail']}" for row in baseline]
 
     tests: list[tuple[str, dict, dict[str, str], set[str], set[str], str]] = []
+    if _paragraphs("- item\n  continued item\n\nNarrative paragraph.\n") != ["Narrative paragraph."]:
+        return ["paragraph parser treats a list continuation as narrative prose"]
 
     def mutated() -> dict:
         return copy.deepcopy(base)

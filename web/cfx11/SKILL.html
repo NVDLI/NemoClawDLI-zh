@@ -13,6 +13,22 @@
   "source_dir": "web/cfx11/",
   "summary": "Internal browser candidate for c-fx-11-v1, with digest-bound lesson delivery, executable XBlocks, and learner-owned NVIDIA API access.",
   "explorer": "../_skill_explorer.js",
+  "interface_inventory": {
+    "schema": "dli-interface-inventory/1",
+    "source": "interface-inventory.json"
+  },
+  "validation_profile": {
+    "schema": "reacs-form-factor/1",
+    "form_factors": [
+      "assessment",
+      "browser-course",
+      "editable-code-cells",
+      "markdown-course",
+      "pyodide-kernel",
+      "remote-model-client",
+      "video-supplements"
+    ]
+  },
   "source_contract": {
     "provenance": "SOURCE_PROVENANCE.md",
     "manifest": "course.json",
@@ -97,6 +113,11 @@
       "path": "index.html",
       "role": "HTML source",
       "desc": "Html source in web/cfx11/."
+    },
+    {
+      "path": "interface-inventory.json",
+      "role": "interface contract",
+      "desc": "Exhaustive mount, marker, generated-instance, authority, and lifecycle discovery contract."
     }
   ],
   "related": [
@@ -138,6 +159,7 @@
       <li><a href="course.json"><code>course.json</code></a></li>
       <li><a href="content-bundle.json"><code>content-bundle.json</code></a></li>
       <li><a href="index.html"><code>index.html</code></a></li>
+      <li><a href="interface-inventory.json"><code>interface-inventory.json</code></a></li>
     </ul></section>
     <section><h2>Child directories</h2><ul>
       <li><a href="assets/SKILL.html"><code>assets/</code></a></li>

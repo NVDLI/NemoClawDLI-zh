@@ -58,6 +58,8 @@ sys.path.insert(0, str(HERE.parent))
 import skill_audit as sa  # drift detector + --fix engine + skills()/parse_meta(); single source of truth
 
 TASK1 = sa.TASK1
+sys.path.insert(0, str(TASK1))
+from scripts.validation import interface_inventory_audit
 _SEMVER = re.compile(r"^\d+\.\d+\.\d+([.\-+].*)?$")
 _STATUS = {"ready", "setup", "wip", "ref"}
 _PROCESS_REF = re.compile(r"(?:GitLab\s+issue\s*#?\d+|\bissue\s*#\d+|\bMR\s*!?\d+|\bPR\s*#?\d+|merge request\s*!?\d+|pull request\s*#?\d+|@(?!media\b|supports\b|keyframes\b|font-face\b|import\b)(?![A-Za-z0-9_.-]+__)[A-Za-z0-9_][A-Za-z0-9_.-]*)", re.I)
@@ -415,10 +417,12 @@ def renderer_findings() -> list[tuple[str, str]]:
 
 def run(verbose: bool = False) -> dict:
     """Gate entrypoint. Return schema, exhaustive coverage/drift, and renderer findings."""
+    interface_findings, _ = interface_inventory_audit.audit(TASK1)
     return {
         "schema": schema_findings() + source_quality_findings(),
         "drift": sa.audit(fix=False),
         "graph": skill_graph_findings(TASK1, list(sa.skills())),
+        "interfaces": [(item.split(": ", 1)[0], item.split(": ", 1)[-1]) for item in interface_findings],
         "renderer": renderer_findings(),
     }
 
@@ -444,6 +448,7 @@ def main():
         ("schema", res["schema"], sys.stderr),
         ("drift", res["drift"], sys.stderr),
         ("graph", res["graph"], sys.stderr),
+        ("interfaces", res["interfaces"], sys.stderr),
         ("renderer", res["renderer"], sys.stderr),
     ):
         if items:

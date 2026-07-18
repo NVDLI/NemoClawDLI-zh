@@ -63,6 +63,8 @@ security_browser_sca:
       - scripts/security/reports/runtime-npm-audit.json
     expire_in: 30 days
   rules:
+    - if: '$COURSE_PRIVILEGED_PIPELINE == "1"'
+      when: never
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
       when: on_success
       allow_failure: false
@@ -108,7 +110,31 @@ security_sca:
       - scripts/security/reports/
     expire_in: 30 days
   rules:
+    - if: '$COURSE_PRIVILEGED_PIPELINE == "1"'
+      when: never
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: on_success
+      allow_failure: false
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - .gitlab-ci.yml
+        - .gitlab/ci/core.yml
+        - .gitlab/ci/sca.yml
+        - .gitlab/ci/privileged.yml
+        - .gitlab/ci/privileged-child.yml
+        - .gitlab/CODEOWNERS
+        - scripts/ci/**/*
+        - scripts/git-hooks/**/*
+        - scripts/validation/contribution_safety_audit.py
+        - scripts/validation/gitlab_ci_policy.py
+        - scripts/validation/gitlab_governance_audit.py
+        - scripts/validation/interface_inventory_audit.py
+        - scripts/validation/interface_inventory_browser_audit.py
+        - scripts/validation/reacs_registry.py
+        - scripts/validation/reacs_registry.json
+        - scripts/validation/reacs_specialization_exceptions.json
+        - scripts/validation/release_gate.py
+        - scripts/validation/validator_specialization_audit.py
       when: on_success
       allow_failure: false
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
@@ -142,6 +168,8 @@ security_python_sca:
       dotenv: scripts/security/reports/python-materials/job.env
     expire_in: 30 days
   rules:
+    - if: '$COURSE_PRIVILEGED_PIPELINE == "1"'
+      when: never
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
       when: on_success
       allow_failure: false

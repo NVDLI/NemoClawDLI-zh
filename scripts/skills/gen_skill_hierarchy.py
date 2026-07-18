@@ -482,6 +482,28 @@ def gen_web_course_hubs():
                 "self_path": f"web/{d.name}/SKILL.html",
                 "children": [{"name": _label(p), "path": p.relative_to(TASK1).as_posix()} for p in pages]
                             + [{"name": p.parent.name, "path": p.relative_to(TASK1).as_posix()} for p in support_files]}
+        interface_inventory = d / "interface-inventory.json"
+        if interface_inventory.is_file():
+            contract = json.loads(interface_inventory.read_text(encoding="utf-8"))
+            meta["interface_inventory"] = {
+                "schema": contract.get("schema"),
+                "source": interface_inventory.name,
+            }
+            meta["validation_profile"] = {
+                "schema": "reacs-form-factor/1",
+                "form_factors": contract.get("validation_profile", []),
+            }
+            interface_items = [
+                ("interface inventory", interface_inventory.name,
+                 "Factories, explicit roots, generated instances, authority classes, and required lifecycle states."),
+            ]
+            for name, profile in sorted(contract.get("form_factors", {}).items()):
+                states = ", ".join(profile.get("states", []))
+                interface_items.append((
+                    name, interface_inventory.name,
+                    f"Authority: {profile.get('authority', 'unknown')}. Required states: {states}.",
+                ))
+            sections.append(("Interfaces", "Machine-checked discovery rules and form-factor contracts for every course interface.", interface_items))
         lead = WEB_COURSE_DESC.get(d.name, f"The {d.name} browser course, {len(primary)} pages.")
         write(sk, framer_page(meta, f"web/{d.name} · course hub", sections, summary=lead,
                               nav=_nav("web/" + d.name, "web/SKILL.html", "web"),

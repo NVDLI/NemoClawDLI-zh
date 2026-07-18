@@ -32,6 +32,14 @@ variables:
 # the actual MR body. Branch pipelines remain available before an MR exists.
 workflow:
   rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "web" && $COURSE_OP == "live-interface-review"'
+      variables: {COURSE_PRIVILEGED_PIPELINE: "1"}
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "api" && $COURSE_OP == "live-interface-review"'
+      variables: {COURSE_PRIVILEGED_PIPELINE: "1"}
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "web" && $COURSE_OP == "cdn-publish"'
+      variables: {COURSE_PRIVILEGED_PIPELINE: "1"}
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "api" && $COURSE_OP == "cdn-publish"'
+      variables: {COURSE_PRIVILEGED_PIPELINE: "1"}
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
       when: never
@@ -106,6 +114,7 @@ test:
     - 'if [ -n "${CI_MERGE_REQUEST_IID:-}" ]; then python3 scripts/validation/sensitive_content_audit.py --submission-env CI_MERGE_REQUEST_TITLE --submission-env CI_MERGE_REQUEST_DESCRIPTION --submission-env CI_MERGE_REQUEST_SOURCE_BRANCH_NAME; else echo "Sensitive submission metadata: no merge-request context; current-tree audit already passed in release_gate.py."; fi'
     - 'if [ -n "${CI_MERGE_REQUEST_DIFF_BASE_SHA:-}" ]; then python3 scripts/validation/sensitive_content_audit.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"; else echo "Sensitive history: no merge-request commit range; current-tree audit already passed in release_gate.py."; fi'
     - 'if [ -n "${CI_MERGE_REQUEST_DIFF_BASE_SHA:-}" ]; then python3 scripts/validation/release_change_reminder.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}" --report docs/validation/release-change-reminder.json; else echo "Release follow-up reminder: no merge-request commit range; run it before release against the final candidate."; fi'
+    - 'if [ -n "${CI_MERGE_REQUEST_DIFF_BASE_SHA:-}" ]; then python3 scripts/validation/validator_specialization_audit.py --commit-range "${CI_MERGE_REQUEST_DIFF_BASE_SHA}..${CI_COMMIT_SHA}"; else echo "Validator specialization history: no merge-request commit range; current-tree audit already passed in release_gate.py."; fi'
     # Every shared gate verifies full committed SHA-256 provenance offline. Schedules remain strict
     # live monitors; production pushes tolerate only classified transient source reachability.
     - |
@@ -149,13 +158,18 @@ test:
       python3 scripts/validation/pages_artifact_integrity.py \
         --root candidate --expect-sha "$CI_COMMIT_SHA" \
         --course-prefix "$CANDIDATE_PREFIX" --check-manifest candidate/pages-sha256.txt
+      tar -czf validated-candidate.tar.gz -C candidate .
   artifacts:
     when: always
     name: "gate-$CI_COMMIT_SHORT_SHA"
     paths:
       - docs/validation/
-      - candidate/
+      - validated-candidate.tar.gz
     expire_in: 30 days
+  rules:
+    - if: '$COURSE_PRIVILEGED_PIPELINE == "1"'
+      when: never
+    - when: on_success
 
 external_integration_audit:
   <<: *with_python_node
@@ -198,6 +212,8 @@ pages:
     # with production rebuilt from a protected ref plus the branch under /<slug>/.
     - |
       set -euo pipefail
+      rm -rf candidate
+      python3 scripts/validation/pages_artifact_integrity.py --archive validated-candidate.tar.gz --extract-to candidate
       refresh_branch_ref() {
         branch="$1"
         preview_remote="origin"
@@ -331,6 +347,8 @@ pages:
     url: "$PAGES_DEPLOYED_URL"
     auto_stop_in: "$PAGES_AUTO_STOP_IN"
   rules:
+    - if: '$COURSE_PRIVILEGED_PIPELINE == "1"'
+      when: never
     # Branch previews are real GitLab Pages deploys, but production root is rebuilt from the
     # protected production ref and the branch only gets /<slug>/ plus /<slug>/web/nemoclaw/.
     - if: '$CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_COMMIT_BRANCH != "nemoclaw-only" && $CI_COMMIT_BRANCH !~ /^translate-/ && $CI_PIPELINE_SOURCE != "schedule"'
@@ -430,6 +448,8 @@ pages_smoke:
           --check-manifest public/pages-sha256.txt --attempts 30 --delay 5
       fi
   rules:
+    - if: '$COURSE_PRIVILEGED_PIPELINE == "1"'
+      when: never
     - if: '$CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_COMMIT_BRANCH != "nemoclaw-only" && $CI_COMMIT_BRANCH !~ /^translate-/ && $CI_PIPELINE_SOURCE != "schedule"'
       variables:
         PAGES_PREVIEW: "1"
@@ -474,6 +494,8 @@ theme_runtime:
       test -d "$THEME_SCAN_ROOT"
       python3 scripts/skills/skill_renderer_runtime_audit.py --site-root "$THEME_SITE_ROOT" --scan-root "$THEME_SCAN_ROOT" --node-path "$CI_PROJECT_DIR/scripts/runtime/node_modules" --chrome-bin auto --timeout-seconds 600
   rules:
+    - if: '$COURSE_PRIVILEGED_PIPELINE == "1"'
+      when: never
     - if: '$CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_COMMIT_BRANCH != "nemoclaw-only" && $CI_COMMIT_BRANCH !~ /^translate-/ && $CI_PIPELINE_SOURCE != "schedule"'
       variables:
         PAGES_PREVIEW: "1"

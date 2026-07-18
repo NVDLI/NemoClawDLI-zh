@@ -444,7 +444,7 @@ export function mountEndpointProbe(targetSel, opts = {}) {
   };
 
   target.innerHTML = `
-    <div class="claw-probe" data-connection-kind="${connectionKind}">
+    <div class="claw-probe" data-connection-kind="${connectionKind}" data-state="ready">
       <div class="claw-head">
         <div class="claw-label">${escHtml(label)}</div>
         ${intro ? `<div class="claw-intro">${escHtml(intro)}</div>` : ""}
@@ -612,6 +612,7 @@ export function mountEndpointProbe(targetSel, opts = {}) {
   }
   const outEl    = target.querySelector(".claw-out");
   const actBox   = target.querySelector(".claw-actions");
+  const probeEl  = target.querySelector(".claw-probe");
 
   function _proxyConfig() {
     if (!proxyControls) return getOpenClawProxyConfig();
@@ -686,7 +687,8 @@ export function mountEndpointProbe(targetSel, opts = {}) {
     if (clear) fr.removeAttribute("srcdoc");
   }
 
-  function setOutput(text, kind = "") {
+  function setOutput(text, kind = "", state = "") {
+    probeEl.dataset.state = state || (kind === "ok" ? "succeeded" : kind === "err" ? "failed" : "running");
     if (!String(text || "").includes("HTML ·")) hideHtmlFrame(true);
     outEl.classList.remove("ok", "err");
     if (kind) outEl.classList.add(kind);
@@ -722,7 +724,7 @@ export function mountEndpointProbe(targetSel, opts = {}) {
   async function runAction(action) {
     const base = _normalizeBaseUrl(urlInp.value);
     if (urlInp.value.trim() !== base) urlInp.value = base;
-    if (!base) { setOutput("Set a base URL above first.", "err"); return; }
+    if (!base) { setOutput("Set a base URL above first.", "err", "blocked"); return; }
     const token = (tokenInp.value || "").trim();
     const actionPath = action.path || "/";
     const displayUrl = base + (actionPath.startsWith("/") ? actionPath : "/" + actionPath);
@@ -747,7 +749,7 @@ export function mountEndpointProbe(targetSel, opts = {}) {
     if (token && !discoversToken) headers["Authorization"] = "Bearer " + token;
     if (route.viaProxy && accessSession) {
       if (accessProvider === "auto") {
-        setOutput("Choose Cloudflare Access or Pomerium for this launchable.", "err");
+        setOutput("Choose Cloudflare Access or Pomerium for this launchable.", "err", "blocked");
         return;
       }
       if (accessProvider === "cloudflare") {

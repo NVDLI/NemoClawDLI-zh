@@ -7,5 +7,6 @@
 set -euo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 NODE_PATH=${NODE_PATH:-$ROOT/scripts/runtime/node_modules}
-export NODE_PATH
+CHROME_BIN=${CHROME_BIN:-$(python3 "$ROOT/scripts/runtime/host_browser.py")}
+export NODE_PATH CHROME_BIN
 exec "$ROOT/scripts/runtime/run_node.sh" "$ROOT/scripts/figures/check_figures.mjs" "$@"
