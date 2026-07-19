@@ -139,6 +139,7 @@ async function waitText(locator, pattern) {
     return {
       orphans:canvas.helperMenuOrphans(),
       cdnDefault:shared.defaultIframeProxyModeForLocation('https://cdn.dli.learn.nvidia.com/course-static/nemoclaw/'),
+      localFile:shared.defaultIframeProxyModeForLocation('file:course-preview.html'),
       cdnHttp:shared.defaultIframeProxyModeForLocation('http://cdn.dli.learn.nvidia.com/course-static/nemoclaw/'),
       siblingHost:shared.defaultIframeProxyModeForLocation('https://cdn.dli.learn.nvidia.com.example.invalid/'),
       unrelatedHost:shared.defaultIframeProxyModeForLocation('https://example.com/'),
@@ -148,7 +149,7 @@ async function waitText(locator, pattern) {
     };
   });
   if (runtimeRegistryContract.orphans.length) throw new Error(`helper registry has uncategorized entries: ${JSON.stringify(runtimeRegistryContract.orphans)}`);
-  if (!runtimeRegistryContract.cdnDefault || runtimeRegistryContract.cdnHttp || runtimeRegistryContract.siblingHost || runtimeRegistryContract.unrelatedHost) throw new Error(`model relay default escaped its exact HTTPS origin: ${JSON.stringify(runtimeRegistryContract)}`);
+  if (!runtimeRegistryContract.cdnDefault || !runtimeRegistryContract.localFile || runtimeRegistryContract.cdnHttp || runtimeRegistryContract.siblingHost || runtimeRegistryContract.unrelatedHost) throw new Error(`model relay default escaped the CDN and local-preview boundary: ${JSON.stringify(runtimeRegistryContract)}`);
   if (runtimeRegistryContract.localDefault || !runtimeRegistryContract.explicitRelay || runtimeRegistryContract.explicitDirect) throw new Error(`model relay override is not deterministic: ${JSON.stringify(runtimeRegistryContract)}`);
 
   const depthSelect = page.locator('.learning-depth-select');

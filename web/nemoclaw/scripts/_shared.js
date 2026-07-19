@@ -4,8 +4,8 @@
 // ─── Shared runtime for the nemoclaw web course (frontend track) ─────────────
 
 // Remote-service-only. Direct calls use the learner key. The published DLI CDN uses the
-// bounded NVIDIA DLI relay by default because the upstream browser CORS response is not stable;
-// other origins stay direct unless the learner explicitly enables the relay.
+// bounded NVIDIA DLI relay by default because the upstream browser CORS response is not stable.
+// Local file previews use the same relay; other origins stay direct unless the learner enables it.
 // No lab proxy, no llm_client:9000, no Python kernel.
 
 export const DEFAULT_MODEL_API_BASE_URL = "https://integrate.api.nvidia.com/v1";
@@ -198,6 +198,10 @@ function billingAttributionEnabled(url) {
 
 export function iframeProxyModeEnabled() {
   _syncIframeProxyOptInFromUrl();
+  // A file origin cannot call the hosted NVIDIA API directly. Keep this route usable even when
+  // an older local preview saved an explicit direct-mode preference. Custom endpoints still
+  // bypass the relay in getConfig().
+  if (globalThis.location?.protocol === "file:") return true;
   try {
     const stored = localStorage.getItem(IFRAME_PROXY_OPT_IN_KEY);
     if (stored === "1") return true;
@@ -216,8 +220,8 @@ export function setIframeProxyMode(enabled) {
 
 export function defaultIframeProxyModeForLocation(locationLike) {
   try {
-    const origin = new URL(String(locationLike?.href || locationLike?.origin || locationLike)).origin;
-    return MODEL_RELAY_DEFAULT_ORIGINS.has(origin);
+    const url = new URL(String(locationLike?.href || locationLike?.origin || locationLike));
+    return url.protocol === "file:" || MODEL_RELAY_DEFAULT_ORIGINS.has(url.origin);
   } catch (_) { return false; }
 }
 
@@ -225,8 +229,9 @@ export async function getConfig() {
   /* @doc <code>helpers.getConfig()</code> ::
        Returns the active chat config <code>{ mode, url, model, needsKey, iframeProxy }</code>.
        A presenter can save one compatible chat endpoint and model on the course home page.
-       Embeddings retain their own route. The DLI CDN defaults to the bounded NVIDIA DLI relay;
-       other origins stay direct, and a custom chat endpoint always bypasses the relay. */
+       Embeddings retain their own route. The DLI CDN and local file previews default to the
+       bounded NVIDIA DLI relay; other origins stay direct, and a custom chat endpoint always
+       bypasses the relay. */
   if (_cfgPromise) return _cfgPromise;
   _cfgPromise = (async () => {
     const modelApiBaseUrl = getModelApiBaseUrl();
@@ -375,6 +380,13 @@ async function fetchRetry(url, opts = {}, { retries = 2, backoffMs = 250, timeou
       if (attempt < retries) {
         await new Promise(res => setTimeout(res, backoffMs * (2 ** attempt)));
         continue;
+      }
+      if (globalThis.location?.protocol === "file:" && billingAttributionEnabled(url)) {
+        throw new Error(
+          "The local course preview could not reach the model. Enable ‘Use the NVIDIA DLI browser relay’ " +
+          "in the API key panel, or serve the course with ‘python3 -m http.server -d web 8000’ and open " +
+          "http://localhost:8000/nemoclaw/. " + (e?.message || String(e))
+        );
       }
       throw e;
     }
