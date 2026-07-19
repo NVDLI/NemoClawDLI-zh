@@ -25,7 +25,7 @@ include:
 SCA_JOBS = ("security_browser_sca", "security_sca", "security_python_sca")
 PRIVILEGED_DIGESTS = {
     ".gitlab/ci/privileged.yml": "1b143eb94e21e2f2f5e68e8496146fc926bc6bbb86ccb237cfbe9e7baca7c9e0",
-    ".gitlab/ci/privileged-child.yml": "b35ce9107e3f732c557953f6f67751f95d3db75a0e78f49ccb9d345150f00f91",
+    ".gitlab/ci/privileged-child.yml": "13f83e60a732851da9b1bb557d733a18a2a23f305ae9c4ba2757e832ad8d6f4c",
 }
 OWNER_PATHS = (
     "/.gitlab-ci.yml",
@@ -233,16 +233,22 @@ def audit(root: Path = ROOT) -> list[dict[str, str]]:
                                f"privileged module uses forbidden extensibility or disclosure: {token}",
                                "keep each privileged job self-contained and fail-closed"))
     for token in (
-        "scripts/ci/fetch_validated_candidate.py", "scripts/validation/pages_artifact_integrity.py",
-        "scripts/ci/trusted_gitlab_context.py",
-        "scripts/ci/live_interface_review.py", "--assert-capabilities /tmp/validated-candidate",
-        "scripts/ci/prepare_cdn_publication.py",
+        "-m scripts.ci.fetch_validated_candidate", "-m scripts.validation.pages_artifact_integrity",
+        "-m scripts.ci.trusted_gitlab_context",
+        "-m scripts.ci.live_interface_review", "--assert-capabilities /tmp/validated-candidate",
+        "-m scripts.ci.prepare_cdn_publication",
         "tags: [dli-cdn-publisher]", 'GIT_STRATEGY: "none"',
         "resource_group: dli-cdn-production", "environment:\n    name: dli-cdn-production",
         "/opt/dli-course-publisher/publish", "unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN",
     ):
         require(privileged_all, token, "privileged-boundary", ".gitlab/ci/privileged-child.yml", out,
                 "restore exact artifact verification, protected environments, and the root-installed publisher")
+    if re.search(r"\bpython3\s+scripts/[A-Za-z0-9_./-]+\.py\b", privileged_all):
+        out.append(finding(
+            "privileged-direct-python", ".gitlab/ci/privileged-child.yml",
+            "privileged child executes a repository Python file outside package module resolution",
+            "invoke every repository Python entry with python3 -m and its dotted module name",
+        ))
     if re.search(r"\$\{?AWS_(?:ACCESS|SECRET|SESSION)", privileged_all):
         out.append(finding("injected-aws-credential", ".gitlab/ci/privileged.yml",
                            "publisher expands a pipeline-provided AWS credential",
@@ -257,7 +263,7 @@ def audit(root: Path = ROOT) -> list[dict[str, str]]:
     candidate_live = job_block(active_yaml(privileged_child), "live_candidate_interfaces")
     acquisition = job_block(active_yaml(privileged_child), "privileged_acquire_candidate")
     cdn_prepare = job_block(active_yaml(privileged_child), "cdn_prepare")
-    require(candidate_live, "scripts/ci/assert_unprivileged_environment.py", "candidate-secret-boundary",
+    require(candidate_live, "-m scripts.ci.assert_unprivileged_environment", "candidate-secret-boundary",
             ".gitlab/ci/privileged.yml", out,
             "reject protected variables before any candidate interface is opened")
     if "LIVE_" in candidate_live or "COURSE_GITLAB_" in candidate_live or re.search(r"\bAWS_[A-Z0-9_]+", candidate_live):
@@ -266,10 +272,10 @@ def audit(root: Path = ROOT) -> list[dict[str, str]]:
             "candidate interface job references a protected live or AWS variable",
             "keep credentials environment-scoped to the later trusted job; candidate code receives none",
         ))
-    require(runtime_prepare, "scripts/ci/assert_unprivileged_environment.py", "runtime-secret-boundary",
+    require(runtime_prepare, "-m scripts.ci.assert_unprivileged_environment", "runtime-secret-boundary",
             ".gitlab/ci/privileged-child.yml", out,
             "build browser runtime dependencies only in a credential-free job")
-    if "interface_inventory_browser_audit.py" in runtime_prepare or "validated-candidate" in runtime_prepare:
+    if "scripts.validation.interface_inventory_browser_audit" in runtime_prepare or "validated-candidate" in runtime_prepare:
         out.append(finding(
             "candidate-runtime-producer", ".gitlab/ci/privileged-child.yml",
             "the executable runtime producer opens or consumes candidate content",
@@ -278,13 +284,13 @@ def audit(root: Path = ROOT) -> list[dict[str, str]]:
     require(live, "trusted-runtime/node-modules.tar.gz", "live-runtime-artifact",
             ".gitlab/ci/privileged-child.yml", out,
             "provide the trusted live job's browser runtime from the isolated dependency job")
-    require(cdn_prepare, "scripts/ci/assert_unprivileged_environment.py", "candidate-secret-boundary",
+    require(cdn_prepare, "-m scripts.ci.assert_unprivileged_environment", "candidate-secret-boundary",
             ".gitlab/ci/privileged.yml", out,
             "keep publication preparation separate from both live and AWS credentials")
     require(acquisition, "environment:\n    name: dli-source-review", "acquisition-secret-boundary",
             ".gitlab/ci/privileged-child.yml", out,
             "keep GitLab metadata credentials only in the acquisition job")
-    if "interface_inventory_browser_audit.py" in acquisition:
+    if "scripts.validation.interface_inventory_browser_audit" in acquisition:
         out.append(finding("candidate-in-acquisition", ".gitlab/ci/privileged-child.yml",
                            "candidate browser execution shares the metadata-token job",
                            "pass only verified artifacts to the credential-free candidate job"))
@@ -296,7 +302,7 @@ def audit(root: Path = ROOT) -> list[dict[str, str]]:
             "provide live credentials only as protected GitLab file variables")
     require(live, "LIVE_CLAW_SESSION_2_FILE", "live-file-secret", ".gitlab/ci/privileged.yml", out,
             "keep the optional second launchable session in a separate protected GitLab file variable")
-    if "scripts/ci/assert_unprivileged_environment.py" in live:
+    if "scripts.ci.assert_unprivileged_environment" in live:
         out.append(finding(
             "live-secret-inversion", ".gitlab/ci/privileged.yml",
             "trusted live job invokes the candidate-only secret rejection guard",
@@ -373,6 +379,8 @@ def self_test() -> list[str]:
         ("privileged-ci-bytes", ".gitlab/ci/privileged-child.yml", "allow_failure: false", "allow_failure: true"),
         ("privileged-ci-bytes", ".gitlab/ci/privileged-child.yml", "cdn_publish:\n", 'cdn_publish:\n\n"cdn_publish":\n  script: [\"id\"]\n'),
         ("privileged-ci-bytes", ".gitlab/ci/privileged-child.yml", "tags: [dli-cdn-publisher]", "tags: [pages]"),
+        ("privileged-direct-python", ".gitlab/ci/privileged-child.yml",
+         "python3 -m scripts.ci.privileged_request", "python3 scripts/ci/privileged_request.py"),
         ("github-privilege-copy", ".github/workflows/pages.yml", "name:", "COURSE_OP:"),
         ("missing-code-owner", ".gitlab/CODEOWNERS", root_owner_line,
          "/.gitlab-ci.yml"),
