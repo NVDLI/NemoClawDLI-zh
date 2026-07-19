@@ -190,10 +190,10 @@
       "reviewed_on": "2026-07-10"
     },
     "web/nemoclaw/01a-loop.html": {
-      "source_sha256": "e748be43942a013f1eb500aa11f9877376144266fa7a80edecc0f86596b53f6d",
-      "translation_sha256": "5894eda9345da2db1b572ab36cf9e754721eb5bee56fd417945e309d55e14f07",
-      "target_sha256": "a50fce9e93fa48be7b71fdd21a59c1a978b58bbdfba17943edc2623584ed7688",
-      "reviewed_on": "2026-07-14"
+      "source_sha256": "d6018226cb6fc4a2a34622de1e779c783b753a24a90b840c3486faf0bf143439",
+      "translation_sha256": "1d2d72954315d1b1a5ee63d90bc68b03e8adf83d74b6f02d26d5654eb2a02e28",
+      "target_sha256": "3e53ac0a7d7e29d18a822fa6c69e9d76b423c7bdb42f836e34afaced9febbdb1",
+      "reviewed_on": "2026-07-19"
     },
     "web/nemoclaw/01b-react.html": {
       "source_sha256": "8d80a8385e64693488b407a8debd4b5b409562b836f6d463b4061df738b1af20",
