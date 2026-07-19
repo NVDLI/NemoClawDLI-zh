@@ -117,9 +117,39 @@ async function waitText(locator, pattern) {
   });
   const page = await browser.newPage({ viewport:{ width:1100, height:900 } });
   const pageErrors = [];
+  const helperRegistryWarnings = [];
   page.on('pageerror', error => pageErrors.push(error.message || String(error)));
+  page.on('console', message => {
+    if (message.type() === 'warning' && message.text().includes('[helpers menu] uncategorized helpers')) {
+      helperRegistryWarnings.push(message.text());
+    }
+  });
   await page.goto(`http://127.0.0.1:${port}/fixture.html`, { waitUntil:'networkidle' });
   await page.waitForFunction(() => window.fixtureMounted === true);
+
+  const runtimeRegistryContract = await page.evaluate(async () => {
+    const shared = await import('/nemoclaw/scripts/_shared.js');
+    const canvas = await import('/nemoclaw/scripts/_canvas.js');
+    localStorage.removeItem('nemoclaw_iframe_proxy_opt_in');
+    const localDefault = shared.iframeProxyModeEnabled();
+    shared.setIframeProxyMode(true);
+    const explicitRelay = shared.iframeProxyModeEnabled();
+    shared.setIframeProxyMode(false);
+    const explicitDirect = shared.iframeProxyModeEnabled();
+    return {
+      orphans:canvas.helperMenuOrphans(),
+      cdnDefault:shared.defaultIframeProxyModeForLocation('https://cdn.dli.learn.nvidia.com/course-static/nemoclaw/'),
+      cdnHttp:shared.defaultIframeProxyModeForLocation('http://cdn.dli.learn.nvidia.com/course-static/nemoclaw/'),
+      siblingHost:shared.defaultIframeProxyModeForLocation('https://cdn.dli.learn.nvidia.com.example.invalid/'),
+      unrelatedHost:shared.defaultIframeProxyModeForLocation('https://example.com/'),
+      localDefault,
+      explicitRelay,
+      explicitDirect,
+    };
+  });
+  if (runtimeRegistryContract.orphans.length) throw new Error(`helper registry has uncategorized entries: ${JSON.stringify(runtimeRegistryContract.orphans)}`);
+  if (!runtimeRegistryContract.cdnDefault || runtimeRegistryContract.cdnHttp || runtimeRegistryContract.siblingHost || runtimeRegistryContract.unrelatedHost) throw new Error(`model relay default escaped its exact HTTPS origin: ${JSON.stringify(runtimeRegistryContract)}`);
+  if (runtimeRegistryContract.localDefault || !runtimeRegistryContract.explicitRelay || runtimeRegistryContract.explicitDirect) throw new Error(`model relay override is not deterministic: ${JSON.stringify(runtimeRegistryContract)}`);
 
   const depthSelect = page.locator('.learning-depth-select');
   await depthSelect.waitFor({ state:'attached' });
@@ -267,6 +297,7 @@ async function waitText(locator, pattern) {
   if ((await page.locator('#console .da-out').innerText()).trim()) throw new Error('console Clear left output');
 
   if (pageErrors.length) throw new Error(`page errors: ${JSON.stringify(pageErrors)}`);
+  if (helperRegistryWarnings.length) throw new Error(`helper registry warnings: ${JSON.stringify(helperRegistryWarnings)}`);
   const noJsContext = await browser.newContext({ javaScriptEnabled:false, viewport:{ width:800, height:700 } });
   const noJsPage = await noJsContext.newPage();
   await noJsPage.goto(`http://127.0.0.1:${port}/fixture.html`, { waitUntil:'domcontentloaded' });

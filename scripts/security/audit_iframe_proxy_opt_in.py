@@ -2,11 +2,11 @@
 # Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Audit that iframe proxy support is explicit, bounded, and documented.
+"""Audit that browser model-relay routing is explicit, bounded, and documented.
 
 This is a narrow source audit. It does not contact the hosted service; it checks
-that main keeps iframe execution available without silently routing normal course
-traffic through the relay.
+that the DLI CDN default is origin-bound, every other course origin stays direct,
+the learner can override that default, and custom endpoints never enter the relay.
 """
 from __future__ import annotations
 
@@ -37,9 +37,9 @@ CHECKS = [
         [],
     ),
     (
-        "runtime defaults direct and reserves worker for opt-in",
+        "runtime binds the relay default to the DLI CDN and preserves explicit overrides",
         "web/nemoclaw/scripts/_shared.js",
-        ["https://integrate.api.nvidia.com/v1", 'const IFRAME_PROXY_URL = "https://nvidia-api-cors-proxy.experiments.courses.nvidia.com/v1"', "iframe_proxy", "lms_proxy", "iframeProxy: false", "iframeProxy: true"],
+        ["https://integrate.api.nvidia.com/v1", 'const IFRAME_PROXY_URL = "https://nvidia-api-cors-proxy.experiments.courses.nvidia.com/v1"', 'const MODEL_RELAY_DEFAULT_ORIGINS = new Set(["https://cdn.dli.learn.nvidia.com"])', "defaultIframeProxyModeForLocation", 'stored === "0"', 'localStorage.setItem(IFRAME_PROXY_OPT_IN_KEY, enabled ? "1" : "0")', "iframe_proxy", "lms_proxy", "iframeProxy: false", "iframeProxy: true"],
         [r'const\s+DIRECT_URL\s*=\s*"https://nvidia-api-cors-proxy'],
     ),
     (
@@ -49,13 +49,13 @@ CHECKS = [
         [r'if\s*\(cfg\.iframeProxy\).*X-BILLING-INVOKE-ORIGIN', r'if\s*\(iframeProxyModeEnabled\(\)\).*X-BILLING-INVOKE-ORIGIN'],
     ),
     (
-        "key panel exposes independent routes and iframe controls",
+        "key panel exposes independent routes and relay controls",
         "web/nemoclaw/scripts/_keypanel.js",
-        ['<input type="url" class="model-api-base-url"', '<input type="url" class="embedding-api-base-url"', "normalizeModelApiBaseUrl(endpointInput.value)", "normalizeModelApiBaseUrl(embeddingEndpointInput.value)", "setModelApiBaseUrl(endpoint)", "setEmbeddingApiBaseUrl(embeddingEndpoint)", "setIframeProxyMode(defaultEndpoint &&", "iframe-proxy-toggle", "Enable LMS/static iframe execution"],
+        ['<input type="url" class="model-api-base-url"', '<input type="url" class="embedding-api-base-url"', "normalizeModelApiBaseUrl(endpointInput.value)", "normalizeModelApiBaseUrl(embeddingEndpointInput.value)", "setModelApiBaseUrl(endpoint)", "setEmbeddingApiBaseUrl(embeddingEndpoint)", "setIframeProxyMode(defaultEndpoint &&", "iframe-proxy-toggle", "Use the NVIDIA DLI browser relay"],
         [],
     ),
     (
-        "landing page names iframe mode as opt-in",
+        "landing page names the bounded relay mode",
         "web/nemoclaw/index.html",
         ["sends each saved key only to its selected endpoint", "chat endpoint belongs here only", "hosted CORS relay is limited"],
         [],
@@ -69,7 +69,7 @@ CHECKS = [
     (
         "reference implementation findings are documented",
         "scripts/security/iframe_proxy_worker_findings.md",
-        ["reference implementations", "X-BILLING-INVOKE-ORIGIN", "ALLOWED_ORIGINS", "deployment repository"],
+        ["reference implementations", "X-BILLING-INVOKE-ORIGIN", "ALLOWED_ORIGINS", "deployment repository", "exact `https://cdn.dli.learn.nvidia.com` origin", "explicit direct override"],
         [],
     ),
     (
@@ -202,6 +202,14 @@ def source_findings(
             if bad:
                 parts.append("forbidden " + ", ".join(bad))
             failures.append(f"FAIL {label} ({rel}): " + "; ".join(parts))
+    shared = (root / "web/nemoclaw/scripts/_shared.js").read_text(encoding="utf-8")
+    if "web/nemoclaw/scripts/_shared.js" in replacements:
+        old, new = replacements["web/nemoclaw/scripts/_shared.js"]
+        shared = shared.replace(old, new, 1)
+    match = re.search(r"MODEL_RELAY_DEFAULT_ORIGINS\s*=\s*new Set\(\[([^]]*)\]\)", shared)
+    origins = re.findall(r'["\'](https?://[^"\']+)["\']', match.group(1)) if match else []
+    if origins != ["https://cdn.dli.learn.nvidia.com"]:
+        failures.append("FAIL model relay default origin allowlist must contain only https://cdn.dli.learn.nvidia.com")
     if scan_retired:
         tracked = subprocess.run(
             ["git", "-C", str(root), "ls-files", "-z"],
@@ -228,6 +236,8 @@ def self_test() -> list[str]:
         ("saved embedding endpoint", "web/nemoclaw/scripts/_shared.js", "export function setEmbeddingApiBaseUrl(raw)", "function removedEmbeddingSetter(raw)"),
         ("explicit setup field", "web/nemoclaw/scripts/_keypanel.js", '<input type="url" class="model-api-base-url"', '<input type="url" class="removed-endpoint-field"'),
         ("custom endpoint bypasses iframe relay", "web/nemoclaw/scripts/_keypanel.js", "setIframeProxyMode(defaultEndpoint &&", "setIframeProxyMode(true &&"),
+        ("bounded CDN relay default", "web/nemoclaw/scripts/_shared.js", 'new Set(["https://cdn.dli.learn.nvidia.com"])', 'new Set(["https://cdn.dli.learn.nvidia.com", "https://example.com"])'),
+        ("explicit direct override", "web/nemoclaw/scripts/_shared.js", 'stored === "0"', 'stored === "disabled"'),
         ("custom endpoint omits NVIDIA attribution", "web/nemoclaw/scripts/_shared.js", "if (billingAttributionEnabled(cfg.url))", "if (true)"),
         ("credential destination warning", "web/nemoclaw/index.html", "selected endpoint", "configured service"),
         ("OpenClaw excludes model billing attribution", "scripts/cors-proxy/cors-proxy-worker-openclaw.js", "x-openclaw-session-key, Accept", "x-openclaw-session-key, X-BILLING-INVOKE-ORIGIN, Accept"),

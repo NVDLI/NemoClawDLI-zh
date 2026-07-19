@@ -39,7 +39,7 @@ export function mountKeyPanel(container, opts = {}) {
         <span class="key-endpoint-label">Embedding route: <code>${_attr(embeddingApiBaseUrl)}</code> · <code>${_attr(embeddingModelId)}</code></span>
         <label class="iframe-proxy-toggle-row">
           <input type="checkbox" class="iframe-proxy-toggle" ${proxyChecked ? "checked" : ""} ${customEndpoint ? "disabled" : ""}/>
-          ${customEndpoint ? "Custom endpoint uses direct browser requests" : "Enable LMS/static iframe execution"}
+          ${customEndpoint ? "Custom endpoint uses direct browser requests" : "Use the NVIDIA DLI browser relay"}
         </label>
         <button class="btn key-change-btn">Change</button>
       </div>`;
@@ -68,7 +68,7 @@ export function mountKeyPanel(container, opts = {}) {
         <input type="password" class="model-api-key" placeholder="nvapi-&hellip; or EMPTY" autocomplete="off" spellcheck="false"/>
         <label class="iframe-proxy-toggle-row">
           <input type="checkbox" class="iframe-proxy-toggle" ${proxyChecked ? "checked" : ""}/>
-          Enable LMS/static iframe execution through the hosted proxy
+          Use the NVIDIA DLI browser relay
         </label>
         <details class="embedding-route">
           <summary>Embedding route (persistent and independent)</summary>
