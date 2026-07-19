@@ -277,6 +277,40 @@ class TrustedGitLabContextTests(unittest.TestCase):
             (git_dir / "HEAD").write_text("a" * 40 + "\n", encoding="ascii")
             self.assertEqual("a" * 40, trusted_gitlab_context.detached_head(Path(directory)))
 
+    def test_detached_head_reads_bounded_gitdir_indirection(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            boundary = Path(directory)
+            root = boundary / "checkout"
+            git_dir = boundary / "runner-git" / "worktrees" / "checkout"
+            root.mkdir()
+            git_dir.mkdir(parents=True)
+            (root / ".git").write_text("gitdir: ../runner-git/worktrees/checkout\n", encoding="ascii")
+            (git_dir / "HEAD").write_text("a" * 40 + "\n", encoding="ascii")
+            self.assertEqual("a" * 40, trusted_gitlab_context.detached_head(root))
+
+    def test_gitdir_indirection_cannot_escape_checkout_boundary(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, tempfile.TemporaryDirectory() as outside:
+            root = Path(directory) / "checkout"
+            root.mkdir()
+            (root / ".git").write_text(f"gitdir: {outside}\n", encoding="ascii")
+            (Path(outside) / "HEAD").write_text("a" * 40 + "\n", encoding="ascii")
+            with self.assertRaisesRegex(ValueError, "escapes"):
+                trusted_gitlab_context.detached_head(root)
+
+    def test_gitdir_indirection_rejects_symlinked_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            boundary = Path(directory)
+            root = boundary / "checkout"
+            source = boundary / "source-git"
+            redirected = boundary / "redirected-git"
+            root.mkdir()
+            source.mkdir()
+            (source / "HEAD").write_text("a" * 40 + "\n", encoding="ascii")
+            redirected.symlink_to(source, target_is_directory=True)
+            (root / ".git").write_text("gitdir: ../redirected-git\n", encoding="ascii")
+            with self.assertRaisesRegex(ValueError, "symlink"):
+                trusted_gitlab_context.detached_head(root)
+
     def test_symbolic_or_malformed_checkout_head_fails_closed(self) -> None:
         for value in ("ref: refs/heads/main\n", "A" * 40, "a" * 39, "../outside"):
             with self.subTest(value=value), tempfile.TemporaryDirectory() as directory:
