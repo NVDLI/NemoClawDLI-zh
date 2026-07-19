@@ -71,7 +71,38 @@ def trusted_project_id(value: object) -> bool:
 def detached_head(root: Path) -> str:
     """Read the runner checkout identity without relying on an undeclared Git binary."""
 
-    git_dir = root / ".git"
+    root = root.resolve(strict=True)
+    git_entry = root / ".git"
+    if git_entry.is_symlink():
+        raise ValueError("checkout has no bounded detached HEAD")
+    if git_entry.is_dir():
+        git_dir = git_entry
+    elif git_entry.is_file() and git_entry.stat().st_size <= 4_096:
+        pointer = git_entry.read_text(encoding="ascii").strip()
+        match = re.fullmatch(r"gitdir: ([^\x00-\x1f\x7f]+)", pointer)
+        if not match:
+            raise ValueError("checkout has no bounded detached HEAD")
+        candidate = Path(match.group(1))
+        if not candidate.is_absolute():
+            candidate = root / candidate
+        candidate = Path(os.path.abspath(candidate))
+        boundary = root.parent
+        try:
+            relative = candidate.relative_to(boundary)
+        except ValueError as exc:
+            raise ValueError("checkout Git metadata escapes its build boundary") from exc
+        cursor = boundary
+        for part in relative.parts:
+            cursor /= part
+            if cursor.is_symlink():
+                raise ValueError("checkout Git metadata uses a symlink")
+        git_dir = candidate.resolve(strict=True)
+        try:
+            git_dir.relative_to(boundary)
+        except ValueError as exc:
+            raise ValueError("checkout Git metadata escapes its build boundary") from exc
+    else:
+        raise ValueError("checkout has no bounded detached HEAD")
     target = git_dir / "HEAD"
     if (
         git_dir.is_symlink() or not git_dir.is_dir()
