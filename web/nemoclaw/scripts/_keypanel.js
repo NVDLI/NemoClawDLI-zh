@@ -31,6 +31,7 @@ export function mountKeyPanel(container, opts = {}) {
     const embeddingApiBaseUrl = keySaved ? getEmbeddingApiBaseUrl() : suggestedEmbeddingApiBaseUrl();
     const embeddingModelId = keySaved ? getEmbeddingModelId() : suggestedEmbeddingModelId();
     const customEndpoint = modelApiBaseUrl !== DEFAULT_MODEL_API_BASE_URL;
+    const filePreview = globalThis.location?.protocol === "file:";
     const proxyChecked = !customEndpoint && iframeProxyModeEnabled();
     if (keySaved) {
       el.innerHTML = `<div class="key-panel key-panel-saved">
@@ -38,8 +39,8 @@ export function mountKeyPanel(container, opts = {}) {
         <span class="key-endpoint-label">Chat route: <code>${_attr(modelApiBaseUrl)}</code> · <code>${_attr(modelId)}</code></span>
         <span class="key-endpoint-label">Embedding route: <code>${_attr(embeddingApiBaseUrl)}</code> · <code>${_attr(embeddingModelId)}</code></span>
         <label class="iframe-proxy-toggle-row">
-          <input type="checkbox" class="iframe-proxy-toggle" ${proxyChecked ? "checked" : ""} ${customEndpoint ? "disabled" : ""}/>
-          ${customEndpoint ? "Custom endpoint uses direct browser requests" : "Use the NVIDIA DLI browser relay"}
+          <input type="checkbox" class="iframe-proxy-toggle" ${proxyChecked ? "checked" : ""} ${customEndpoint || filePreview ? "disabled" : ""}/>
+          ${customEndpoint ? "Custom endpoint uses direct browser requests" : filePreview ? "Local file preview uses the NVIDIA DLI browser relay" : "Use the NVIDIA DLI browser relay"}
         </label>
         <button class="btn key-change-btn">Change</button>
       </div>`;
@@ -67,8 +68,8 @@ export function mountKeyPanel(container, opts = {}) {
         <label>Chat API bearer key (NVIDIA keys start with <code>nvapi-</code>)</label>
         <input type="password" class="model-api-key" placeholder="nvapi-&hellip; or EMPTY" autocomplete="off" spellcheck="false"/>
         <label class="iframe-proxy-toggle-row">
-          <input type="checkbox" class="iframe-proxy-toggle" ${proxyChecked ? "checked" : ""}/>
-          Use the NVIDIA DLI browser relay
+          <input type="checkbox" class="iframe-proxy-toggle" ${proxyChecked ? "checked" : ""} ${filePreview ? "disabled" : ""}/>
+          ${filePreview ? "Local file preview uses the NVIDIA DLI browser relay" : "Use the NVIDIA DLI browser relay"}
         </label>
         <details class="embedding-route">
           <summary>Embedding route (persistent and independent)</summary>
@@ -103,8 +104,9 @@ export function mountKeyPanel(container, opts = {}) {
       const syncEndpointMode = () => {
         let custom = true;
         try { custom = normalizeModelApiBaseUrl(endpointInput.value) !== DEFAULT_MODEL_API_BASE_URL; } catch (_) {}
-        toggle.disabled = custom;
+        toggle.disabled = custom || filePreview;
         if (custom) toggle.checked = false;
+        else if (filePreview) toggle.checked = true;
       };
       endpointInput.addEventListener("input", syncEndpointMode);
       syncEndpointMode();

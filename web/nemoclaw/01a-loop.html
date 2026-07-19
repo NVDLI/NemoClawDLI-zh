@@ -297,7 +297,7 @@
   </p>
   <p>Run the cells in this order, then vary one control at a time:</p>
   <ol>
-    <li>Run the engine node first. It exports the maze utilities and one shared solver, <code>state.runMaze</code>, that walks corridors automatically and calls the model only at junctions.</li>
+    <li>Run the engine node first. It exports the maze utilities and one shared controller, <code>state.runMaze</code>, that walks corridors automatically and calls the model only at junctions.</li>
     <li>Run the editable maze-agent node below. <code>DIRECTIVE</code> is the core system instruction, and the options object controls the model, maze size, text map, image attachment, move history, coordinate trail, and repeated tool schema.</li>
     <li>Start with the working defaults. Then turn on <code>includeImage</code> to test the rendered maze, switch <code>model</code> to compare models, or set <code>advanced</code> to grow the maze after the simple case works.</li>
   </ol>
@@ -894,7 +894,7 @@ mountCanvasFlow("#cell-llm-maze", {
       x: 0, y: 0,
       showCode: false,
 
-      summary: "The engine code is collapsed by default because it is mostly web plumbing. If you expand it, scan the exported names at the bottom: state.runMaze is the shared solver that the editable run node calls.",
+      summary: "The engine code is collapsed by default because it is mostly web plumbing. If you expand it, scan the exported names at the bottom: state.runMaze is the shared controller that the editable run node calls.",
       code: `// Reading guide: this is infrastructure, not a required coding exercise.
 // The run node below is the editing surface; expand this to inspect its supporting plumbing.
 // The same loop that ran DFS, BFS, and A* now drives a language model over this maze.
@@ -1036,14 +1036,14 @@ state.DECISION_TOOL = {
   type: "function",
   function: {
     name: "choose_direction",
-    description: "You are at a junction. Return one or more NSEW letters to move. The system executes them one by one, stopping at walls or the goal. Corridors are walked automatically after your moves.",
+    description: "Choose one available direction at this junction. Corridors are walked automatically after the move.",
 
     parameters: {
       type: "object",
       properties: {
         direction: {
           type: "string",
-          description: "NSEW sequence. Single: 'E'. Multi: 'EEN'. Words also accepted: 'east', 'east east north'.",
+          description: "One compass letter: N, S, E, or W.",
         },
       },
       required: ["direction"],
@@ -1057,7 +1057,9 @@ state.DECISION_TOOL = {
 state.SYS_DIRECTIVE = [
   "You are navigating a maze. You are called only at JUNCTIONS, the places where 2+ forward paths branch.",
   "Corridors (one forward option) are walked for you automatically, so between calls your position can JUMP several cells. The exact list of coordinates you have already travelled is given to you every turn. Use it to connect your moves to where you ended up.",
-  "Each call: study the maze, pick ONE direction, and call choose_direction().",
+  "Each call: study the maze, choose ONE direction from the allowed moves, and call choose_direction().",
+  "A direction already tried from this junction is an exhausted branch. Do not choose it again.",
+  "When every branch is exhausted, use the allowed backtrack to continue the search.",
   "STRATEGY: prefer unvisited branches (-) over visited cells (·); head toward G when you can see it.",
 ].join("\\n");
 
@@ -1113,7 +1115,7 @@ state.makeReasonStream = function(log) {
   };
 };
 
-// ── Shared maze solver (one copy; the run node calls it) ────────────────────
+// ── Shared maze controller (one copy; the run node calls it) ────────────────
 // mazeToDataURL: paint a maze state to a PNG data URL (the "graphic" channel).
 state.mazeToDataURL = function(grid, pos, goal, visited, cell) {
   cell = cell || 24;
@@ -1138,7 +1140,7 @@ state.mazeToDataURL = function(grid, pos, goal, visited, cell) {
 };
 
 
-// runMaze: ONE corridor-walk + LLM-at-junctions solver, shared by the run node.
+// runMaze: one corridor-walk + LLM-at-junctions controller, shared by the run node.
 // All knobs are optional. opts.model defaults to the multimodal omni model.
 // opts.advanced swaps in the bigger, loopier maze.
 
@@ -1201,7 +1203,8 @@ state.runMaze = async function(h, state, opts) {
     return 'You are at (' + ctx.pos[0] + ',' + ctx.pos[1] + ').\\n'
       + (ctx.first ? 'Maze:' : 'Current maze:') + '\\n' + ctx.ascii
       + (ctx.trail ? '\\nPath travelled (move into each cell): ' + ctx.trail : '')
-      + '\\nAvailable moves: ' + ctx.avail
+      + '\\nAlready tried here: ' + (ctx.tried || 'none')
+      + '\\nAllowed moves this turn: ' + ctx.avail
       + '\\nPick your next move.';
   };
 
@@ -1222,12 +1225,43 @@ state.runMaze = async function(h, state, opts) {
   var pos = [start[0], start[1]], prevPos = null, visited = [[pos[0], pos[1]]];
   var actions = [];   // direction letter taken into visited[i] (actions[i-1]); parallel to visited
   var L2D = { N: 'north', S: 'south', E: 'east', W: 'west' };
+  var D2L = { north: 'N', south: 'S', east: 'E', west: 'W' };
+  var triedByJunction = Object.create(null), guardrails = 0;
 
   var UID = 'rm' + Math.random().toString(36).slice(2, 7);
   log.html('<div id="' + UID + '" style="margin:6px 0"></div>');
   function show(title) { var el = document.getElementById(UID); if (el) el.innerHTML = renderMaze(grid, pos, goal, visited, title); }
   function info(html) { log.html('<div style="font:12px/1.6 ui-monospace,monospace;color:#aaa;margin:1px 0">' + html + '</div>'); }
   function availStr(p) { var m = validMoves(grid, p); return m.length ? m.join(', ') : 'none'; }
+
+  function junctionChoices(p) {
+    var key = p[0] + ',' + p[1];
+    var all = validMoves(grid, p).map(function(dir) { return D2L[dir]; });
+    var tried = triedByJunction[key] || [];
+    var fresh = all.filter(function(letter) { return tried.indexOf(letter) < 0; });
+    if (fresh.length) return { key: key, all: all, tried: tried.slice(), allowed: fresh, backtracking: false };
+
+    // Once every branch at a junction has been explored, expose only the corridor we
+    // arrived through. The model still has to choose that backtrack and continue its search.
+    var back = null;
+    if (prevPos) {
+      var dx = prevPos[0] - p[0], dy = prevPos[1] - p[1];
+      back = dx === 1 ? 'E' : dx === -1 ? 'W' : dy === 1 ? 'S' : dy === -1 ? 'N' : null;
+    }
+    return { key: key, all: all, tried: tried.slice(), allowed: back && all.indexOf(back) >= 0 ? [back] : all, backtracking: true };
+  }
+
+  function rememberChoice(choice, letter) {
+    if (!triedByJunction[choice.key]) triedByJunction[choice.key] = [];
+    if (triedByJunction[choice.key].indexOf(letter) < 0) triedByJunction[choice.key].push(letter);
+  }
+
+  function toolFor(letters) {
+    var tool = JSON.parse(JSON.stringify(DECISION_TOOL));
+    tool.function.parameters.properties.direction.enum = letters;
+    tool.function.parameters.properties.direction.description = 'Choose one of: ' + letters.join(', ') + '.';
+    return tool;
+  }
 
   // normalizeDir: accept letters OR words ('E', 'EEN', 'east', 'east north') and return NSEW letters.
   function normalizeDir(raw) {
@@ -1327,6 +1361,7 @@ state.runMaze = async function(h, state, opts) {
     + ' · tool-spec in system: ' + (toolSpecInSystem ? 'yes' : 'no'));
 
   var history = [];  // accumulated turns (used only when includeHistory)
+  var runError = null;
 
   try {
     if (await corridorWalk('corridor')) {
@@ -1345,9 +1380,14 @@ state.runMaze = async function(h, state, opts) {
       }
       var ascii = toAscii(grid, pos, goal, visited);
       var imageUrl = includeImage ? state.mazeToDataURL(grid, pos, goal, visited) : null;
+      var choices = junctionChoices(pos);
+      if (choices.backtracking) {
+        info('<span style="color:#fbbf24"><strong>search state:</strong> every branch at this junction has been explored. The model must choose the allowed backtrack and continue.</span>');
+      }
       var userText = promptFormat({
         ascii: ascii,
-        avail: availStr(pos),
+        avail: choices.allowed.join(', '),
+        tried: choices.tried.join(', '),
         pos: pos,
         goal: goal,
         trail: trail,
@@ -1357,9 +1397,10 @@ state.runMaze = async function(h, state, opts) {
       var userMsg = buildUser(userText, imageUrl);
       var sent = includeHistory ? [sysMsg].concat(history, [userMsg]) : [sysMsg, userMsg];
 
-      var req = { model: MODEL.id, messages: sent, tools: [DECISION_TOOL], max_tokens: MODEL.maxTok, temperature: MODEL.temp };
+      var turnTool = toolFor(choices.allowed);
+      var req = { model: MODEL.id, messages: sent, tools: [turnTool], max_tokens: MODEL.maxTok, temperature: MODEL.temp };
       if (MODEL.extra_body) req.extra_body = MODEL.extra_body;
-      info('<strong style="color:#eee">decision ' + decision + '</strong> · ' + modelName + ' at ' + JSON.stringify(pos) + ' avail: [' + availStr(pos) + '] · ' + sent.length + ' msgs');
+      info('<strong style="color:#eee">decision ' + decision + '</strong> · ' + modelName + ' at ' + JSON.stringify(pos) + ' untried: [' + choices.allowed.join(', ') + '] · ' + sent.length + ' msgs');
       log.html(renderRequest({ pos: pos, trail: trail, ascii: ascii, imageUrl: imageUrl }, sent, req));   // full context BEFORE the model responds
       show('decision ' + decision + ': asking model...');
       var summary;
@@ -1370,6 +1411,7 @@ state.runMaze = async function(h, state, opts) {
         info('<span style="color:#f87171">error: ' + e.message + '</span>');
         if (includeImage && /image|vision|multimodal|content/i.test(e.message))
           info('<span style="color:#fbbf24">hint: the image was rejected on this turn. Try again, set includeImage:false to send text alone, or pick another multimodal model (vision / qwenVision).</span>');
+        runError = e;
         break;
       }
 
@@ -1412,11 +1454,23 @@ state.runMaze = async function(h, state, opts) {
           : { role: 'user', content: content });
       }
 
-      if (!steps) {
-        info('<span style="color:#fbbf24">no usable direction, so asking again</span>');
-        reply('No direction parsed from your reply. Call choose_direction with one of: ' + availStr(pos) + '.');
+      var requested = steps ? steps[0] : '';
+      var selected = requested;
+      var guardrailNote = '';
+      if (!selected || choices.allowed.indexOf(selected) < 0 || steps.length > 1) {
+        guardrails++;
+        guardrailNote = !selected
+          ? 'The model did not return a usable direction. '
+          : steps.length > 1
+            ? 'The model returned several moves instead of one. '
+            : 'The model chose ' + requested + ', which is not allowed on this turn. ';
+        guardrailNote += 'No move was executed. Choose exactly one of: ' + choices.allowed.join(', ') + '. ';
+        info('<span style="color:#fbbf24">guardrail: ' + escH(guardrailNote) + '</span>');
+        reply(guardrailNote);
         continue;
       }
+      rememberChoice(choices, selected);
+      steps = selected;
       if (fromText) info('<span style="color:#9cf">honored text-form call → ' + escH(steps) + '</span>');
 
       var pathStr = '', done = false, walled = null, s;
@@ -1434,7 +1488,7 @@ state.runMaze = async function(h, state, opts) {
         show('solved · ' + decision + ' decisions · ' + visited.length + ' steps');
         info('<span style="color:#76b900">goal in ' + decision + ' decisions (' + visited.length + ' steps) · path: ' + pathStr + '</span>');
         reply('Reached G. Done.');
-        return { decisions: decision, steps: visited.length, won: true };
+        return { decisions: decision, steps: visited.length, won: true, guardrails: guardrails };
       }
       info('moved: <code style="color:#76b900;background:#0d1f00;padding:1px 4px;border-radius:3px">' + (pathStr || '(none)') + '</code>' + (walled ? ' then hit a wall going ' + walled : ''));
 
@@ -1444,7 +1498,7 @@ state.runMaze = async function(h, state, opts) {
         show('goal via corridor · ' + visited.length + ' steps');
         info('<span style="color:#76b900">goal reached while auto-walking</span>');
         reply('Executed ' + (pathStr || '(none)') + ', then auto-walked to the goal.');
-        return { decisions: decision, steps: visited.length, won: true };
+        return { decisions: decision, steps: visited.length, won: true, guardrails: guardrails };
       }
 
       var walkedNote = (pos[0] !== pw[0] || pos[1] !== pw[1])
@@ -1452,14 +1506,17 @@ state.runMaze = async function(h, state, opts) {
       const stepNote = walled
         ? 'Executed ' + (pathStr || '(none)') + ', then hit a wall going ' + walled + '.'
         : 'Executed ' + (pathStr || '(none)') + '.';
-      reply(stepNote + walkedNote + ' Now at ' + JSON.stringify(pos) + '. Available: ' + availStr(pos) + '.');
+      reply(guardrailNote + stepNote + walkedNote + ' Now at ' + JSON.stringify(pos) + '. Available: ' + availStr(pos) + '.');
       await h.delay(200);
     }
   } finally {
     if (wrap) wrap.style.display = 'none';
   }
-  if (!sig.aborted) { info('<span style="color:#f87171">gave up after ' + cfg.max + ' decisions</span>'); show('gave up after ' + cfg.max + ' decisions'); }
-  return { decisions: cfg.max, won: false };
+  if (sig.aborted) return { decisions: null, won: false, stopped: true, guardrails: guardrails };
+  if (runError) throw runError;
+  info('<span style="color:#f87171">gave up after ' + cfg.max + ' decisions</span>');
+  show('gave up after ' + cfg.max + ' decisions');
+  throw new Error('The maze stopped after ' + cfg.max + ' decisions without reaching the goal. Inspect the visible move history, then try a different model or directive.');
 };
 
 log("Maze engine ready.");
@@ -1475,11 +1532,12 @@ log("Maze engine ready.");
 // ── Edit this freely: it becomes the CORE of the system message. ──
 const DIRECTIVE = \`You are navigating a maze.
 You are called only at JUNCTIONS (2+ open directions).
-You get both an ASCII map and a picture of the same maze.
-Corridors are auto-walked, so your position can jump several cells between calls,
-and the coordinates you have travelled are listed every turn.
-Study the maze, pick ONE direction, call choose_direction().
-Prefer unvisited branches (-) over visited cells (·); head toward G when you can see it.
+You get an ASCII map; turn on includeImage below if you also want a picture.
+Corridors are auto-walked, so your position can jump several cells between calls.
+Choose ONE direction from "Allowed moves this turn" and call choose_direction().
+Do not repeat a direction listed under "Already tried here."
+When every branch is exhausted, take the allowed backtrack and continue.
+Prefer unvisited branches (-) over visited cells (·), and head toward G when you can see it.
 Minimize reasoning efforts and make immediate moves.\`;
 
 return await state.runMaze(helpers, state, {

@@ -284,6 +284,68 @@ async function open(browser, pageName, init) {
     await page.close();
   }
 
+  // Repeated invalid choices must fail visibly. The controller may constrain and explain the
+  // next choice, but it must never replace the model with a hidden maze solver.
+  {
+    const init = () => {
+      if (window.top !== window) return;
+      localStorage.removeItem('nemoclaw_model_api_base_url_v1');
+      localStorage.removeItem('nemoclaw_model_id_v1');
+      localStorage.setItem('nvapi', 'nvapi-maze-audit');
+      window.__mazeRequests = [];
+      const originalFetch = window.fetch.bind(window);
+      window.fetch = async (input, init = {}) => {
+        if (!String(input).endsWith('/chat/completions')) return originalFetch(input, init);
+        const body = JSON.parse(String(init.body || '{}'));
+        window.__mazeRequests.push(body);
+        const id = 'maze-' + window.__mazeRequests.length;
+        const frame = JSON.stringify({ choices: [{
+          delta: { tool_calls: [{ index: 0, id, type: 'function', function: {
+            name: 'choose_direction', arguments: '{"direction":"N"}',
+          } }] },
+          finish_reason: 'tool_calls',
+        }] });
+        return new Response('data: ' + frame + '\n\ndata: [DONE]\n\n', {
+          status: 200,
+          headers: { 'content-type': 'text/event-stream' },
+        });
+      };
+    };
+    const { page, errors } = await open(browser, '01a-loop.html', init);
+    await page.evaluate(() => {
+      const section = document.querySelector('#cell-llm-maze')?.closest('details.learning-block');
+      if (section) section.open = true;
+    });
+    const run = page.locator('#cell-llm-maze .cf-btn-run');
+    await run.waitFor({ state: 'visible', timeout: timeoutMs });
+    await run.click();
+    await page.waitForFunction(() => /Run all/i.test(document.querySelector('#cell-llm-maze .cf-btn-run')?.textContent || ''), null, { timeout: timeoutMs });
+    results.mazeLoopBoundary = await page.evaluate(() => {
+      const root = document.querySelector('#cell-llm-maze');
+      const raw = root?.querySelector('.cf-panel[data-id="run"] .cf-panel-output')?.innerText || '';
+      const log = root?.querySelector('.cf-panel[data-id="run"] .cf-panel-log')?.innerText || '';
+      const text = root?.innerText || '';
+      let result = null;
+      try { result = JSON.parse(raw); } catch (_) {}
+      return {
+        result,
+        rejectedChoiceVisible: /No move was executed\. Choose exactly one of:/i.test(log),
+        failureVisible: /maze stopped after 20 decisions without reaching the goal/i.test(text),
+        falseSuccessVisible: /goal reached by the loop guard|solved with loop guard|shortest-path recovery/i.test(text),
+        requestCount: window.__mazeRequests.length,
+        allowed: window.__mazeRequests.map(request => request.tools?.[0]?.function?.parameters?.properties?.direction?.enum || []),
+      };
+    });
+    if (results.mazeLoopBoundary.result?.won || results.mazeLoopBoundary.requestCount !== 20 ||
+        !results.mazeLoopBoundary.allowed.some(letters => letters.length && !letters.includes('N')) ||
+        !results.mazeLoopBoundary.rejectedChoiceVisible || !results.mazeLoopBoundary.failureVisible ||
+        results.mazeLoopBoundary.falseSuccessVisible) {
+      fail('maze repeated-choice boundary failed: ' + JSON.stringify(results.mazeLoopBoundary));
+    }
+    if (errors.length) fail('maze repeated-choice browser errors: ' + JSON.stringify(errors));
+    await page.close();
+  }
+
   // SKILL explorer: the explainer must reuse the course model registry instead of a private endpoint.
   {
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });

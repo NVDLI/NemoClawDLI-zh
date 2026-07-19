@@ -50,10 +50,10 @@
     {
       "path": "web/nemoclaw/01a-loop.html",
       "file": "01a-loop.html",
-      "source_sha256": "5894eda9345da2db1b572ab36cf9e754721eb5bee56fd417945e309d55e14f07",
-      "reviewed_source_sha256": "5894eda9345da2db1b572ab36cf9e754721eb5bee56fd417945e309d55e14f07",
-      "target_sha256": "26f6d467185d73edfa23dd1b8965da5c59ff1b83f46923ba442f9d1df69fbbde",
-      "reviewed_target_sha256": "26f6d467185d73edfa23dd1b8965da5c59ff1b83f46923ba442f9d1df69fbbde",
+      "source_sha256": "1d2d72954315d1b1a5ee63d90bc68b03e8adf83d74b6f02d26d5654eb2a02e28",
+      "reviewed_source_sha256": "1d2d72954315d1b1a5ee63d90bc68b03e8adf83d74b6f02d26d5654eb2a02e28",
+      "target_sha256": "0ff8ad80965736b0936481582841d703d02ad8d2ad617990796d338dab2eafa7",
+      "reviewed_target_sha256": "0ff8ad80965736b0936481582841d703d02ad8d2ad617990796d338dab2eafa7",
       "status": "current",
       "quality": []
     },
