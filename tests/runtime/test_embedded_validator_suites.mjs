@@ -7,6 +7,8 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import './test_openclaw_pomerium_transport.mjs';
+import './test_helper_registry.mjs';
+import './test_model_routing.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 

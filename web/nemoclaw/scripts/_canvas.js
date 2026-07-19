@@ -1382,50 +1382,78 @@ function _deriveHelperAllow(code) {
   return used;
 }
 
-// Build the helper-menu rows by enumerating everything the runtime exposes, in a fixed order.
-// The category map below only groups; the names come from the live registries (HELPER_FNS, VIZ_BUILDERS, SPECIALS), and anything exposed but uncategorized still shows under "Other" and warns.
-function _buildHelperRows(allow) {
-  // `allow` (a Set of names) scopes the menu to the helpers a section uses; null or omitted shows everything.
-  // The in-scope primitives (state, signal, fetch, trace, log) and viz.* builders always show; scoping is display-only, every helper stays injected, so a cell can call off-menu.
-  const inScope = (n) => !allow || allow.has(n);
-  const CATS = [
+// Categories group the live helper registry; they never define or filter the registry itself.
+// Exporting the map lets the browser validator prove that a newly exposed helper cannot silently
+// fall into an unreviewed bucket.
+export const HELPER_CATEGORIES = Object.freeze([
     ["Shared state",            ["state"]],
     ["Model calls",             ["chat", "chatStream", "browserChatFetch"]],
+    ["Model configuration",     [
+      "getConfig", "getKey", "getModelApiBaseUrl", "setModelApiBaseUrl",
+      "isDefaultModelApiBaseUrl", "mountModelEndpointProbe",
+    ]],
     ["Web search",              ["webSearch", "instantAnswer", "formatSearchResults"]],
     ["Embeddings & similarity", ["embed", "cosineSim"]],
     ["Tokens & context",        ["contextWindow", "estimateTokens"]],
     ["Raw HTTP",                ["fetch", "fetchRetry"]],
     ["Launchable terminal",     ["terminal"]],
-    ["OpenShell policy",        ["evalSandboxNetwork", "evalSandboxFs", "sandboxExec"]],
-    ["Course content",          ["coursePage", "coursePages"]],
-    ["Live artifacts",          ["mountChatUI", "mountAgentChat", "mountOpenClawCli", "mountKeyPanel"]],
+    ["OpenShell policy",        [
+      "evalSandboxNetwork", "evalSandboxFs", "sandboxExec", "policyGet", "mountPolicyMap",
+    ]],
+    ["Course content",          [
+      "coursePage", "coursePages", "mountFigures", "openFigureLightbox", "wireFigureZoom",
+    ]],
+    ["Live artifacts",          [
+      "mountChatUI", "mountAgentChat", "mountConsole", "mountOpenClawCli", "mountKeyPanel",
+    ]],
     ["Diagram strings",         ["diagramSVG", "ganttBarsSVG"]],
-    ["OpenClaw gateway",        ["openclawChat"]],
-    ["Config",                  ["getConfig", "getKey"]],
+    ["OpenClaw gateway",        [
+      "openclawChat", "openclawLoopbackProbe", "openclawGatewayWsUrl",
+      "refreshOpenClawGatewayToken", "getOpenClawConnection", "setOpenClawConnection",
+      "getOpenClawProxyConfig", "setOpenClawProxyConfig", "filterOpenClawRuntimeNoise",
+      "filterOpenClawRuntimeValue", "openclawMessageText", "openclawResultText",
+    ]],
     ["Run control",             ["signal", "delay"]],
     ["Instrumentation",         ["trace", "log"]],
-  ];
+]);
+
+function _helperUniverse(helperFns = HELPER_FNS, vizBuilders = VIZ_BUILDERS) {
+  const vizNames = vizBuilders ? Object.keys(vizBuilders).map(k => "viz." + k) : [];
+  return new Set(["state", "signal", ...Object.keys(helperFns), "fetch", "trace", "log", ...vizNames]);
+}
+
+export function helperMenuOrphans({ helperFns = HELPER_FNS, vizBuilders = VIZ_BUILDERS, categories = HELPER_CATEGORIES } = {}) {
+  const universe = _helperUniverse(helperFns, vizBuilders);
+  const categorized = new Set(categories.flatMap(([, names]) => names));
+  for (const name of universe) if (name.startsWith("viz.")) categorized.add(name);
+  return [...universe].filter(name => !categorized.has(name));
+}
+
+// Build the helper-menu rows by enumerating everything the runtime exposes, in a fixed order.
+// The category map only groups; anything exposed but uncategorized remains visible under "Other"
+// while the runtime validator fails the contribution that introduced it.
+function _buildHelperRows(allow) {
+  // `allow` (a Set of names) scopes the menu to the helpers a section uses; null or omitted shows everything.
+  // The in-scope primitives (state, signal, fetch, trace, log) and viz.* builders always show; scoping is display-only, every helper stays injected, so a cell can call off-menu.
+  const inScope = (n) => !allow || allow.has(n);
   const vizNames = typeof VIZ_BUILDERS !== "undefined" ? Object.keys(VIZ_BUILDERS).map(k => "viz." + k) : [];
-  const universe = new Set(["state", "signal", ...Object.keys(HELPER_FNS), "fetch", "trace", "log", ...vizNames]);
-  const categorized = new Set();   // every name a CAT (or viz) covers, kept for the orphan check
+  const universe = _helperUniverse();
   const out = [];
   const rowFor = (name) => ({ row: name, editable: name !== "state" && name !== "signal", extra: !inScope(name) });
   // Every row is emitted. Rows the section does not use are flagged extra (hidden until "show all"), and a section head is extra when all of its rows are.
-  for (const [head, names] of CATS) {
+  for (const [head, names] of HELPER_CATEGORIES) {
     const inU = names.filter(n => universe.has(n));
     if (!inU.length) continue;
-    inU.forEach(n => categorized.add(n));
     out.push({ sectionHead: head, extra: inU.every(n => !inScope(n)) });
     inU.forEach(n => out.push(rowFor(n)));
   }
-  vizNames.forEach(n => categorized.add(n));
   if (vizNames.length) {
     out.push({ sectionHead: "Visualization · <code>helpers.viz.*</code>", extra: vizNames.every(n => !inScope(n)) });
     vizNames.forEach(n => out.push(rowFor(n)));
   }
-  const orphans = [...universe].filter(n => !categorized.has(n));
+  const orphans = helperMenuOrphans();
   if (orphans.length) {
-    console.warn("[helpers menu] uncategorized helpers (add to _buildHelperRows CATS):", orphans);
+    console.warn("[helpers menu] uncategorized helpers (add to HELPER_CATEGORIES):", orphans);
     out.push({ sectionHead: "Other", extra: orphans.every(n => !inScope(n)) });
     orphans.forEach(n => out.push(rowFor(n)));
   }

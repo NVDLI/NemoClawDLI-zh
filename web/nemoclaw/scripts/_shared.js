@@ -3,12 +3,15 @@
 
 // ─── Shared runtime for the nemoclaw web course (frontend track) ─────────────
 
-// Remote-service-only. Direct calls use the learner key; LMS iframe proxy is opt-in.
+// Remote-service-only. Direct calls use the learner key. The published DLI CDN uses the
+// bounded NVIDIA DLI relay by default because the upstream browser CORS response is not stable;
+// other origins stay direct unless the learner explicitly enables the relay.
 // No lab proxy, no llm_client:9000, no Python kernel.
 
 export const DEFAULT_MODEL_API_BASE_URL = "https://integrate.api.nvidia.com/v1";
 const IFRAME_PROXY_URL = "https://nvidia-api-cors-proxy.experiments.courses.nvidia.com/v1";
 const IFRAME_PROXY_OPT_IN_KEY = "nemoclaw_iframe_proxy_opt_in";
+const MODEL_RELAY_DEFAULT_ORIGINS = new Set(["https://cdn.dli.learn.nvidia.com"]);
 const MODEL_API_BASE_URL_KEY = "nemoclaw_model_api_base_url_v1";
 const MODEL_ID_KEY = "nemoclaw_model_id_v1";
 const EMBEDDING_API_BASE_URL_KEY = "nemoclaw_embedding_api_base_url_v1";
@@ -66,7 +69,7 @@ function _syncIframeProxyOptInFromUrl() {
     const params = new URLSearchParams(location.search || "");
     const val = params.get("iframe_proxy") || params.get("lms_proxy");
     if (val === "1" || val === "true") localStorage.setItem(IFRAME_PROXY_OPT_IN_KEY, "1");
-    if (val === "0" || val === "false") localStorage.removeItem(IFRAME_PROXY_OPT_IN_KEY);
+    if (val === "0" || val === "false") localStorage.setItem(IFRAME_PROXY_OPT_IN_KEY, "0");
   } catch (_) {}
 }
 
@@ -195,24 +198,35 @@ function billingAttributionEnabled(url) {
 
 export function iframeProxyModeEnabled() {
   _syncIframeProxyOptInFromUrl();
-  try { return localStorage.getItem(IFRAME_PROXY_OPT_IN_KEY) === "1"; }
-  catch (_) { return false; }
+  try {
+    const stored = localStorage.getItem(IFRAME_PROXY_OPT_IN_KEY);
+    if (stored === "1") return true;
+    if (stored === "0") return false;
+  } catch (_) {}
+  return defaultIframeProxyModeForLocation(globalThis.location);
 }
 
 export function setIframeProxyMode(enabled) {
   try {
-    if (enabled) localStorage.setItem(IFRAME_PROXY_OPT_IN_KEY, "1");
-    else localStorage.removeItem(IFRAME_PROXY_OPT_IN_KEY);
+    localStorage.setItem(IFRAME_PROXY_OPT_IN_KEY, enabled ? "1" : "0");
     sessionStorage.removeItem(CONFIG_KEY);
   } catch (_) {}
   _cfgPromise = null;
+}
+
+export function defaultIframeProxyModeForLocation(locationLike) {
+  try {
+    const origin = new URL(String(locationLike?.href || locationLike?.origin || locationLike)).origin;
+    return MODEL_RELAY_DEFAULT_ORIGINS.has(origin);
+  } catch (_) { return false; }
 }
 
 export async function getConfig() {
   /* @doc <code>helpers.getConfig()</code> ::
        Returns the active chat config <code>{ mode, url, model, needsKey, iframeProxy }</code>.
        A presenter can save one compatible chat endpoint and model on the course home page.
-       Embeddings retain their own route. LMS/static iframe mode is available only on the default chat route. */
+       Embeddings retain their own route. The DLI CDN defaults to the bounded NVIDIA DLI relay;
+       other origins stay direct, and a custom chat endpoint always bypasses the relay. */
   if (_cfgPromise) return _cfgPromise;
   _cfgPromise = (async () => {
     const modelApiBaseUrl = getModelApiBaseUrl();
