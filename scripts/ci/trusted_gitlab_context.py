@@ -20,6 +20,17 @@ DEFAULT_BRANCH = "main"
 API_SHA256 = "01e7cf008751c1f0d0861359eecfae7db764a8669480830b12cb2acd61f6e456"
 PROJECT_ID_SHA256 = "b5f6d9ed42567913667c7ae35de34ba6e93a6a34d64bf7c337448f0202f39b7b"
 
+_SAFE_VALUE_ERROR_CODES = {
+    "GitLab trust metadata changed origin": "api-origin",
+    "GitLab returned malformed trust metadata": "api-metadata",
+    "protected GitLab read-token file is unavailable": "read-token-file",
+    "protected GitLab read token is malformed": "read-token-value",
+    "protected GitLab API origin is outside the reviewed boundary": "api-config",
+    "GitLab job token is unavailable": "job-token",
+    "current job is outside the reviewed project": "project-id",
+    "current job has no bounded child pipeline": "pipeline-id",
+}
+
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     """Never forward a trust credential through an HTTP redirect."""
@@ -66,6 +77,17 @@ def protected_api_url(path: str) -> str:
 def trusted_project_id(value: object) -> bool:
     text = str(value)
     return text.isdecimal() and hashlib.sha256(text.encode("ascii")).hexdigest() == PROJECT_ID_SHA256
+
+
+def safe_failure_code(exc: ValueError) -> str:
+    """Return only reviewed diagnostics; never echo API, token, or filesystem data."""
+
+    message = str(exc)
+    if re.fullmatch(r"(?:binding|project-policy):[a-z-]+", message):
+        return message
+    if message.startswith("checkout "):
+        return "checkout-head"
+    return _SAFE_VALUE_ERROR_CODES.get(message, "value-error")
 
 
 def detached_head(root: Path) -> str:
@@ -139,21 +161,30 @@ def verify(
     )
     branch_commit = branch_record.get("commit") if isinstance(branch_record.get("commit"), dict) else {}
     commit = current.get("commit") if isinstance(current.get("commit"), dict) else {}
-    if (
-        current.get("name") != expected_job or current.get("ref") != DEFAULT_BRANCH
-        or pipeline.get("project_id") != project_id or pipeline.get("ref") != DEFAULT_BRANCH
-        or pipeline.get("sha") != head or commit.get("id") != head
-        or pipeline_record.get("id") != pipeline.get("id")
-        or pipeline_record.get("source") != "parent_pipeline"
-        or pipeline_record.get("ref") != DEFAULT_BRANCH or pipeline_record.get("sha") != head
-        or branch_commit.get("id") != head
-    ):
-        raise ValueError("current job is not trusted default-branch project code")
-    if (
-        project.get("id") != project_id or project.get("default_branch") != DEFAULT_BRANCH
-        or project.get("ci_pipeline_variables_minimum_override_role") != "owner"
-    ):
-        raise ValueError("GitLab project privilege settings are outside the reviewed boundary")
+    bindings = (
+        ("job-name", current.get("name") == expected_job),
+        ("job-ref", current.get("ref") == DEFAULT_BRANCH),
+        ("job-project", pipeline.get("project_id") == project_id),
+        ("pipeline-ref", pipeline.get("ref") == DEFAULT_BRANCH),
+        ("pipeline-head", pipeline.get("sha") == head),
+        ("job-commit", commit.get("id") == head),
+        ("pipeline-record-id", pipeline_record.get("id") == pipeline.get("id")),
+        ("pipeline-source", pipeline_record.get("source") == "parent_pipeline"),
+        ("pipeline-record-ref", pipeline_record.get("ref") == DEFAULT_BRANCH),
+        ("pipeline-record-head", pipeline_record.get("sha") == head),
+        ("branch-head", branch_commit.get("id") == head),
+    )
+    for code, satisfied in bindings:
+        if not satisfied:
+            raise ValueError(f"binding:{code}")
+    policies = (
+        ("project-id", project.get("id") == project_id),
+        ("default-branch", project.get("default_branch") == DEFAULT_BRANCH),
+        ("variable-override-role", project.get("ci_pipeline_variables_minimum_override_role") == "owner"),
+    )
+    for code, satisfied in policies:
+        if not satisfied:
+            raise ValueError(f"project-policy:{code}")
     return {
         "schema": "dli-trusted-gitlab-context/1", "project_id": project_id,
         "ref": DEFAULT_BRANCH, "sha": head, "job": expected_job,
@@ -183,7 +214,10 @@ def main() -> int:
         if args.prior:
             bind_prior(result, json.loads(Path(args.prior).read_text(encoding="utf-8")))
         Path(args.output).write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
-    except (OSError, ValueError, urllib.error.URLError, json.JSONDecodeError) as exc:
+    except ValueError as exc:
+        print(f"trusted GitLab context: FAIL: ValueError:{safe_failure_code(exc)}")
+        return 1
+    except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
         print(f"trusted GitLab context: FAIL: {type(exc).__name__}")
         return 1
     print(f"trusted GitLab context: OK job={result['job']} sha={str(result['sha'])[:12]}")

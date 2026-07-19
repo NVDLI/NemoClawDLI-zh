@@ -245,7 +245,7 @@ class TrustedGitLabContextTests(unittest.TestCase):
             {"commit": {"id": sha}},
         ]
         head.return_value = sha
-        with self.assertRaisesRegex(ValueError, "privilege settings"):
+        with self.assertRaisesRegex(ValueError, "project-policy:variable-override-role"):
             trusted_gitlab_context.verify(
                 expected_job="cdn_prepare", job_token="job", read_token="read",
                 api="https://gitlab.example.nvidia.com/api/v4", root=Path("."),
@@ -264,7 +264,7 @@ class TrustedGitLabContextTests(unittest.TestCase):
             {"commit": {"id": "b" * 40}},
         ]
         head.return_value = sha
-        with self.assertRaisesRegex(ValueError, "trusted default-branch"):
+        with self.assertRaisesRegex(ValueError, "binding:branch-head"):
             trusted_gitlab_context.verify(
                 expected_job="cdn_prepare", job_token="job", read_token="read",
                 api="https://gitlab.example.nvidia.com/api/v4", root=Path("."),
@@ -358,6 +358,22 @@ class TrustedGitLabContextTests(unittest.TestCase):
                    "ref": "main", "sha": "a" * 40, "pipeline_id": 10}
         with self.assertRaisesRegex(ValueError, "acquisition context"):
             trusted_gitlab_context.bind_prior(current, current | {"pipeline_id": 11})
+
+    def test_failure_diagnostics_use_only_fixed_vocabulary(self) -> None:
+        self.assertEqual(
+            "binding:pipeline-source",
+            trusted_gitlab_context.safe_failure_code(ValueError("binding:pipeline-source")),
+        )
+        self.assertEqual(
+            "checkout-head",
+            trusted_gitlab_context.safe_failure_code(
+                ValueError("checkout Git metadata escapes /secret/build/path")
+            ),
+        )
+        self.assertEqual(
+            "value-error",
+            trusted_gitlab_context.safe_failure_code(ValueError("token=do-not-print")),
+        )
 
 
 class PrivilegedRequestTests(unittest.TestCase):
