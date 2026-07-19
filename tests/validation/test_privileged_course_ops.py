@@ -6,6 +6,8 @@ from __future__ import annotations
 import json
 import io
 import hashlib
+import importlib.util
+import re
 import subprocess
 import tempfile
 import unittest
@@ -35,16 +37,26 @@ class PrivilegedCiWiringTests(unittest.TestCase):
         candidate, live = candidate.split("live_interface_review:", 1)
         live = live.split("cdn_prepare:", 1)[0]
         self.assertLess(
-            prepare.index("scripts/ci/assert_unprivileged_environment.py"),
+            prepare.index("-m scripts.ci.assert_unprivileged_environment"),
             prepare.index("pnpm install --frozen-lockfile --ignore-scripts"),
         )
-        self.assertNotIn("interface_inventory_browser_audit.py", prepare)
+        self.assertNotIn("scripts.validation.interface_inventory_browser_audit", prepare)
         self.assertIn("trusted-runtime/node-modules.tar.gz", prepare)
         self.assertIn("job: prepare_live_runtime", candidate)
         self.assertIn("artifacts: true", candidate)
         self.assertIn("artifacts: true", live)
         self.assertIn("trusted-runtime/node-modules.tar.gz", live)
         self.assertIn("test -f scripts/runtime/node_modules/playwright-core/package.json", live)
+
+    def test_privileged_python_entries_are_importable_modules(self) -> None:
+        source = (ROOT / ".gitlab/ci/privileged-child.yml").read_text(encoding="utf-8")
+        direct_entries = re.findall(r"\bpython3\s+(scripts/[A-Za-z0-9_./-]+\.py)\b", source)
+        self.assertEqual([], direct_entries, "privileged Python must run with python3 -m")
+        modules = set(re.findall(r"\bpython3\s+-m\s+(scripts(?:\.[A-Za-z_][A-Za-z0-9_]*)+)\b", source))
+        self.assertTrue(modules, "privileged child must declare repository Python modules")
+        for module in modules:
+            with self.subTest(module=module):
+                self.assertIsNotNone(importlib.util.find_spec(module), f"missing module {module}")
 
 
 class LiveReviewBoundaryTests(unittest.TestCase):

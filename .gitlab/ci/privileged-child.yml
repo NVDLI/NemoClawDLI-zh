@@ -21,19 +21,19 @@ privileged_acquire_candidate:
     - |
       set -euo pipefail
       mkdir -p privileged
-      python3 scripts/ci/trusted_gitlab_context.py --job privileged_acquire_candidate --output privileged/trusted-context.json
-      python3 scripts/ci/privileged_request.py "$DLI_REQUEST_OP" --context privileged/trusted-context.json --output privileged/request.json
-      python3 scripts/ci/fetch_validated_candidate.py \
+      python3 -m scripts.ci.trusted_gitlab_context --job privileged_acquire_candidate --output privileged/trusted-context.json
+      python3 -m scripts.ci.privileged_request "$DLI_REQUEST_OP" --context privileged/trusted-context.json --output privileged/request.json
+      python3 -m scripts.ci.fetch_validated_candidate \
         --job "$(python3 -c 'import json; print(json.load(open("privileged/request.json"))["job_id"])')" \
         --ref "$(python3 -c 'import json; print(json.load(open("privileged/request.json"))["source_ref"])')" \
         --sha "$(python3 -c 'import json; print(json.load(open("privileged/request.json"))["source_sha"])')" \
         --context privileged/trusted-context.json \
         --output privileged/validated-candidate.tar.gz
-      python3 scripts/validation/pages_artifact_integrity.py \
+      python3 -m scripts.validation.pages_artifact_integrity \
         --archive privileged/validated-candidate.tar.gz --extract-to /tmp/validated-candidate
       candidate_prefix=""
       if [ -d /tmp/validated-candidate/web/nemoclaw ]; then candidate_prefix="web"; fi
-      python3 scripts/validation/pages_artifact_integrity.py \
+      python3 -m scripts.validation.pages_artifact_integrity \
         --root /tmp/validated-candidate \
         --expect-sha "$(python3 -c 'import json; print(json.load(open("privileged/request.json"))["source_sha"])')" \
         --course-prefix "$candidate_prefix" \
@@ -61,7 +61,7 @@ prepare_live_runtime:
   script:
     - |
       set -euo pipefail
-      python3 scripts/ci/assert_unprivileged_environment.py
+      python3 -m scripts.ci.assert_unprivileged_environment
       corepack enable
       (cd scripts/runtime && pnpm install --frozen-lockfile --ignore-scripts)
       mkdir -p trusted-runtime
@@ -93,19 +93,19 @@ live_candidate_interfaces:
   script:
     - |
       set -euo pipefail
-      python3 scripts/ci/assert_unprivileged_environment.py
+      python3 -m scripts.ci.assert_unprivileged_environment
       tar -xzf trusted-runtime/node-modules.tar.gz -C scripts/runtime
       test -f scripts/runtime/node_modules/playwright-core/package.json
-      python3 scripts/validation/pages_artifact_integrity.py \
+      python3 -m scripts.validation.pages_artifact_integrity \
         --archive privileged/validated-candidate.tar.gz --extract-to /tmp/validated-candidate
       mkdir -p /tmp/candidate-home
       env -i HOME=/tmp/candidate-home CI=1 \
         PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
-        python3 scripts/validation/interface_inventory_browser_audit.py \
+        python3 -m scripts.validation.interface_inventory_browser_audit \
         --site-root /tmp/validated-candidate --timeout-ms 600000
       env -i HOME=/tmp/candidate-home CI=1 \
         PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
-        python3 scripts/ci/live_interface_review.py --assert-capabilities /tmp/validated-candidate
+        python3 -m scripts.ci.live_interface_review --assert-capabilities /tmp/validated-candidate
   rules:
     - if: '$DLI_REQUEST_OP == "live-interface-review"'
       when: on_success
@@ -161,9 +161,9 @@ live_interface_review:
         test -s "$protected_file"
       done
       if [ -n "${LIVE_CLAW_SESSION_2_FILE:-}" ]; then test -s "$LIVE_CLAW_SESSION_2_FILE"; fi
-      python3 scripts/ci/trusted_gitlab_context.py --job live_interface_review \
+      python3 -m scripts.ci.trusted_gitlab_context --job live_interface_review \
         --prior privileged/trusted-context.json --output /tmp/trusted-context.json
-      python3 scripts/ci/live_interface_review.py --request privileged/request.json
+      python3 -m scripts.ci.live_interface_review --request privileged/request.json
   rules:
     - if: '$DLI_REQUEST_OP == "live-interface-review"'
       when: on_success
@@ -185,12 +185,12 @@ cdn_prepare:
   script:
     - |
       set -euo pipefail
-      python3 scripts/ci/assert_unprivileged_environment.py
-      python3 scripts/validation/pages_artifact_integrity.py \
+      python3 -m scripts.ci.assert_unprivileged_environment
+      python3 -m scripts.validation.pages_artifact_integrity \
         --archive privileged/validated-candidate.tar.gz --extract-to /tmp/validated-candidate
       mkdir -p cdn
       cp privileged/request.json cdn/request.json
-      python3 scripts/ci/prepare_cdn_publication.py \
+      python3 -m scripts.ci.prepare_cdn_publication \
         --candidate /tmp/validated-candidate --request cdn/request.json \
         --output cdn/publication --plan cdn/publication-plan.json
   artifacts:
