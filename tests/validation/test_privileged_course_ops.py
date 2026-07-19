@@ -212,9 +212,9 @@ class TrustedGitLabContextTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.project_pin.stop()
 
-    @patch("scripts.ci.trusted_gitlab_context.subprocess.run")
+    @patch("scripts.ci.trusted_gitlab_context.detached_head")
     @patch("scripts.ci.trusted_gitlab_context._load")
-    def test_real_job_and_project_settings_bind_trusted_execution(self, load, run) -> None:
+    def test_real_job_and_project_settings_bind_trusted_execution(self, load, head) -> None:
         sha = "a" * 40
         load.side_effect = [
             {"name": "cdn_prepare", "ref": "main", "commit": {"id": sha},
@@ -224,7 +224,7 @@ class TrustedGitLabContextTests(unittest.TestCase):
             {"id": 9, "source": "parent_pipeline", "ref": "main", "sha": sha},
             {"commit": {"id": sha}},
         ]
-        run.return_value = subprocess.CompletedProcess([], 0, stdout=sha + "\n")
+        head.return_value = sha
         result = trusted_gitlab_context.verify(
             expected_job="cdn_prepare", job_token="job", read_token="read",
             api="https://gitlab.example.nvidia.com/api/v4", root=Path("."),
@@ -232,9 +232,9 @@ class TrustedGitLabContextTests(unittest.TestCase):
         self.assertEqual(sha, result["sha"])
         self.assertEqual("https://gitlab.example.nvidia.com/api/v4/job", load.call_args_list[0].args[0])
 
-    @patch("scripts.ci.trusted_gitlab_context.subprocess.run")
+    @patch("scripts.ci.trusted_gitlab_context.detached_head")
     @patch("scripts.ci.trusted_gitlab_context._load")
-    def test_weaker_pipeline_variable_role_fails_closed(self, load, run) -> None:
+    def test_weaker_pipeline_variable_role_fails_closed(self, load, head) -> None:
         sha = "a" * 40
         load.side_effect = [
             {"name": "cdn_prepare", "ref": "main", "commit": {"id": sha},
@@ -244,16 +244,16 @@ class TrustedGitLabContextTests(unittest.TestCase):
             {"id": 9, "source": "parent_pipeline", "ref": "main", "sha": sha},
             {"commit": {"id": sha}},
         ]
-        run.return_value = subprocess.CompletedProcess([], 0, stdout=sha + "\n")
+        head.return_value = sha
         with self.assertRaisesRegex(ValueError, "privilege settings"):
             trusted_gitlab_context.verify(
                 expected_job="cdn_prepare", job_token="job", read_token="read",
                 api="https://gitlab.example.nvidia.com/api/v4", root=Path("."),
             )
 
-    @patch("scripts.ci.trusted_gitlab_context.subprocess.run")
+    @patch("scripts.ci.trusted_gitlab_context.detached_head")
     @patch("scripts.ci.trusted_gitlab_context._load")
-    def test_superseded_default_branch_harness_fails_closed(self, load, run) -> None:
+    def test_superseded_default_branch_harness_fails_closed(self, load, head) -> None:
         sha = "a" * 40
         load.side_effect = [
             {"name": "cdn_prepare", "ref": "main", "commit": {"id": sha},
@@ -263,12 +263,49 @@ class TrustedGitLabContextTests(unittest.TestCase):
             {"id": 9, "source": "parent_pipeline", "ref": "main", "sha": sha},
             {"commit": {"id": "b" * 40}},
         ]
-        run.return_value = subprocess.CompletedProcess([], 0, stdout=sha + "\n")
+        head.return_value = sha
         with self.assertRaisesRegex(ValueError, "trusted default-branch"):
             trusted_gitlab_context.verify(
                 expected_job="cdn_prepare", job_token="job", read_token="read",
                 api="https://gitlab.example.nvidia.com/api/v4", root=Path("."),
             )
+
+    def test_detached_head_reads_bounded_checkout_commit(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            git_dir = Path(directory) / ".git"
+            git_dir.mkdir()
+            (git_dir / "HEAD").write_text("a" * 40 + "\n", encoding="ascii")
+            self.assertEqual("a" * 40, trusted_gitlab_context.detached_head(Path(directory)))
+
+    def test_symbolic_or_malformed_checkout_head_fails_closed(self) -> None:
+        for value in ("ref: refs/heads/main\n", "A" * 40, "a" * 39, "../outside"):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as directory:
+                git_dir = Path(directory) / ".git"
+                git_dir.mkdir()
+                (git_dir / "HEAD").write_text(value, encoding="ascii")
+                with self.assertRaisesRegex(ValueError, "detached commit"):
+                    trusted_gitlab_context.detached_head(Path(directory))
+
+    def test_symlinked_checkout_head_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            git_dir = root / ".git"
+            git_dir.mkdir()
+            source = root / "source"
+            source.write_text("a" * 40, encoding="ascii")
+            (git_dir / "HEAD").symlink_to(source)
+            with self.assertRaisesRegex(ValueError, "bounded detached HEAD"):
+                trusted_gitlab_context.detached_head(root)
+
+    def test_symlinked_git_directory_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source-git"
+            source.mkdir()
+            (source / "HEAD").write_text("a" * 40, encoding="ascii")
+            (root / ".git").symlink_to(source, target_is_directory=True)
+            with self.assertRaisesRegex(ValueError, "bounded detached HEAD"):
+                trusted_gitlab_context.detached_head(root)
 
     def test_protected_api_origin_is_https_nvidia_gitlab_api(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

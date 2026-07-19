@@ -9,7 +9,7 @@ import argparse
 import hashlib
 import json
 import os
-import subprocess
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -68,6 +68,22 @@ def trusted_project_id(value: object) -> bool:
     return text.isdecimal() and hashlib.sha256(text.encode("ascii")).hexdigest() == PROJECT_ID_SHA256
 
 
+def detached_head(root: Path) -> str:
+    """Read the runner checkout identity without relying on an undeclared Git binary."""
+
+    git_dir = root / ".git"
+    target = git_dir / "HEAD"
+    if (
+        git_dir.is_symlink() or not git_dir.is_dir()
+        or target.is_symlink() or not target.is_file() or target.stat().st_size > 128
+    ):
+        raise ValueError("checkout has no bounded detached HEAD")
+    value = target.read_text(encoding="ascii").strip()
+    if not re.fullmatch(r"[0-9a-f]{40}", value):
+        raise ValueError("checkout HEAD is not a detached commit")
+    return value
+
+
 def verify(
     *, expected_job: str, job_token: str, read_token: str, api: str, root: Path,
 ) -> dict[str, object]:
@@ -79,9 +95,7 @@ def verify(
     if not trusted_project_id(project_id):
         raise ValueError("current job is outside the reviewed project")
     project = _load(api + f"/projects/{project_id}", "PRIVATE-TOKEN", read_token)
-    head = subprocess.run(
-        ["git", "-C", str(root), "rev-parse", "HEAD"], text=True, capture_output=True, check=True,
-    ).stdout.strip()
+    head = detached_head(root)
     pipeline_id = str(pipeline.get("id", ""))
     if not pipeline_id.isdecimal():
         raise ValueError("current job has no bounded child pipeline")
@@ -138,7 +152,7 @@ def main() -> int:
         if args.prior:
             bind_prior(result, json.loads(Path(args.prior).read_text(encoding="utf-8")))
         Path(args.output).write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
-    except (OSError, ValueError, subprocess.CalledProcessError, urllib.error.URLError, json.JSONDecodeError) as exc:
+    except (OSError, ValueError, urllib.error.URLError, json.JSONDecodeError) as exc:
         print(f"trusted GitLab context: FAIL: {type(exc).__name__}")
         return 1
     print(f"trusted GitLab context: OK job={result['job']} sha={str(result['sha'])[:12]}")
