@@ -1,5 +1,5 @@
 # NeMoClaw Course — Local Deployment Notes
-### Running pages 01a–03a on Windows 11 + NVIDIA GPU (no Brev)
+### Running pages 01a–04c on Windows 11 + WSL2 + Docker (no Brev)
 
 ---
 
