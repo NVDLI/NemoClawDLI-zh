@@ -13,7 +13,7 @@ model call to tools, workflows, retrieval, deep research, sandbox policy, and de
 It is available in English, Brazilian Portuguese, and Spanish.
 
 The planned public home is
-[`NVDLI/NemoClawDLI`](https://github.com/NVDLI/NemoClawDLI-zh). Publication remains pending OSRB
+[`NVDLI/NemoClawDLI-zh`](https://github.com/NVDLI/NemoClawDLI-zh). Publication remains pending OSRB
 approval. [`RELEASE_STATUS.json`](RELEASE_STATUS.json) is the machine-readable source for current
 publication state. Passing repository checks does not replace NVIDIA legal, security, or release
 approval.
