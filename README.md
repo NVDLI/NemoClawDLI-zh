@@ -1,12 +1,19 @@
 # Securing Agents with OpenShell and NemoClaw
 
+> **This is the Chinese (zh) localization fork** of the NeMoClaw DLI course, maintained at
+> [`DLI / expand-the-funnel / NeMoClawDLI-zh`](https://gitlab-master.nvidia.com/dli/expand-the-funnel/nemoclawdli-zh).
+> It is adapted for **non-Brev local deployment (WSL2 + Docker)** and will carry Simplified Chinese
+> content once the full course is verified to run end-to-end without Brev. Until then, course
+> content remains in English. For the upstream English source see
+> [`NVDLI/NemoClawDLI`](https://github.com/NVDLI/NemoClawDLI).
+
 This repository contains an NVIDIA Deep Learning Institute course about building agent systems and
 applying practical security boundaries with NemoClaw and OpenShell. The course progresses from a
 model call to tools, workflows, retrieval, deep research, sandbox policy, and deployment choices.
 It is available in English, Brazilian Portuguese, and Spanish.
 
 The planned public home is
-[`NVDLI/NemoClawDLI`](https://github.com/NVDLI/NemoClawDLI). Publication remains pending OSRB
+[`NVDLI/NemoClawDLI`](https://github.com/NVDLI/NemoClawDLI-zh). Publication remains pending OSRB
 approval. [`RELEASE_STATUS.json`](RELEASE_STATUS.json) is the machine-readable source for current
 publication state. Passing repository checks does not replace NVIDIA legal, security, or release
 approval.
@@ -15,17 +22,44 @@ approval.
 
 Start at [`web/index.html`](web/index.html), then open the
 [`NemoClaw course`](web/nemoclaw/index.html). Interactive model exercises require a user-supplied
-NVIDIA API key. Modules 3 and 4 request a NemoClaw launchable when they need one. No
-learner-managed GPU or repository-operated application server is required.
+NVIDIA API key.
+
+**In this fork (local WSL2 + Docker deployment):** Modules 3 and 4 connect to the local
+openshell-sandbox Docker container instead of a Brev launchable. Start all services with
+`bash start_proxies.sh` before opening the course pages — see
+[`LOCAL_STARTUP_GUIDE.md`](LOCAL_STARTUP_GUIDE.md) for full instructions. No GPU required.
 
 The learner release is a static browser site. It does not vendor learner credentials. The
-NemoClaw product, launchable, and runtime are external dependencies, not releases of this course
-repository.
+NemoClaw product and runtime are external dependencies, not releases of this course repository.
 
-## Run it locally
+## Run it locally (non-Brev, WSL2 + Docker)
 
-Install Python 3.11 or newer, Bash, Node.js 20 or newer, pnpm through Corepack, and Chromium or a
-compatible Chrome browser. Python 3.12 is the tested default.
+This fork is designed to run without a Brev launchable. The full step-by-step startup procedure
+is in [`LOCAL_STARTUP_GUIDE.md`](LOCAL_STARTUP_GUIDE.md). Architecture notes and troubleshooting
+are in [`LOCAL_DEPLOYMENT_NOTES.md`](LOCAL_DEPLOYMENT_NOTES.md).
+
+**Prerequisites:** WSL2 (Ubuntu 24.04), Docker, NeMoClaw + OpenShell installed, an NVIDIA API key.
+
+**Quick start (every session):**
+
+```bash
+# 1. Set your API key
+export NVAPI_KEY="nvapi-..."
+
+# 2. Start all background services in one command
+bash start_proxies.sh
+
+# 3. Recover the container, set up the forward service, fix iptables rules
+#    (see LOCAL_STARTUP_GUIDE.md steps 1c–1f for the full commands)
+```
+
+Then open `http://localhost:8081/web/nemoclaw/03a-kickstart.html` and proceed through the pages
+in order: 01a, 01b, 02a … 04a, 04b, 04c.
+
+### Original build-based local run
+
+The upstream repo supports a build-based local run (no Docker required) for pages that do not
+need a launchable. Install Python 3.11+, Node.js 20+, pnpm, and Chromium, then:
 
 ```bash
 git clone https://github.com/NVDLI/NemoClawDLI.git
@@ -34,9 +68,7 @@ bash scripts/build/build_pages.sh public
 python3 -m http.server -d public 8000
 ```
 
-Open `http://localhost:8000/nemoclaw/`. Before installing Python packages, run
-`python3 scripts/runtime/python_env_probe.py`, use a virtual environment, and install the applicable
-pinned lock. The repository does not prescribe a container topology.
+Open `http://localhost:8000/nemoclaw/`. Modules 3 and 4 still require a launchable in this mode.
 
 ## Contribute
 
