@@ -43,6 +43,18 @@ export function openclawGatewayWsUrl(rawUrl, accessSession = "", proxyBase = nul
   return openclawWebSocketUrl(rawUrl, "/cli/gateway", accessSession, config, accessProvider);
 }
 
+export function gatewayTokenFromDashboardUrl(raw) {
+  raw = String(raw || "").trim();
+  if (!raw) return null;
+  try {
+    const parsed = new URL(raw, "https://nemoclaw.invalid/");
+    const fragment = new URLSearchParams(parsed.hash.replace(/^#/, ""));
+    return fragment.get("token") || parsed.searchParams.get("token") || null;
+  } catch (_) {
+    return null;
+  }
+}
+
 export function gatewayTokenFromAgentMetadata(payload) {
   const raw = String(payload?.agent?.dashboardUrl || "").trim();
   if (!raw) return null;
@@ -58,12 +70,13 @@ export function gatewayTokenFromAgentMetadata(payload) {
 let _verifiedGatewayToken = { rawUrl: "", token: "", verifiedAt: 0, metadataMatches: null };
 
 // The launchable access session and OpenClaw gateway token are separate credentials.
-// Fetch the token from GET /api/agent before the first gateway connection.
+// Refresh the gateway token from /api/agent when old launchables expose it;
+// otherwise keep the token the learner saved from the local dashboard URL.
 // Keep it only in the tab-scoped store.
 export async function refreshOpenClawGatewayToken({ signal = null, maxAgeMs = 30000 } = {}) {
   const connection = getOpenClawConnection();
   const rawUrl = String(connection.rawUrl || "").replace(/\/+$/, "");
-  if (!rawUrl) throw new Error("Set the launchable URL in the Module 3a probe first.");
+  if (!rawUrl) throw new Error("Set the OpenClaw runtime URL in the Module 3a probe first.");
 
   const now = Date.now();
   if (_verifiedGatewayToken.rawUrl === rawUrl && _verifiedGatewayToken.token &&
@@ -92,7 +105,7 @@ export async function refreshOpenClawGatewayToken({ signal = null, maxAgeMs = 30
   } catch (_) { /* fall back to the tab's last discovered token below */ }
 
   const token = metadataToken || connection.token;
-  if (!token) throw new Error("GET /api/agent did not provide a gateway token. Reopen the launchable, then try again.");
+  if (!token) throw new Error("No OpenClaw gateway token is saved. Paste the token from your local dashboard URL, or use GET /api/agent on older launchables.");
   setOpenClawConnection({
     rawUrl,
     token,
@@ -280,7 +293,7 @@ export function mountClawGateway(targetSel, opts = {}) {
   connectBtn.addEventListener("click", async () => {
     let { rawUrl, token, accessProvider, accessSession } = _creds();
     if (!rawUrl) {
-      _showOut(`<span class="gw-err-txt">No launchable URL yet. Fill in the OpenClaw probe above first.</span>`);
+      _showOut(`<span class="gw-err-txt">No OpenClaw runtime URL yet. Fill in the probe above first.</span>`);
       return;
     }
     connectBtn.disabled = true;
@@ -415,6 +428,10 @@ export function mountEndpointProbe(targetSel, opts = {}) {
     if (isOpenClaw) return normalizeOpenClawLaunchableUrl(raw);
     const text = String(raw || "").trim();
     return text.replace(/\/+$/, "");
+  }
+
+  function _embeddedGatewayToken(raw) {
+    return isOpenClaw ? (gatewayTokenFromDashboardUrl(raw) || "") : "";
   }
 
   // Only an OpenClaw probe owns launchable persistence. Model settings remain owned by
@@ -597,7 +614,9 @@ export function mountEndpointProbe(targetSel, opts = {}) {
       ? "uses the signed-in browser session; nothing to paste"
       : provider === "cloudflare"
         ? "paste the CF_Authorization cookie value"
-        : "choose a provider or enter a launchable URL";
+        : urlInp.value.trim()
+          ? "local/direct deployment: leave empty"
+          : "choose a provider or enter a runtime URL";
   }
   if (accessSessionInp) {
     accessSessionInp.addEventListener("input", () => {
@@ -622,10 +641,15 @@ export function mountEndpointProbe(targetSel, opts = {}) {
 
   function _saveOpenClawConnection(rawUrl, rawToken, accessProvider, accessSession) {
     if (!isOpenClaw) return;
+    const embeddedToken = _embeddedGatewayToken(rawUrl);
+    const cleanUrl = _normalizeBaseUrl(rawUrl);
+    const nextToken = String(rawToken || "").trim() || embeddedToken;
+    if (embeddedToken && tokenInp.value.trim() !== embeddedToken) tokenInp.value = embeddedToken;
+    if (cleanUrl && urlInp.value.trim() !== cleanUrl) urlInp.value = cleanUrl;
     try {
       setOpenClawConnection({
-        rawUrl,
-        token: rawToken,
+        rawUrl: cleanUrl,
+        token: nextToken,
         accessProvider: opts.cfAccess ? accessProvider : undefined,
         accessSession: opts.cfAccess ? accessSession : undefined,
       });
@@ -640,7 +664,9 @@ export function mountEndpointProbe(targetSel, opts = {}) {
   }
 
   urlInp.addEventListener("input", () => {
-    const raw = _normalizeBaseUrl(urlInp.value);
+    const typed = urlInp.value.trim();
+    const embeddedToken = _embeddedGatewayToken(typed);
+    const raw = _normalizeBaseUrl(typed);
     if (urlInp.value.trim() !== raw) urlInp.value = raw;
     const previous = getOpenClawConnection().rawUrl;
     if (previous && raw && raw !== previous) {
@@ -650,6 +676,7 @@ export function mountEndpointProbe(targetSel, opts = {}) {
       if (accessSessionInp) accessSessionInp.value = "";
       if (accessProviderInp) accessProviderInp.value = "auto";
     }
+    if (embeddedToken) tokenInp.value = embeddedToken;
     _refreshAccessSessionPlaceholder();
     _saveOpenClawConnection(raw, tokenInp.value.trim(), accessProviderInp?.value, accessSessionInp?.value.trim());
   });
@@ -710,7 +737,7 @@ export function mountEndpointProbe(targetSel, opts = {}) {
     outEl.textContent = text;
   }
 
-  // Used by runAction. Keep the normalized launchable origin and API path separate. Brev launchable
+  // Used by runAction. Keep the normalized runtime origin and API path separate. Brev host
   // normalization intentionally drops UI paths; combining them here would turn
   // /healthz or /api/agent into a request for the OpenClaw Control page at /.
   function _fetchUrl(baseUrl, pathAndQuery) {
@@ -719,6 +746,20 @@ export function mountEndpointProbe(targetSel, opts = {}) {
       return { url: displayUrl, displayUrl, viaProxy: false, directUrl: displayUrl, directDisplayUrl: displayUrl };
     }
     return openclawHttpUrl(baseUrl, pathAndQuery, _proxyConfig());
+  }
+
+  function _apiAgentCompatMetadata(status, actionPath, savedToken) {
+    const token = String(savedToken || "").trim();
+    if (!isOpenClaw || actionPath !== "/api/agent" || status !== 404 || !token || token === defaultToken) return null;
+    return {
+      agent: { dashboardUrl: "/#token=" + encodeURIComponent(token) },
+      _compat: "The runtime returned 404 for /api/agent. Current OpenClaw can supply the gateway token in its dashboard URL; using the bearer token already saved in this tab.",
+    };
+  }
+
+  function _apiAgentCompatHint(actionPath) {
+    if (!isOpenClaw || actionPath !== "/api/agent") return "";
+    return "\n\nThis OpenClaw build may not expose /api/agent. For a local OpenClaw proxy, keep Base URL pointed at the browser-facing proxy, such as http://localhost:8011. Get the gateway token from openclaw dashboard --no-open, openclaw doctor --generate-gateway-token, or the startup dashboard URL, then paste only the token into Bearer token or rewrite the dashboard URL to http://localhost:8011/#token=... . For a NemoClaw CLI-managed launchable, use its dashboard-url command.";
   }
 
   async function runAction(action) {
@@ -749,7 +790,7 @@ export function mountEndpointProbe(targetSel, opts = {}) {
     if (token && !discoversToken) headers["Authorization"] = "Bearer " + token;
     if (route.viaProxy && accessSession) {
       if (accessProvider === "auto") {
-        setOutput("Choose Cloudflare Access or Pomerium for this launchable.", "err", "blocked");
+        setOutput("Choose Cloudflare Access or Pomerium for this runtime URL.", "err", "blocked");
         return;
       }
       if (accessProvider === "cloudflare") {
@@ -811,7 +852,7 @@ export function mountEndpointProbe(targetSel, opts = {}) {
         }
         if (action.expectJson) {
           setOutput(head + "\n\n" + (opts.unexpectedHtmlHint ||
-            "Expected JSON but received an HTML page. Confirm that the request kept its API path and that the launchable relay is current."), "err");
+            "Expected JSON but received an HTML page. Confirm that the request kept its API path and that the runtime route is current."), "err");
           hideHtmlFrame(true);
           return;
         }
@@ -828,8 +869,29 @@ export function mountEndpointProbe(targetSel, opts = {}) {
         fr.hidden = false;
       } else {
         let j = null, printed;
+        const responseText = await r.text();
         if (ct.includes("application/json")) {
-          j = await r.json();
+          try {
+            j = responseText.trim() ? JSON.parse(responseText) : null;
+          } catch (parseError) {
+            const compat = _apiAgentCompatMetadata(r.status, actionPath, tokenInp.value.trim());
+            if (compat) {
+              _saveOpenClawConnection(_normalizeBaseUrl(urlInp.value), tokenInp.value.trim(), accessProviderInp?.value, accessSessionInp?.value.trim());
+              setOutput(head + "\n\n" + JSON.stringify(compat, null, 2) +
+                "\n\n-> /api/agent returned non-JSON 404; using the saved gateway token for the gateway steps below.", "ok");
+              return;
+            }
+            const bodyText = responseText.trim() || "(empty body)";
+            setOutput(head + "\n\n" + bodyText + _apiAgentCompatHint(actionPath), "err");
+            return;
+          }
+          const compat = _apiAgentCompatMetadata(r.status, actionPath, tokenInp.value.trim());
+          if (compat) {
+            _saveOpenClawConnection(_normalizeBaseUrl(urlInp.value), tokenInp.value.trim(), accessProviderInp?.value, accessSessionInp?.value.trim());
+            setOutput(head + "\n\n" + JSON.stringify(compat, null, 2) +
+              "\n\n-> /api/agent returned 404; using the saved gateway token for the gateway steps below.", "ok");
+            return;
+          }
           if (action.filterModels && j && Array.isArray(j.data)) {
             const f = action.filterModels;
             const test = typeof f === "function" ? f
@@ -854,11 +916,19 @@ export function mountEndpointProbe(targetSel, opts = {}) {
             } catch (_) { /* response shape didn't match; leave the field as-is */ }
           }
         } else {
-          printed = await r.text();
+          printed = responseText;
+          const compat = _apiAgentCompatMetadata(r.status, actionPath, tokenInp.value.trim());
+          if (compat) {
+            _saveOpenClawConnection(_normalizeBaseUrl(urlInp.value), tokenInp.value.trim(), accessProviderInp?.value, accessSessionInp?.value.trim());
+            setOutput(head + "\n\n" + JSON.stringify(compat, null, 2) +
+              "\n\n-> /api/agent returned 404; using the saved gateway token for the gateway steps below.", "ok");
+            return;
+          }
         }
         if (!r.ok && r.status === 401 && accessProvider === "pomerium") {
           printed += "\n\nPomerium did not accept the browser session. Open the current launchable in this browser, sign in, and try again. Do not copy the _pomerium cookie into the course.";
         }
+        if (!r.ok) printed += _apiAgentCompatHint(actionPath);
         setOutput(head + "\n\n" + printed, r.ok ? "ok" : "err");
       }
     } catch (e) {
@@ -869,16 +939,16 @@ export function mountEndpointProbe(targetSel, opts = {}) {
         return;
       }
       const fallback = /EPERM|Failed to fetch|NetworkError|Load failed|ECONN|ERR_CONNECTION|timed out|502|503/i.test(e?.message || "")
-        ? "\nBackup: if local OpenClaw failed to start or logs EPERM, enter a Brev launchable URL. For Pomerium, open that launchable and sign in in this browser. Cloudflare launchables still use the relay session field.\n"
+        ? "\nBackup: if local OpenClaw or the sandbox failed to start, inspect the local OpenClaw/OpenShell logs and restart that deployment. If you are using Brev instead, open that launchable and refresh its matching access session.\n"
         : "";
       const hint = "Possible causes:\n" +
-        "• OpenClaw did not start cleanly. Local EPERM means use a Brev launchable.\n" +
+        "• OpenClaw or the OpenShell sandbox did not start cleanly. Local EPERM means check the local sandbox permissions or restart the deployment.\n" +
         "• CORS blocked, because a header is not in the Access-Control-Allow-Headers preflight response.\n" +
-        "• Wrong URL, so confirm no trailing /v1 on the base URL.\n" +
-        "• Service offline. If the launchable just started, wait 30 s and try again.\n" +
+        "• Wrong URL, so confirm Base URL is the browser-facing OpenClaw origin, such as http://localhost:8011, with no trailing /v1.\n" +
+        "• Service offline. If the runtime just started, wait 30 s and try again.\n" +
         "• 502 on /v1/chat/completions, so the model backend isn't responding; check that\n" +
-        "  NVIDIA_API_KEY resolved correctly in the launchable environment.\n\n" +
-        "Gateway token: once the URL and launchable sign-in check out, GET /api/agent above fills it in from agent.dashboardUrl.";
+        "  NVIDIA_API_KEY resolved correctly in the runtime environment.\n\n" +
+        "Gateway token: local OpenClaw builds often provide it as a dashboard URL fragment (#token=...). Older launchables may still expose it through GET /api/agent.";
       setOutput(`✗ network error after ${dt}ms\n   ${String(e?.message || e)}\n\n${fallback}${hint}`, "err");
     }
   }
@@ -943,7 +1013,7 @@ export async function openclawChat(message, { session = "main", onToken, onTool,
   const token = refreshed.token;
   const accessProvider = connection.accessProvider;
   const accessSession = connection.accessSession;
-  if (!rawUrl || !token) throw new Error("Connect first on the Kickstart page (3a): set your launchable URL + token in the probe.");
+  if (!rawUrl || !token) throw new Error("Connect first on the Kickstart page (3a): set your OpenClaw runtime URL + token in the probe.");
   const gateway = openclawGatewayWsUrl(rawUrl, accessSession, null, null, accessProvider);
   const wsUrl = gateway.url;
 
@@ -1060,7 +1130,7 @@ const token = refreshedGateway.token;
 const accessProvider = connection.accessProvider;
 const accessSession = connection.accessSession;
 if (!rawUrl || !token) {
-  helpers.log("Fill in the OpenClaw probe above first. For a Brev launchable, select its access provider and paste the matching browser session.");
+  helpers.log("Fill in the OpenClaw probe above first. For a local proxy, use the browser-facing URL and gateway token. For a Brev launchable, select its access provider and paste the matching browser session when needed.");
   return;
 }
 const gateway = helpers.openclawGatewayWsUrl(rawUrl, accessSession, null, null, accessProvider);
@@ -1111,7 +1181,7 @@ await new Promise((resolve, reject) => {
   _ws.onerror = () => {
     if (!challenged) {
       clearTimeout(challengeTimer);
-      reject(new Error("gateway WebSocket failed before the challenge; verify the launchable access session and transport"));
+      reject(new Error("gateway WebSocket failed before the challenge; verify the runtime URL, access session, and transport"));
     }
   };
   _ws.onmessage = ev => {
@@ -1254,7 +1324,7 @@ const DO_RESTART = false;
 if (DO_RESTART && configChanged) {
   await state.call("gateway.restart.request", { reason: "course recovery: disable toolSearch" }).catch(e => helpers.log("  restart failed: " + e.message));
   helpers.log("  ⟳ restart requested. Wait ~40s, then re-run Connect and the 🩺 Health check.");
-  helpers.log("  Still failing after that? The sandbox is wedged below the gateway, so relaunch the launchable from Brev.");
+  helpers.log("  Still failing after that? The sandbox is wedged below the gateway, so restart the local OpenShell/OpenClaw deployment or relaunch the hosted launchable you are using.");
 } else if (configChanged) {
   helpers.log("  config patched. To apply it now: set DO_RESTART = true above and re-run this cell (the runtime restarts in about 40s).");
 } else {

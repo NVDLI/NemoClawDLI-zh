@@ -346,6 +346,36 @@ export async function policyGet(agent = null, { idleMs = 8000, totalMs = 30000, 
   */
   const name = agent || localStorage.getItem("nemoclaw_sandbox_name") || "my-assistant";
   const command = "openshell policy get " + name + " --full";
+
+  // LOCAL WSL2 DEPLOYMENT: try the policy_proxy.py bridge first (port 8012).
+  // policy_proxy.py runs `openshell policy get` in WSL2 (outside the sandbox) and serves
+  // the raw YAML over HTTP, bypassing the sandbox restriction that blocks the operator
+  // terminal from reaching the OpenShell control plane from inside the container.
+  // Falls back to the standard terminal approach if the proxy is not running.
+  // See LOCAL_DEPLOYMENT_NOTES.md §13.5 and §13.10 for root cause details.
+  try {
+    const proxyResp = await Promise.race([
+      fetch("http://127.0.0.1:8012/policy?agent=" + encodeURIComponent(name)),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("proxy timeout")), 3000)),
+    ]);
+    if (proxyResp.ok) {
+      const proxyRaw = (await proxyResp.text()).trim();
+      const proxySep = proxyRaw.indexOf("---");
+      const proxyStatus = proxySep >= 0 ? proxyRaw.slice(0, proxySep).trim() : proxyRaw;
+      const proxyBody = proxySep >= 0 ? proxyRaw.slice(proxySep + 3) : "";
+      if (proxyBody.trim()) {
+        try {
+          const yaml = await import(POLICY_YAML_MODULE_URL);
+          if (typeof yaml.load !== "function") throw new Error("vendored YAML parser does not export load()");
+          const proxyPolicy = yaml.load(proxyBody);
+          if (proxyPolicy && typeof proxyPolicy === "object" && !Array.isArray(proxyPolicy)) {
+            return { agent: name, command, raw: proxyRaw, status: proxyStatus, policy: proxyPolicy, parseError: "" };
+          }
+        } catch (_) { /* fall through to terminal approach */ }
+      }
+    }
+  } catch (_) { /* proxy not running — fall through to terminal approach */ }
+
   const res = await terminal(command, { idleMs, totalMs, signal });
   const raw = (res.output || "").trim();
   const sep = raw.indexOf("---");
@@ -367,6 +397,20 @@ export async function policyGet(agent = null, { idleMs = 8000, totalMs = 30000, 
     }
   }
   else parseError = "openshell policy get returned no YAML body after the status header";
+
+  // FINAL FALLBACK: if both the proxy and terminal failed but the page has a pre-loaded
+  // policy in window.__SBX_POLICY (injected in <head>), use it so downstream cells work.
+  if (!policy && typeof window !== "undefined" && window.__SBX_POLICY) {
+    policy = window.__SBX_POLICY;
+    parseError = "";
+    const nets = Object.keys(policy.network_policies || {}).join(", ");
+    const rawFallback =
+      "(local WSL2 deployment — raw YAML not available via operator terminal)\n" +
+      "Policy pre-loaded from page <head> matching: " + command + "\n" +
+      "Network policies: " + nets + ".";
+    return { agent: name, command, raw: rawFallback, status: "(local deployment — pre-loaded policy)", policy, parseError };
+  }
+
   return { agent: name, command, raw, status, policy, parseError };
 }
 

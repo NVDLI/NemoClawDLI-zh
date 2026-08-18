@@ -64,6 +64,25 @@ ok(!storage.get('nemoclaw_clawtoken') && !storage.get('nemoclaw_openclaw_access_
    secretStorage.get('nemoclaw_clawtoken') === 'test-token' && secretStorage.get('nemoclaw_openclaw_access_session_v1') === 'test.jwt',
   'OpenClaw credentials were not restricted to tab-scoped storage');
 
+clearStorage();
+const tokenizedDashboard = mod.setOpenClawConnection({
+  rawUrl: launchable + '/#token=dashboard-token_123',
+  accessProvider: 'cloudflare',
+});
+ok(tokenizedDashboard.rawUrl === launchable && tokenizedDashboard.token === 'dashboard-token_123',
+  `tokenized dashboard URL was not split into base URL plus token: ${JSON.stringify(tokenizedDashboard)}`);
+ok(storage.get('nemoclaw_clawrawurl') === launchable &&
+   storage.get('nemoclaw_clawurl') === approved + '/https/nemoclaw-test123.brevlab.com' &&
+   secretStorage.get('nemoclaw_clawtoken') === 'dashboard-token_123' &&
+   !storage.get('nemoclaw_clawtoken'),
+  'tokenized dashboard URL did not keep the gateway token tab-scoped');
+
+clearStorage();
+const localDashboard = mod.setOpenClawConnection({ rawUrl: 'http://localhost:8011/?token=local-token_456' });
+ok(localDashboard.rawUrl === 'http://localhost:8011' && localDashboard.token === 'local-token_456',
+  `local dashboard URL kept token query state in the base URL: ${JSON.stringify(localDashboard)}`);
+
+clearStorage();
 const http = mod.openclawHttpUrl(launchable, '/api/agent');
 ok(http.viaProxy && http.url === approved + '/https/nemoclaw-test123.brevlab.com/api/agent',
   `cross-origin HTTP route bypassed relay: ${http.url}`);

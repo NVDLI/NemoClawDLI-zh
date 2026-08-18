@@ -1,0 +1,31 @@
+flowchart TD
+    Browser["🌐 Browser<br/>(Windows Host)"]
+
+    subgraph WSL2["WSL2 — Host Process Space"]
+        Proxy["openclaw_proxy.py<br/>port 8011<br/>TLS termination · CORS shim"]
+        GW["openshell-docker-gateway<br/>native management daemon<br/>starts forward service<br/>polls container config"]
+        Fwd["openshell forward service<br/>WSL2:18789 → container:8080<br/>(gRPC, namespace-aware)"]
+    end
+
+    subgraph Net["openshell-docker — Docker custom bridge network (br-XXXX)"]
+        subgraph SB["openshell-sandbox container  (openshell-my-assistant-{uuid})"]
+            API["openshell-sandbox gRPC API<br/>container :8080<br/>cross-namespace socket bridge"]
+            subgraph NS["isolated network namespace"]
+                OC["OpenClaw gateway<br/>:18789 (in namespace)<br/>• runs agent loop<br/>• routes tool calls → Squid"]
+            end
+            Squid["Squid proxy<br/>10.200.0.1:3128<br/>OPA egress policy enforcement"]
+            Router["openshell_router<br/>intercepts CONNECT inference.local:443<br/>calls GetInferenceBundle → direct HTTPS<br/>⚠ needs iptables conntrack fix (§10.10)"]
+        end
+    end
+
+    NVIDIA["☁️ integrate.api.nvidia.com"]
+
+    Browser  -->|"HTTP / WebSocket"| Proxy
+    Proxy    -->|"HTTP"| GW
+    GW       -->|"gRPC (forward service)"| Fwd
+    Fwd      -->|"UI traffic · port 8080"| API
+    GW       -.->|"polling gRPC<br/>GetInferenceBundle / GetSandboxConfig<br/>(via Docker bridge direct)"| API
+    API      -->|"cross-namespace bridge"| OC
+    OC       -->|"CONNECT"| Squid
+    Squid    -->|"inference.local:443"| Router
+    Router   -->|"HTTPS"| NVIDIA

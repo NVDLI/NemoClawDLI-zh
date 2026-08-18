@@ -120,10 +120,11 @@
       <p class="lead">
         Modules 1 and 2 kept orchestration in the browser. A workflow ended when the page stopped
         carrying its messages, intermediate results, or branch state. Module 3 moves the same agent patterns into a
-        <a href="https://brev.nvidia.com/launchable/deploy?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS&amp;ncid=ref-dli-759990" target="_blank" rel="noopener">
-        NemoClaw Brev launchable</a>. OpenClaw preserves session history and a file-backed workspace
-        while continuing to expose tools; OpenShell limits what that running agent can reach. From the browser, you will compare
-        the stateless model API with the persistent OpenClaw gateway.
+        NemoClaw/OpenClaw runtime protected by OpenShell. That runtime can be a local non-Brev deployment
+        exposed through a browser-facing proxy such as <code>http://localhost:8011</code>, or the hosted Brev
+        launchable used by the public course. OpenClaw preserves session history and a file-backed workspace
+        while continuing to expose tools; OpenShell limits what that running agent can reach. From the browser,
+        you will compare the stateless model API with the persistent OpenClaw gateway.
       </p>
       <figure style="margin:1.4em 0">
         <div class="fig-embed" data-svg-src="assets/figures/03a-kickstart-1.svg" style="aspect-ratio:1300 / 400"></div>
@@ -159,7 +160,7 @@
 
     <h2>The two endpoints you work with from here</h2>
     <p>
-      The model endpoint answers the same API as before. The launchable gateway reaches an
+      The model endpoint answers the same API as before. The runtime gateway reaches an
       OpenClaw process that preserves sessions and can run tools. Supporting protocol code stays
       available in the cells, but the endpoint, credential, and state boundary are the parts to track.
     </p>
@@ -173,13 +174,14 @@
           The proxy forwards it unchanged.</p>
       </a>
       <article class="url-card" style="background:rgba(118,185,0,.06)">
-        <h3><a
-          href="https://brev.nvidia.com/launchable/deploy?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS&amp;ncid=ref-dli-759990"
-          target="_blank" rel="noopener">Launch NemoClaw on Brev</a></h3>
-        <p>The setup creates a launchable that runs OpenClaw inside OpenShell. Its App URL may use the Cloudflare Access or Pomerium Brev host family; the connection dropdown below accepts either. Identity, tools, session memory, and sandbox policy live there. The browser reaches the agent through
-          the WebSocket gateway at <code>/cli/gateway</code>. For a local deployment, follow the
-          <a href="https://build.nvidia.com/spark/nemoclaw-applications?ncid=ref-dli-146986" target="_blank" rel="noopener">NemoClaw setup playbook</a>
-          and keep the same connection boundary.
+        <h3>NemoClaw/OpenClaw runtime</h3>
+        <p>A local setup can run OpenClaw inside OpenShell and expose the Control UI through a local proxy,
+          for example <code>http://localhost:8011</code>. Identity, tools, session memory, and sandbox policy
+          live in that runtime, not in the course page. The browser reaches the agent through the WebSocket
+          gateway at <code>/cli/gateway</code>. The hosted course can use the
+          <a href="https://brev.nvidia.com/launchable/deploy?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS&amp;ncid=ref-dli-759990"
+          target="_blank" rel="noopener">NemoClaw Brev launchable</a> instead; its App URL may use Cloudflare
+          Access or Pomerium, and the connection dropdown below accepts either.
         </p>
         <p style="color:var(--tf);font-size:.8rem">Gateway token auth. Sessions
           via <code>x-openclaw-session-key</code>.</p>
@@ -193,7 +195,7 @@
     <h3>Model route settings</h3>
     <p>The model probe is a read-only mirror of the persistent chat route configured on the course home
       page or in Module 1a. Change it here once; the benchmark and later lessons reuse that route. The
-      NemoClaw launchable settings below remain separate.</p>
+      NemoClaw/OpenClaw runtime settings below remain separate.</p>
     <div id="model-route-settings"></div>
     <div id="probe-llm"></div>
 
@@ -211,7 +213,7 @@
     <div class="callout warn">
       <strong>If the OpenClaw probe times out or returns a 502.</strong>
       The agent harness likely has not finished booting, which usually means the
-      launchable started before OpenClaw finished loading its policy YAML. Wait
+      runtime started before OpenClaw finished loading its policy YAML. Wait
       30 seconds and click Probe again. If it stays down, use the Recover cell in
       the gateway section below before continuing.
     </div>
@@ -221,16 +223,16 @@
       access provider, and session the probe saved. Edit <code>PATH</code>, <code>METHOD</code>,
       and <code>BODY</code> to send other requests. The status, headers, and body come back
       below.</p>
-    <p><code>TRANSPORT</code> controls how the credential reaches the launchable:</p>
+    <p><code>TRANSPORT</code> controls how the credential reaches the runtime:</p>
     <ul>
-      <li><code>"configured"</code> follows the relay toggle saved above. Cross-origin Brev uses the NVIDIA relay by default.</li>
-      <li><code>"direct"</code> calls the launchable origin with <code>credentials:&nbsp;"include"</code>, relying on the matching launchable cookie your browser already holds.</li>
+      <li><code>"configured"</code> follows the saved route. Local proxy URLs normally stay direct; cross-origin Brev Cloudflare URLs use the NVIDIA relay by default.</li>
+      <li><code>"direct"</code> calls the saved runtime origin with <code>credentials:&nbsp;"include"</code>, relying on any matching browser cookie the deployment uses.</li>
     </ul>
     <p>
-      Pomerium launchables keep their signed session in the browser. The course uses their direct
+      Local proxy deployments usually need only the gateway token. Pomerium launchables keep their signed session in the browser. The course uses their direct
       WebSockets and reads the two bootstrap endpoints through a fixed loopback request in that
       authenticated terminal. Cloudflare Access launchables use the hosted relay and its explicit session field.
-      When the course is vendored inside the same NemoClaw launchable as its runtime,
+      When the course is vendored inside the same NemoClaw runtime,
       direct mode is same-origin and the relay is not needed.
     </p>
 
@@ -245,7 +247,7 @@
       <li>The JSON body carries <code>model</code> and <code>messages</code>.</li>
       <li>An <code>Authorization</code> header names the caller.</li>
     </ul>
-    <p>OpenClaw implements that same route internally too, but a separately hosted course reaches it through the launchable access layer and relay rather than as an unauthenticated browser request.</p>
+    <p>OpenClaw implements that same route internally too, but a separately hosted course reaches it through the runtime access layer rather than as an unauthenticated browser request. Local deployments may route that access through a local proxy; Brev deployments may add Cloudflare Access, Pomerium, or the hosted relay.</p>
     <p>The channel that <em>is</em> open to you runs a different protocol, a
       WebSocket at <code>/cli/gateway</code> speaking JSON-RPC.
     </p>
@@ -254,10 +256,10 @@
       <p>The Control UI in your browser tab does not use a special private channel.
         It talks to the agent over the same WebSocket at <code>/cli/gateway</code> that is
         open to you, and the only credential it needs is the gateway token. The probe above
-        discovers that token for you, so you never paste it in. A
-        <code>GET /api/agent</code> returns it under the field <code>agent.dashboardUrl</code>,
-        a read that your launchable session authorises, so you can leave the
-        token field blank and let probing fill it in.</p>
+        uses the gateway token. Older launchables can expose that token from
+        <code>GET /api/agent</code> under <code>agent.dashboardUrl</code>. Current local OpenClaw
+        deployments commonly print a dashboard URL with <code>#token=...</code> instead; keep the
+        Base URL pointed at the browser-facing proxy and paste that token into the probe.</p>
     </div>
 
     <p>That token carries <code>operator.admin</code> scope, the same authority
@@ -275,7 +277,7 @@
     </figure>
 
     <h3>Check before changing runtime settings</h3>
-    <p>Supported NemoClaw launchables normally report <code>tools.toolSearch=false</code>. A custom configuration can still enable it, so the health check reads the live value before Recover changes anything:</p>
+    <p>Supported NemoClaw/OpenClaw deployments normally report <code>tools.toolSearch=false</code>. A custom configuration can still enable it, so the health check reads the live value before Recover changes anything:</p>
     <ul>
       <li><strong>Symptom:</strong> you ask for a command, nothing comes back,
         the run stalls, and then it times out.</li>
@@ -311,7 +313,7 @@
     <div id="gw-demo"></div>
 
     <div class="callout warn">
-      <p>Anyone who can read the launchable environment can read that token,
+      <p>Anyone who can read the runtime environment can read that token,
         and a reader of the token is an operator with everything above. Module 4
         turns this from a convenience into the central security question.</p>
     </div>
@@ -373,7 +375,7 @@
           References</a>.</p>
     </div>
 
-    <h2>Try it · talk to your launchable</h2>
+    <h2>Try it · talk to your runtime</h2>
     <p>
       Once the probe above is green, this artifact opens the same
       <code>/cli/gateway</code> WebSocket and lets you chat with your live OpenClaw
@@ -391,8 +393,8 @@
 // streams the reply into the view and fires a chip per tool call.
 helpers.mountChatUI("#kickstart-artifact", {
   disabled: () => { const c = helpers.getOpenClawConnection(); return !(c.token && c.rawUrl); },
-  disabledMsg: "Connect the launchable in the probe above. This panel unlocks as soon as its URL and token are saved.",
-  greeting: "Connect your launchable in the probe above, then say hi or ask the agent to run whoami and pwd with exec.",
+  disabledMsg: "Connect the runtime in the probe above. This panel unlocks as soon as its URL and token are saved.",
+  greeting: "Connect your runtime in the probe above, then say hi or ask the agent to run whoami and pwd with exec.",
   examples: [
     "Use your exec tool to run whoami and pwd, then report both results",
     "Use your exec tool to run ls -la /sandbox/.openclaw/workspace, then explain each file",
@@ -479,7 +481,7 @@ helpers.log("rendered below. Edit the config and Run.");
       const MODEL_API_BASE_URL = MODEL_API_CONFIG.url;
       mountModelEndpointProbe("#probe-llm", {
       label: "Probe active model endpoint",
-      intro: "Read-only mirror of the saved chat route. Change it in Model route settings above; it never reads or writes NemoClaw launchable values.",
+      intro: "Read-only mirror of the saved chat route. Change it in Model route settings above; it never reads or writes NemoClaw/OpenClaw runtime values.",
       defaultUrl: MODEL_API_BASE_URL,
       defaultToken: localStorage.getItem("nvapi") || "",
       credentials: modelRequestCredentials(MODEL_API_BASE_URL),
@@ -487,7 +489,7 @@ helpers.log("rendered below. Edit the config and Run.");
       fieldHelp: {
         url: `<p><strong>What it is:</strong> The model API base saved on the course home page.</p>
 <p><strong>How requests reach it:</strong> The default is <code>integrate.api.nvidia.com</code>.
-A presenter can select a compatible launchable once; every lesson and this probe reuse that value.
+A presenter can select a compatible runtime once; every lesson and this probe reuse that value.
 Iframe proxy mode remains available only for the default NVIDIA endpoint.</p>
 <p><strong>Active endpoint:</strong> <code>${MODEL_API_BASE_URL}</code>.</p>`,
 
@@ -674,36 +676,35 @@ return { ranked: ok.map(r => r.model), errors: results.filter(r => r.err).length
 
     // ── Probe OpenClaw runtime ───────────────────────────────────────────────────
     mountClawProbe("#probe-claw", {
-      label: "Probe OpenClaw (NemoClaw launchable)",
+      label: "Probe OpenClaw (NemoClaw/OpenShell runtime)",
       intro: "",
       defaultUrl: "",
       defaultToken: "",
       proxyControls: true,
       syncCanvas: true,
       cfAccess: true,
-      unexpectedHtmlHint: "Expected JSON but received the OpenClaw Control page. The request reached the launchable root instead of this API path. Keep Base URL at the launchable origin and retry; this response is not a health result.",
-      helpHint: "Need a value? Select the ? beside that field. Start with Base URL; GET /api/agent fills the bearer token.",
+      unexpectedHtmlHint: "Expected JSON but received the OpenClaw Control page. The request reached the runtime root instead of this API path. Keep Base URL at the runtime origin and retry; this response is not a health result.",
+      helpHint: "Need a value? Select the ? beside that field. Start with Base URL; paste a dashboard URL with #token=... or use GET /api/agent on older launchables.",
 
-      // GET /api/agent returns agent.dashboardUrl with the gateway token.
+      // Older launchables return agent.dashboardUrl with the gateway token from GET /api/agent.
       autofillToken: gatewayTokenFromAgentMetadata,
       fieldHelp: {
-        url: `<p><strong>What it is:</strong> The root URL of your NemoClaw launchable running OpenClaw inside OpenShell, with no trailing <code>/v1</code>.</p>
-<p><strong>How to find it:</strong> Copy the App URL from the Brev dashboard. Either supported launchable type works. For local OpenClaw, use <code>http://localhost:8088</code> or its exposed port and leave Access session empty.</p>`,
+        url: `<p><strong>What it is:</strong> The browser-facing root URL of your NemoClaw/OpenClaw runtime running inside the OpenShell boundary, with no trailing <code>/v1</code>.</p>
+<p><strong>How to find it:</strong> Copy the App URL from the Brev dashboard. Either supported launchable type works. For local OpenClaw, use the browser-facing proxy URL, such as <code>http://localhost:8011</code>, and leave Access session empty. If a dashboard command prints a raw upstream URL with <code>#token=...</code>, keep this field pointed at the proxy and paste only the token into Bearer token, or rewrite the URL to <code>http://localhost:8011/#token=...</code>.</p>`,
 
-        token: `<p><strong>Usually you can leave this blank.</strong> Run <strong>GET /api/agent</strong> below and the probe
-reads the gateway token out of <code>agent.dashboardUrl</code> and fills this field for you. For Pomerium, opening the launchable and signing in is enough. Cloudflare also needs its Access session below.</p>
-<p><strong>Manual fallback:</strong> If autofill doesn't fire, run <code>printenv OPENCLAW_GATEWAY_TOKEN</code> in your
-launchable terminal and paste the complete value here. Do not assume a fixed length or character set.</p>`,
+        token: `<p><strong>Usually you can leave this blank.</strong> Older launchables return <code>agent.dashboardUrl</code> from <strong>GET /api/agent</strong>, and the probe fills this field for you. Current OpenClaw can also print a dashboard URL with <code>#token=...</code>; if that URL uses the same browser-facing origin as Base URL, the probe can move the token here. If it uses a raw upstream port, paste only the token here instead. For Pomerium, opening the launchable and signing in is enough. Cloudflare also needs its Access session below.</p>
+<p><strong>Manual fallback:</strong> If autofill doesn't fire on a local OpenClaw proxy, run <code>openclaw dashboard --no-open</code> in the environment that launched OpenClaw, or copy the startup dashboard URL containing <code>#token=...</code>. For a NemoClaw CLI-managed launchable, use <code>nemoclaw &lt;name&gt; dashboard-url --quiet</code>. Paste the complete token here. Do not assume a fixed length or character set.</p>`,
 
-        accessProvider: `<p><strong>Automatic</strong> chooses from the App URL. A <code>*.brevlab.com</code> launchable uses <strong>Cloudflare Access</strong> through the hosted relay. A <code>*.apps.run.brev.nvidia.com</code> launchable uses <strong>Pomerium</strong> directly through the signed-in browser.</p>`,
-        accessSession: `<p>This field is only for <strong>Cloudflare Access</strong>. Open that launchable, sign in, then copy the complete <code>CF_Authorization</code> value from DevTools → <strong>Application → Storage → Cookies</strong>.</p>
+        accessProvider: `<p><strong>Automatic</strong> chooses from the URL. Local URLs such as <code>localhost</code> and <code>127.0.0.1</code> use the direct/local path and normally need no Access session. A <code>*.brevlab.com</code> launchable uses <strong>Cloudflare Access</strong> through the hosted relay. A <code>*.apps.run.brev.nvidia.com</code> launchable uses <strong>Pomerium</strong> directly through the signed-in browser.</p>`,
+        accessSession: `<p>Local proxy deployments usually leave this empty. This field is only for <strong>Cloudflare Access</strong>. Open that launchable, sign in, then copy the complete <code>CF_Authorization</code> value from DevTools → <strong>Application → Storage → Cookies</strong>.</p>
 <p>For <strong>Pomerium</strong>, the field is disabled. Open the launchable and sign in; its <code>HttpOnly</code> cookie stays in the browser and is never copied into course code or storage.</p>`,
-        proxy: `<p>The shared NVIDIA relay is used for cross-origin <strong>Cloudflare Access</strong> launchables. Pomerium connects directly with the browser's signed-in session, even when this toggle remains enabled for Cloudflare compatibility.</p>`,
+        proxy: `<p>Local proxy URLs do not use this relay. The shared NVIDIA relay is used for cross-origin <strong>Cloudflare Access</strong> launchables. Pomerium connects directly with the browser's signed-in session, even when this toggle remains enabled for Cloudflare compatibility.</p>`,
         proxyBase: `<p><strong>One shared setting:</strong> this defaults to the NVIDIA-hosted relay and persists for Modules 3a–4b. Presenters can also prefill it with <code>?openclaw_proxy_base=...</code> and enable or disable it with <code>?openclaw_proxy=1</code> or <code>0</code>.</p>`,
       },
 
       actions: [
         { label: "GET /healthz", path: "/healthz", method: "GET", expectJson: true },
+        { label: "GET config", path: "/__openclaw/control-ui-config.json", method: "GET", expectJson: true },
         { label: "GET /api/agent", path: "/api/agent", method: "GET", expectJson: true },
       ],
     });
@@ -714,18 +715,19 @@ launchable terminal and paste the complete value here. Do not assume a fixed len
       openCode: true,
       intro: "Use the probe UI above for the normal path. This cell exposes its request so you can compare proxy and direct transport or inspect an unexpected response.",
       autorun: false,
-      code: `// The probe saved the launchable URL and selected access provider.
+      code: `// The probe saved the runtime URL and selected access provider.
 const connection = helpers.getOpenClawConnection();
 const configured = connection.effectiveUrl; // follows the saved relay toggle
-const url   = connection.rawUrl;             // launchable origin, direct
+const url   = connection.rawUrl;             // browser-facing runtime origin, direct
 const token = connection.token;
 const provider = connection.resolvedAccessProvider;
 const session  = connection.accessSession;
 if (!url) return helpers.log('Run the probe above first.');
 
 const METHOD    = 'GET';
-const PATH      = '/api/agent';   // read-only bootstrap endpoint
-// const PATH   = '/healthz';     // alternate read-only bootstrap endpoint
+const PATH      = '/__openclaw/control-ui-config.json'; // current token-authenticated config endpoint
+// const PATH   = '/healthz';     // unauthenticated liveness endpoint
+// const PATH   = '/api/agent';   // older read-only token bootstrap endpoint
 const BODY      = null;           // e.g. { key: 'value' }
 const TRANSPORT = 'configured';   // 'configured': saved relay toggle. 'direct': bypass the relay.
 
@@ -738,7 +740,7 @@ if (provider === 'pomerium') {
   return result.json ?? result.body;
 }
 
-// Cloudflare Access uses the configured hosted relay.
+// Local proxy deployments usually stay direct. Cloudflare Access uses the configured hosted relay.
 const direct  = TRANSPORT === 'direct';
 const target  = direct ? url : (configured || url);
 const viaRelay = !direct && target !== url;

@@ -223,8 +223,8 @@ function audit(overrides = {}) {
 function selfTest() {
   const base = readAll();
   const mutations = [
-    ['fragment token', { helper: base.helper.replace('fragment.get("token")', 'null') }],
-    ['query token', { helper: base.helper.replace('parsed.searchParams.get("token")', 'null') }],
+    ['fragment token', { helper: base.helper.replaceAll('fragment.get("token")', 'null') }],
+    ['query token', { helper: base.helper.replaceAll('parsed.searchParams.get("token")', 'null') }],
     ['Portuguese wiring', { pt: base.pt.replace('autofillToken: gatewayTokenFromAgentMetadata', 'autofillToken: null') }],
     ['shared relay controls', { en: base.en.replace('proxyControls: true', 'proxyControls: false') }],
     ['terminal relay', { openshell: base.openshell.replace('openclawWebSocketUrl(rawUrl, "/ws/terminal?cmd="', 'directTerminalUrl(rawUrl, "/ws/terminal?cmd="') }],

@@ -199,11 +199,29 @@ try {
     toggle.dispatchEvent(new Event('change'));
     const restored = state();
     if (restored.effective !== approved + '/https/nemoclaw-test123.brevlab.com' || relay.disabled) throw new Error('relay on did not restore approved route: ' + JSON.stringify(restored));
+    url.value = 'https://nemoclaw-test123.brevlab.com/#token=dashboard-token_789';
+    url.dispatchEvent(new Event('input'));
+    const tokenized = {
+      input: url.value,
+      raw: localStorage.getItem('nemoclaw_clawrawurl'),
+      effective: localStorage.getItem('nemoclaw_clawurl'),
+      token: host.querySelector('.claw-token').value,
+      savedToken: sessionStorage.getItem('nemoclaw_clawtoken'),
+      leakedToken: localStorage.getItem('nemoclaw_clawtoken'),
+    };
+    if (tokenized.input !== 'https://nemoclaw-test123.brevlab.com' ||
+        tokenized.raw !== tokenized.input ||
+        tokenized.effective !== approved + '/https/nemoclaw-test123.brevlab.com' ||
+        tokenized.token !== 'dashboard-token_789' ||
+        tokenized.savedToken !== tokenized.token ||
+        tokenized.leakedToken) {
+      throw new Error('tokenized dashboard URL was not split safely: ' + JSON.stringify(tokenized));
+    }
     session.value = 'test-access-session';
     session.dispatchEvent(new Event('input'));
     host.querySelector('.claw-token').value = 'retained-gateway-token';
     host.querySelector('.claw-token').dispatchEvent(new Event('input'));
-    return { migrated, direct, restored };
+    return { migrated, direct, restored, tokenized };
   });
   result.autoBootstrap = await page.evaluate(async () => {
     const mod = await import('/nemoclaw/scripts/_openclaw.js?auto-bootstrap=' + Date.now());

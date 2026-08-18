@@ -76,6 +76,18 @@ export function normalizeOpenClawProxyBase(raw) {
   return url.href.replace(/\/+$/, "");
 }
 
+function gatewayTokenFromLaunchableUrl(raw) {
+  const text = String(raw || "").trim();
+  if (!text) return "";
+  try {
+    const parsed = new URL(text, pageBase());
+    const fragment = new URLSearchParams(parsed.hash.replace(/^#/, ""));
+    return fragment.get("token") || parsed.searchParams.get("token") || "";
+  } catch (_) {
+    return "";
+  }
+}
+
 export function normalizeOpenClawLaunchableUrl(raw) {
   const text = String(raw || "").trim().replace(/\/+$/, "");
   if (!text) return "";
@@ -91,6 +103,10 @@ export function normalizeOpenClawLaunchableUrl(raw) {
   }
   if (isPersonalWorkerHost(outer.hostname)) return "";
   outer.hash = "";
+  if (outer.searchParams.has("token")) {
+    outer.searchParams.delete("token");
+    if (![...outer.searchParams.keys()].length) outer.search = "";
+  }
   if (isBrevHost(outer.hostname)) {
     outer.search = "";
     outer.pathname = "";
@@ -120,6 +136,7 @@ function syncConfigFromQuery() {
     if (launchable) {
       const clean = normalizeOpenClawLaunchableUrl(launchable);
       if (clean) {
+        const token = gatewayTokenFromLaunchableUrl(launchable);
         const previous = normalizeOpenClawLaunchableUrl(
           target.getItem(OPENCLAW_RAW_URL_KEY) || target.getItem(OPENCLAW_URL_KEY) || "",
         );
@@ -134,6 +151,7 @@ function syncConfigFromQuery() {
           target.removeItem(OPENCLAW_ACCESS_JWT_KEY);
         }
         target.setItem(OPENCLAW_RAW_URL_KEY, clean);
+        if (token) secrets?.setItem(OPENCLAW_TOKEN_KEY, token);
       }
     }
     const provider = params.get("openclaw_access_provider");
@@ -272,9 +290,11 @@ export function setOpenClawConnection({ rawUrl, token, accessProvider, accessSes
     ? current.rawUrl
     : normalizeOpenClawLaunchableUrl(rawUrl);
   const originChanged = rawUrl !== undefined && clean !== current.rawUrl;
-  const nextToken = token === undefined
-    ? (originChanged ? "" : (secrets?.getItem(OPENCLAW_TOKEN_KEY) || ""))
-    : String(token || "").trim();
+  const embeddedToken = rawUrl === undefined ? "" : gatewayTokenFromLaunchableUrl(rawUrl);
+  const suppliedToken = token === undefined ? null : String(token || "").trim();
+  const nextToken = suppliedToken !== null
+    ? (suppliedToken || embeddedToken)
+    : (embeddedToken || (originChanged ? "" : (secrets?.getItem(OPENCLAW_TOKEN_KEY) || "")));
   const savedProvider = target?.getItem(OPENCLAW_ACCESS_PROVIDER_KEY) || "auto";
   const nextAccessProvider = accessProvider === undefined
     ? (rawUrl === undefined ? savedProvider : "auto")
