@@ -53,8 +53,10 @@ bash start_proxies.sh
 #    (see LOCAL_STARTUP_GUIDE.md steps 1c–1f for the full commands)
 ```
 
-Then open `http://localhost:8081/web/nemoclaw/03a-kickstart.html` and proceed through the pages
-in order: 01a, 01b, 02a … 04a, 04b, 04c.
+First open `http://localhost:8081/web/nemoclaw/03a-kickstart.html` to enter your API key and
+bearer token and confirm the full chain is working (health check). Then navigate to
+`http://localhost:8081/web/nemoclaw/01a-loop.html` and proceed through the pages in order:
+01a, 01b, 01c, 02a … 03a, 03b, 03c, 04a, 04b, 04c.
 
 ### Original build-based local run
 
