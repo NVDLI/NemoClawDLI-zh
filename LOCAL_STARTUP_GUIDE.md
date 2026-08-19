@@ -1,8 +1,112 @@
-# NeMoClaw Local Startup Guide (Non-Brev, WSL2 + Docker)
+# NeMoClaw Local Startup Guide (Non-Brev)
 
-This guide covers everything needed to launch the full course (01a → 04c) after a reboot or
-fresh terminal session. Prerequisites (WSL2, Docker, NeMoClaw, onboarding) are assumed complete.
-For troubleshooting details, see `LOCAL_DEPLOYMENT_NOTES.md`.
+This guide covers two deployment targets:
+
+- **Windows 11 + WSL2 + Docker** — run everything inside Ubuntu-24.04 on WSL2
+- **DGX Spark Station (native Ubuntu Linux)** — same steps, native Docker, access pages from a Windows browser via SSH tunnel
+
+Section 0 is **one-time setup** (skip if `nemoclaw --version` already works).
+Section 1 onward is the **every-session startup** after setup is complete.
+For troubleshooting, see `LOCAL_DEPLOYMENT_NOTES.md`.
+
+---
+
+## 0 — One-Time Setup (First Time Only)
+
+### 0.1 Windows 11 + WSL2 + Docker
+
+**Install WSL2 with Ubuntu 24.04** (PowerShell as Administrator):
+```powershell
+wsl --install -d Ubuntu-24.04
+wsl --set-default Ubuntu-24.04
+```
+
+**Configure `~/.bashrc`** inside Ubuntu-24.04 (adds NeMoClaw to PATH):
+```bash
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+export PATH="$HOME/.local/bin:$PATH"
+export no_proxy="${no_proxy},localhost,127.0.0.1,::1"
+export NO_PROXY="${NO_PROXY},localhost,127.0.0.1,::1"
+```
+Then `source ~/.bashrc`.
+
+**Install Docker Engine** (not Docker Desktop) inside Ubuntu-24.04:
+follow https://docs.docker.com/engine/install/ubuntu/. Then add to `/etc/wsl.conf` so Docker starts automatically:
+```ini
+[boot]
+command = service docker start
+```
+
+**Install aiohttp**:
+```bash
+pip3 install aiohttp --break-system-packages
+```
+
+### 0.2 DGX Spark Station (native Ubuntu Linux)
+
+**Add your user to the Docker group** (run once, then log out and back in):
+```bash
+sudo usermod -aG docker $USER
+newgrp docker   # apply in current session without re-login
+docker ps       # verify — should list containers without permission error
+```
+
+**Install aiohttp**:
+```bash
+pip3 install aiohttp --break-system-packages
+```
+
+**Clone the course repo**:
+```bash
+git clone git@github.com:jiyangw-at-nvidia/NemoClawDLI-zh.git ~/nemoclaw-zh
+```
+
+### 0.3 NeMoClaw Installation (both platforms)
+
+Run in the terminal where you'll use NeMoClaw (Ubuntu-24.04 terminal for WSL2; any terminal for DGX):
+
+```bash
+curl -fsSL https://www.nvidia.com/nemoclaw.sh | bash
+source ~/.bashrc
+nemoclaw --version    # expected: nemoclaw v0.0.55 or newer
+```
+
+### 0.4 NeMoClaw Onboarding (both platforms)
+
+> ⚠️ **WSL2 only**: Always prefix with `NEMOCLAW_SANDBOX_GPU=0`. Without it, onboarding forces
+> `--gpu` and produces a broken sandbox on WSL2.
+
+```bash
+# WSL2:
+NEMOCLAW_SANDBOX_GPU=0 nemoclaw onboard
+
+# DGX (native Linux):
+nemoclaw onboard
+```
+
+During onboarding select:
+- Provider: **NVIDIA Endpoints** (`integrate.api.nvidia.com`)
+- Chat model: e.g. `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning`
+- Messaging channel: **Slack** (optional — requires a Slack Bot Token; can skip for course exercises)
+
+After onboarding:
+```bash
+nemoclaw my-assistant status
+```
+
+### 0.5 DGX — SSH port forwarding (access pages from Windows browser)
+
+On your **Windows machine**, reconnect SSH with port forwarding so `localhost:8081` in your
+Windows browser tunnels to the DGX:
+
+```bash
+# In Git Bash on Windows:
+ssh -L 8081:localhost:8081 -L 18789:localhost:18789 <username>@<dgx-ip>
+```
+
+Keep this terminal open for the whole session. Then open the course pages at
+`http://localhost:8081/...` in your Windows browser as normal.
 
 ---
 
@@ -15,7 +119,10 @@ Run these in order from a **WSL2 (Ubuntu-24.04) terminal**:
 export NVAPI_KEY="nvapi-..."   # paste your key here
 
 # ── 1b. Start all background services (web server + proxies) ─────────────
+# WSL2:
 bash "/mnt/c/Users/jiyangw/OneDrive - NVIDIA Corporation/NVIDIA/DLI/Courses/NeMoClaw/repo/start_proxies.sh"
+# DGX:
+# bash ~/nemoclaw-zh/start_proxies.sh
 # Starts: http.server :8081, cors_proxy :8010, openclaw_proxy :8011, policy_proxy :8012
 # Re-running kills any stale instances first — safe to run again after a crash.
 

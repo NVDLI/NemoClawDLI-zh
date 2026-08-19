@@ -32,25 +32,34 @@ openshell-sandbox Docker container instead of a Brev launchable. Start all servi
 The learner release is a static browser site. It does not vendor learner credentials. The
 NemoClaw product and runtime are external dependencies, not releases of this course repository.
 
-## Run it locally (non-Brev, WSL2 + Docker)
+## Run it locally (non-Brev)
 
-This fork is designed to run without a Brev launchable. The full step-by-step startup procedure
-is in [`LOCAL_STARTUP_GUIDE.md`](LOCAL_STARTUP_GUIDE.md). Architecture notes and troubleshooting
-are in [`LOCAL_DEPLOYMENT_NOTES.md`](LOCAL_DEPLOYMENT_NOTES.md).
+This fork is designed to run without a Brev launchable on two supported platforms:
 
-**Prerequisites:** WSL2 (Ubuntu 24.04), Docker, NeMoClaw + OpenShell installed, an NVIDIA API key.
+- **Windows 11 + WSL2 + Docker** — all services run inside Ubuntu-24.04 on WSL2
+- **DGX Spark Station (native Ubuntu Linux)** — same services, native Docker; access course pages from a Windows browser via SSH port forwarding
 
-**Quick start (every session):**
+The full step-by-step procedure — including one-time NeMoClaw installation and onboarding — is in
+[`LOCAL_STARTUP_GUIDE.md`](LOCAL_STARTUP_GUIDE.md). Architecture notes and troubleshooting are in
+[`LOCAL_DEPLOYMENT_NOTES.md`](LOCAL_DEPLOYMENT_NOTES.md).
+
+**Prerequisites (both platforms):** Docker, NeMoClaw + OpenShell installed (see `LOCAL_STARTUP_GUIDE.md` § 0), an NVIDIA API key.
+
+**Every-session quick start:**
 
 ```bash
 # 1. Set your API key
 export NVAPI_KEY="nvapi-..."
 
 # 2. Start all background services in one command
-bash start_proxies.sh
+#    WSL2:  bash "/mnt/c/…/repo/start_proxies.sh"
+#    DGX:   bash ~/nemoclaw-zh/start_proxies.sh
 
 # 3. Recover the container, set up the forward service, fix iptables rules
 #    (see LOCAL_STARTUP_GUIDE.md steps 1c–1f for the full commands)
+
+# DGX only — SSH tunnel from Windows so your browser reaches the DGX:
+#    ssh -L 8081:localhost:8081 -L 18789:localhost:18789 <user>@<dgx-ip>
 ```
 
 First open `http://localhost:8081/web/nemoclaw/03a-kickstart.html` to enter your API key and
