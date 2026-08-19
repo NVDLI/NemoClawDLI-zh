@@ -1,116 +1,294 @@
-<svg viewBox="0 0 780 580" xmlns="http://www.w3.org/2000/svg" role="img" style="">
-  <title style="fill:rgb(0, 0, 0);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">OpenShell component map showing roles and interactions</title>
-  <desc style="fill:rgb(0, 0, 0);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">Architecture diagram of OpenShell components: openshell-docker network, openshell-sandbox container, openshell_router, openshell-docker-gateway, and their relationships to OpenClaw and the browser</desc>
-
-  
-
-  
-  <rect x="20" y="20" width="740" height="60" rx="8" fill="none" stroke="var(--border-color,#ccc)" stroke-width="1" stroke-dasharray="4,3" style="fill:none;stroke:rgb(204, 204, 204);color:rgb(11, 11, 11);stroke-width:1px;stroke-dasharray:4px, 3px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-  <text x="32" y="36" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:10px;font-weight:700;text-anchor:start;dominant-baseline:auto">WINDOWS HOST</text>
-  <rect x="290" y="42" width="200" height="28" rx="5" fill="var(--accent-secondary,#e8f0fe)" stroke="var(--accent,#4a6fa5)" stroke-width="1.2" style="fill:rgb(232, 240, 254);stroke:rgb(74, 111, 165);color:rgb(11, 11, 11);stroke-width:1.2px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-  <text x="390" y="60" text-anchor="middle" font-weight="bold" style="fill:rgb(11, 11, 11);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:11px;font-weight:700;text-anchor:middle;dominant-baseline:auto">Browser</text>
-
-  
-  <rect x="20" y="100" width="740" height="130" rx="8" fill="none" stroke="var(--border-color,#ccc)" stroke-width="1" stroke-dasharray="4,3" style="fill:none;stroke:rgb(204, 204, 204);color:rgb(11, 11, 11);stroke-width:1px;stroke-dasharray:4px, 3px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-  <text x="32" y="116" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:10px;font-weight:700;text-anchor:start;dominant-baseline:auto">WSL2 HOST PROCESS SPACE</text>
-
-  
-  <rect x="60" y="122" width="160" height="44" rx="5" fill="var(--surface-secondary,#f5f5f5)" stroke="var(--border-color,#aaa)" stroke-width="1.2" style="fill:rgb(245, 245, 245);stroke:rgb(170, 170, 170);color:rgb(11, 11, 11);stroke-width:1.2px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-  <text x="140" y="140" text-anchor="middle" font-weight="bold" style="fill:rgb(11, 11, 11);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:11px;font-weight:700;text-anchor:middle;dominant-baseline:auto">openclaw_proxy.py</text>
-  <text x="140" y="155" text-anchor="middle" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9.5px;font-weight:400;text-anchor:middle;dominant-baseline:auto">WSL2 :8011</text>
-
-  
-  <rect x="310" y="122" width="200" height="44" rx="5" fill="var(--surface-secondary,#f5f5f5)" stroke="var(--border-color,#aaa)" stroke-width="1.2" style="fill:rgb(245, 245, 245);stroke:rgb(170, 170, 170);color:rgb(11, 11, 11);stroke-width:1.2px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-  <text x="410" y="137" text-anchor="middle" font-weight="bold" style="fill:rgb(11, 11, 11);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:11px;font-weight:700;text-anchor:middle;dominant-baseline:auto">openshell-docker-gateway</text>
-  <text x="410" y="152" text-anchor="middle" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9.5px;font-weight:400;text-anchor:middle;dominant-baseline:auto">native process · WSL2 :18789</text>
-  <text x="410" y="163" text-anchor="middle" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9.5px;font-weight:400;text-anchor:middle;dominant-baseline:auto">= OpenClaw gateway (local mode)</text>
-
-  
-  <rect x="570" y="122" width="170" height="44" rx="5" fill="var(--surface-secondary,#f5f5f5)" stroke="var(--border-color,#aaa)" stroke-width="1.2" style="fill:rgb(245, 245, 245);stroke:rgb(170, 170, 170);color:rgb(11, 11, 11);stroke-width:1.2px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-  <text x="655" y="137" text-anchor="middle" font-weight="bold" style="fill:rgb(11, 11, 11);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:11px;font-weight:700;text-anchor:middle;dominant-baseline:auto">openshell forward</text>
-  <text x="655" y="152" text-anchor="middle" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9.5px;font-weight:400;text-anchor:middle;dominant-baseline:auto">gRPC forward service</text>
-  <text x="655" y="163" text-anchor="middle" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9.5px;font-weight:400;text-anchor:middle;dominant-baseline:auto">WSL2 → container :8080</text>
-
-  
-  
-  <line x1="390" y1="80" x2="390" y2="100" stroke="var(--border-color,#999)" stroke-width="1.5" marker-end="url(#arr)" style="fill:rgb(0, 0, 0);stroke:rgb(153, 153, 153);color:rgb(11, 11, 11);stroke-width:1.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-  <line x1="390" y1="100" x2="175" y2="100" stroke="var(--border-color,#999)" stroke-width="1.5" style="fill:rgb(0, 0, 0);stroke:rgb(153, 153, 153);color:rgb(11, 11, 11);stroke-width:1.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-  <line x1="175" y1="100" x2="140" y2="122" stroke="var(--border-color,#999)" stroke-width="1.5" marker-end="url(#arr)" mask="url(#imagine-text-gaps-g4goc3)" style="fill:rgb(0, 0, 0);stroke:rgb(153, 153, 153);color:rgb(11, 11, 11);stroke-width:1.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-
-  
-  <line x1="220" y1="144" x2="310" y2="144" stroke="var(--border-color,#999)" stroke-width="1.5" marker-end="url(#arr)" style="fill:rgb(0, 0, 0);stroke:rgb(153, 153, 153);color:rgb(11, 11, 11);stroke-width:1.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-  <text x="265" y="138" text-anchor="middle" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9px;font-weight:400;text-anchor:middle;dominant-baseline:auto">HTTP/WS</text>
-
-  
-  <line x1="510" y1="144" x2="570" y2="144" stroke="var(--border-color,#999)" stroke-width="1.5" marker-end="url(#arr)" style="fill:rgb(0, 0, 0);stroke:rgb(153, 153, 153);color:rgb(11, 11, 11);stroke-width:1.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-  <text x="540" y="138" text-anchor="middle" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9px;font-weight:400;text-anchor:middle;dominant-baseline:auto">gRPC</text>
-
-  
-  <rect x="20" y="250" width="740" height="310" rx="8" fill="none" stroke="var(--accent,#4a6fa5)" stroke-width="1.5" stroke-dasharray="5,3" style="fill:none;stroke:rgb(74, 111, 165);color:rgb(11, 11, 11);stroke-width:1.5px;stroke-dasharray:5px, 3px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-  <text x="32" y="266" fill="var(--accent,#4a6fa5)" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:10px;font-weight:700;text-anchor:start;dominant-baseline:auto">openshell-docker  (Docker custom bridge network · br-XXXX)</text>
-
-  
-  <rect x="40" y="275" width="700" height="270" rx="8" fill="none" stroke="var(--border-color,#bbb)" stroke-width="1.2" stroke-dasharray="3,2" style="fill:none;stroke:rgb(187, 187, 187);color:rgb(11, 11, 11);stroke-width:1.2px;stroke-dasharray:3px, 2px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-  <text x="52" y="291" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:10px;font-weight:700;text-anchor:start;dominant-baseline:auto">openshell-sandbox container  (openshell-my-assistant-{uuid})</text>
-
-  
-  <rect x="60" y="300" width="300" height="110" rx="6" fill="var(--accent-secondary,#e8f0fe)" stroke="var(--accent,#4a6fa5)" stroke-width="1.2" style="fill:rgb(232, 240, 254);stroke:rgb(74, 111, 165);color:rgb(11, 11, 11);stroke-width:1.2px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-  <text x="210" y="318" text-anchor="middle" font-weight="bold" style="fill:rgb(11, 11, 11);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:11px;font-weight:700;text-anchor:middle;dominant-baseline:auto">OpenClaw gateway</text>
-  <text x="210" y="333" text-anchor="middle" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9.5px;font-weight:400;text-anchor:middle;dominant-baseline:auto">isolated network namespace</text>
-  <text x="210" y="348" text-anchor="middle" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9.5px;font-weight:400;text-anchor:middle;dominant-baseline:auto">0.0.0.0:18789 (inside namespace)</text>
-  <text x="210" y="365" text-anchor="middle" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9.5px;font-weight:400;text-anchor:middle;dominant-baseline:auto">• runs the agent loop</text>
-  <text x="210" y="380" text-anchor="middle" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9.5px;font-weight:400;text-anchor:middle;dominant-baseline:auto">• calls GetInferenceBundle / GetSandboxConfig</text>
-  <text x="210" y="395" text-anchor="middle" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9.5px;font-weight:400;text-anchor:middle;dominant-baseline:auto">• routes tool calls → Squid → openshell_router</text>
-
-  
-  <rect x="420" y="300" width="290" height="70" rx="6" fill="var(--surface-secondary,#f5f5f5)" stroke="var(--border-color,#aaa)" stroke-width="1.2" style="fill:rgb(245, 245, 245);stroke:rgb(170, 170, 170);color:rgb(11, 11, 11);stroke-width:1.2px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-  <text x="565" y="322" text-anchor="middle" font-weight="bold" style="fill:rgb(11, 11, 11);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:11px;font-weight:700;text-anchor:middle;dominant-baseline:auto">Squid proxy</text>
-  <text x="565" y="337" text-anchor="middle" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9.5px;font-weight:400;text-anchor:middle;dominant-baseline:auto">container default namespace</text>
-  <text x="565" y="352" text-anchor="middle" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9.5px;font-weight:400;text-anchor:middle;dominant-baseline:auto">10.200.0.1:3128</text>
-  <text x="565" y="367" text-anchor="middle" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9.5px;font-weight:400;text-anchor:middle;dominant-baseline:auto">enforces egress policy (OPA)</text>
-
-  
-  <rect x="420" y="390" width="290" height="80" rx="6" fill="var(--surface-secondary,#f5f5f5)" stroke="var(--border-color,#aaa)" stroke-width="1.2" style="fill:rgb(245, 245, 245);stroke:rgb(170, 170, 170);color:rgb(11, 11, 11);stroke-width:1.2px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-  <text x="565" y="410" text-anchor="middle" font-weight="bold" style="fill:rgb(11, 11, 11);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:11px;font-weight:700;text-anchor:middle;dominant-baseline:auto">openshell_router</text>
-  <text x="565" y="425" text-anchor="middle" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9.5px;font-weight:400;text-anchor:middle;dominant-baseline:auto">container default namespace</text>
-  <text x="565" y="440" text-anchor="middle" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9.5px;font-weight:400;text-anchor:middle;dominant-baseline:auto">intercepts CONNECT inference.local:443</text>
-  <text x="565" y="455" text-anchor="middle" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9.5px;font-weight:400;text-anchor:middle;dominant-baseline:auto">→ direct HTTPS to integrate.api.nvidia.com</text>
-  <text x="565" y="468" text-anchor="middle" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9.5px;font-weight:400;text-anchor:middle;dominant-baseline:auto">(needs iptables conntrack fix ⚠)</text>
-
-  
-  <rect x="550" y="510" width="200" height="34" rx="5" fill="var(--surface-secondary,#f5f5f5)" stroke="var(--border-color,#aaa)" stroke-width="1" stroke-dasharray="3,2" style="fill:rgb(245, 245, 245);stroke:rgb(170, 170, 170);color:rgb(11, 11, 11);stroke-width:1px;stroke-dasharray:3px, 2px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-  <text x="650" y="532" text-anchor="middle" style="fill:rgb(11, 11, 11);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:11px;font-weight:400;text-anchor:middle;dominant-baseline:auto">integrate.api.nvidia.com</text>
-
-  
-  
-  <line x1="360" y1="335" x2="420" y2="335" stroke="var(--border-color,#999)" stroke-width="1.5" marker-end="url(#arr)" style="fill:rgb(0, 0, 0);stroke:rgb(153, 153, 153);color:rgb(11, 11, 11);stroke-width:1.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-  <text x="390" y="328" text-anchor="middle" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9px;font-weight:400;text-anchor:middle;dominant-baseline:auto">CONNECT</text>
-
-  
-  <line x1="565" y1="370" x2="565" y2="390" stroke="var(--border-color,#999)" stroke-width="1.5" marker-end="url(#arr)" mask="url(#imagine-text-gaps-g4goc3)" style="fill:rgb(0, 0, 0);stroke:rgb(153, 153, 153);color:rgb(11, 11, 11);stroke-width:1.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-  <text x="600" y="383" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9px;font-weight:400;text-anchor:start;dominant-baseline:auto">inference.local</text>
-
-  
-  <line x1="650" y1="470" x2="650" y2="510" stroke="var(--border-color,#999)" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#arr)" mask="url(#imagine-text-gaps-g4goc3)" style="fill:rgb(0, 0, 0);stroke:rgb(153, 153, 153);color:rgb(11, 11, 11);stroke-width:1.5px;stroke-dasharray:4px, 2px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-  <text x="700" y="494" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9px;font-weight:400;text-anchor:start;dominant-baseline:auto">HTTPS</text>
-
-  
-  <line x1="655" y1="166" x2="655" y2="250" stroke="var(--border-color,#999)" stroke-width="1.5" marker-end="url(#arr)" mask="url(#imagine-text-gaps-g4goc3)" style="fill:rgb(0, 0, 0);stroke:rgb(153, 153, 153);color:rgb(11, 11, 11);stroke-width:1.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-  <text x="700" y="212" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9px;font-weight:400;text-anchor:start;dominant-baseline:auto">:8080</text>
-
-  
-  <line x1="410" y1="166" x2="210" y2="250" stroke="var(--border-color,#999)" stroke-width="1.5" stroke-dasharray="3,2" marker-end="url(#arr)" mask="url(#imagine-text-gaps-g4goc3)" style="fill:rgb(0, 0, 0);stroke:rgb(153, 153, 153);color:rgb(11, 11, 11);stroke-width:1.5px;stroke-dasharray:3px, 2px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-  <text x="295" y="212" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9px;font-weight:400;text-anchor:start;dominant-baseline:auto">polling gRPC</text>
-
-  
-  <rect x="40" y="490" width="340" height="42" rx="5" fill="none" stroke="var(--border-color,#ccc)" stroke-width="1" stroke-dasharray="2,2" style="fill:none;stroke:rgb(204, 204, 204);color:rgb(11, 11, 11);stroke-width:1px;stroke-dasharray:2px, 2px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-  <text x="52" y="506" font-style="italic" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9.5px;font-weight:400;font-style:italic;text-anchor:start;dominant-baseline:auto">openshell-cluster: cloud/remote deployment only.</text>
-  <text x="52" y="520" font-style="italic" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9.5px;font-weight:400;font-style:italic;text-anchor:start;dominant-baseline:auto">In local WSL2 mode the gateway runs as a native</text>
-  <text x="52" y="534" font-style="italic" style="fill:rgb(82, 81, 78);stroke:none;color:rgb(11, 11, 11);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:ui-monospace, monospace;font-size:9.5px;font-weight:400;font-style:italic;text-anchor:start;dominant-baseline:auto">process (openshell-docker-gateway), not a container.</text>
+<svg viewBox="0 0 900 740" xmlns="http://www.w3.org/2000/svg" role="img">
+  <title>OpenShell component map — local WSL2+Docker deployment</title>
+  <desc>Architecture diagram: Browser on Windows, proxy/gateway services in WSL2, openshell-sandbox container with isolated and default namespaces (OpenClaw gateway, gRPC API, Squid, OPA, openshell_router), and integrate.api.nvidia.com outside the Docker network</desc>
 
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="var(--border-color,#999)"/>
     </marker>
-  <mask id="imagine-text-gaps-g4goc3" maskUnits="userSpaceOnUse"><rect x="0" y="0" width="780" height="580" fill="white"/><rect x="28" y="24.67383575439453" width="83.54989624023438" height="15.86966609954834" fill="black" rx="2"/><rect x="364.8373107910156" y="47.82600021362305" width="50.3254280090332" height="17.1414155960083" fill="black" rx="2"/><rect x="28" y="104.67383575439453" width="152.80728149414062" height="15.86966609954834" fill="black" rx="2"/><rect x="84.61003875732422" y="127.82600402832031" width="111.0926742553711" height="17.1414155960083" fill="black" rx="2"/><rect x="109.88276672363281" y="144.09776306152344" width="60.23447799682617" height="15.445749282836914" fill="black" rx="2"/><rect x="333.44732666015625" y="124.82600402832031" width="153.41375732421875" height="17.1414155960083" fill="black" rx="2"/><rect x="332.8743591308594" y="141.09774780273438" width="154.25123596191406" height="15.445749282836914" fill="black" rx="2"/><rect x="325.0385437011719" y="152.09776306152344" width="169.92291259765625" height="15.445749282836914" fill="black" rx="2"/><rect x="599.6100463867188" y="124.82600402832031" width="110.77991485595703" height="17.1414155960083" fill="black" rx="2"/><rect x="598.7655029296875" y="141.09774780273438" width="112.46895599365234" height="15.445749282836914" fill="black" rx="2"/><rect x="593.542724609375" y="152.09776306152344" width="122.9145278930664" height="15.445749282836914" fill="black" rx="2"/><rect x="243.67904663085938" y="127.52166748046875" width="42.641937255859375" height="14.597915649414062" fill="black" rx="2"/><rect x="526.1009521484375" y="127.52166748046875" width="27.79823112487793" height="14.597915649414062" fill="black" rx="2"/><rect x="28" y="254.673828125" width="366.86529541015625" height="15.86966609954834" fill="black" rx="2"/><rect x="48.000003814697266" y="279.6738586425781" width="379.4569396972656" height="15.86966609954834" fill="black" rx="2"/><rect x="157.63046264648438" y="305.8260192871094" width="105.04682159423828" height="17.1414155960083" fill="black" rx="2"/><rect x="138.09716796875" y="322.0977478027344" width="143.8056640625" height="15.445749282836914" fill="black" rx="2"/><rect x="122.42881774902344" y="337.0977478027344" width="175.1423797607422" height="15.445749282836914" fill="black" rx="2"/><rect x="151.15579223632812" y="354.0977783203125" width="117.68843078613281" height="15.445749282836914" fill="black" rx="2"/><rect x="88.47908020019531" y="369.0977783203125" width="243.04190063476562" height="15.445749282836914" fill="black" rx="2"/><rect x="85.86603546142578" y="384.0977478027344" width="248.26800537109375" height="15.445749282836914" fill="black" rx="2"/><rect x="527.7457275390625" y="309.8260192871094" width="74.81742858886719" height="17.1414155960083" fill="black" rx="2"/><rect x="490.4874267578125" y="326.0977783203125" width="149.025146484375" height="15.445749282836914" fill="black" rx="2"/><rect x="521.8241577148438" y="341.0977478027344" width="86.35171508789062" height="15.445749282836914" fill="black" rx="2"/><rect x="487.8743896484375" y="356.0977478027344" width="154.25123596191406" height="15.445749282836914" fill="black" rx="2"/><rect x="512.6304321289062" y="397.8260192871094" width="104.73910522460938" height="17.1414155960083" fill="black" rx="2"/><rect x="490.4874267578125" y="414.0977478027344" width="149.025146484375" height="15.445749282836914" fill="black" rx="2"/><rect x="461.76043701171875" y="429.0977478027344" width="206.47909545898438" height="15.445749282836914" fill="black" rx="2"/><rect x="450.8876647949219" y="444.0977478027344" width="227.80078125" height="15.445749282836914" fill="black" rx="2"/><rect x="475.9483947753906" y="457.0977783203125" width="178.10317993164062" height="15.445749282836914" fill="black" rx="2"/><rect x="573.4473876953125" y="519.8259887695312" width="153.1053466796875" height="17.1414155960083" fill="black" rx="2"/><rect x="368.6790466308594" y="317.52166748046875" width="42.641937255859375" height="14.597915649414062" fill="black" rx="2"/><rect x="596" y="372.52166748046875" width="82.22515106201172" height="14.597915649414062" fill="black" rx="2"/><rect x="696" y="483.52166748046875" width="32.74613380432129" height="14.597915649414062" fill="black" rx="2"/><rect x="696" y="201.52166748046875" width="32.74613380432129" height="14.597915649414062" fill="black" rx="2"/><rect x="291" y="201.52166748046875" width="67.3814468383789" height="14.597915649414062" fill="black" rx="2"/><rect x="48.000003814697266" y="495.0977783203125" width="258.7135772705078" height="15.445749282836914" fill="black" rx="2"/><rect x="48.000003814697266" y="509.0977478027344" width="253.4874725341797" height="15.445749282836914" fill="black" rx="2"/><rect x="47.576087951660156" y="523.0977783203125" width="280.02862548828125" height="15.445749282836914" fill="black" rx="2"/></mask></defs>
+    <marker id="arr-dashed" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="var(--border-color,#bbb)"/>
+    </marker>
+    <marker id="arr-left" markerWidth="8" markerHeight="8" refX="2" refY="3" orient="auto">
+      <path d="M8,0 L8,6 L0,3 z" fill="#7c3aed"/>
+    </marker>
+  </defs>
+
+  <!-- ══════════════════════════════════════════════════════
+       LAYER 1 — WINDOWS HOST
+  ══════════════════════════════════════════════════════ -->
+  <rect x="15" y="15" width="870" height="68" rx="8"
+        fill="none" stroke="var(--border-color,#ccc)" stroke-width="1" stroke-dasharray="4,3"/>
+  <text x="28" y="31" font-family="ui-monospace,monospace" font-size="10" font-weight="700"
+        fill="var(--text-secondary,#52514e)">WINDOWS HOST</text>
+  <rect x="370" y="35" width="160" height="34" rx="5"
+        fill="var(--accent-secondary,#e8f0fe)" stroke="var(--accent,#4a6fa5)" stroke-width="1.2"/>
+  <text x="450" y="57" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11"
+        font-weight="700" fill="var(--text-primary,#0b0b0b)">Browser</text>
+
+  <!-- ══════════════════════════════════════════════════════
+       LAYER 2 — WSL2 HOST PROCESS SPACE
+  ══════════════════════════════════════════════════════ -->
+  <rect x="15" y="98" width="870" height="195" rx="8"
+        fill="none" stroke="var(--border-color,#ccc)" stroke-width="1" stroke-dasharray="4,3"/>
+  <text x="28" y="114" font-family="ui-monospace,monospace" font-size="10" font-weight="700"
+        fill="var(--text-secondary,#52514e)">WSL2 HOST PROCESS SPACE</text>
+
+  <!-- http.server -->
+  <rect x="30" y="120" width="140" height="52" rx="5"
+        fill="var(--surface-secondary,#f5f5f5)" stroke="var(--border-color,#aaa)" stroke-width="1.2"/>
+  <text x="100" y="138" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10.5"
+        font-weight="700" fill="var(--text-primary,#0b0b0b)">http.server</text>
+  <text x="100" y="153" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">course pages</text>
+  <text x="100" y="165" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">WSL2 :8081</text>
+
+  <!-- cors_proxy.py -->
+  <rect x="185" y="120" width="148" height="52" rx="5"
+        fill="var(--surface-secondary,#f5f5f5)" stroke="var(--border-color,#aaa)" stroke-width="1.2"/>
+  <text x="259" y="138" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10.5"
+        font-weight="700" fill="var(--text-primary,#0b0b0b)">cors_proxy.py</text>
+  <text x="259" y="153" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">NVIDIA NIM CORS bridge</text>
+  <text x="259" y="165" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">WSL2 :8010</text>
+
+  <!-- openclaw_proxy.py -->
+  <rect x="348" y="120" width="168" height="52" rx="5"
+        fill="var(--surface-secondary,#f5f5f5)" stroke="var(--border-color,#aaa)" stroke-width="1.2"/>
+  <text x="432" y="138" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10.5"
+        font-weight="700" fill="var(--text-primary,#0b0b0b)">openclaw_proxy.py</text>
+  <text x="432" y="153" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">OpenClaw gateway CORS</text>
+  <text x="432" y="165" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">WSL2 :8011</text>
+
+  <!-- policy_proxy.py -->
+  <rect x="530" y="120" width="155" height="52" rx="5"
+        fill="var(--surface-secondary,#f5f5f5)" stroke="var(--border-color,#aaa)" stroke-width="1.2"/>
+  <text x="607" y="138" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10.5"
+        font-weight="700" fill="var(--text-primary,#0b0b0b)">policy_proxy.py</text>
+  <text x="607" y="153" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">live policy bridge</text>
+  <text x="607" y="165" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">WSL2 :8012</text>
+
+  <text x="380" y="184" text-anchor="middle" font-family="ui-monospace,monospace" font-size="8.5"
+        font-style="italic" fill="var(--text-secondary,#888)">↑ all four started by start_proxies.sh</text>
+
+  <!-- openshell forward service (LEFT) -->
+  <rect x="30" y="200" width="265" height="70" rx="5"
+        fill="var(--surface-secondary,#f5f5f5)" stroke="var(--border-color,#aaa)" stroke-width="1.2"/>
+  <text x="162" y="219" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10.5"
+        font-weight="700" fill="var(--text-primary,#0b0b0b)">openshell forward service</text>
+  <text x="162" y="234" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">gRPC tunnel (UI traffic path)</text>
+  <text x="162" y="247" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">WSL2 :18789 → container isolated NS</text>
+
+  <!-- openshell-docker-gateway (RIGHT) -->
+  <rect x="600" y="200" width="265" height="70" rx="5"
+        fill="var(--surface-secondary,#f5f5f5)" stroke="var(--border-color,#aaa)" stroke-width="1.2"/>
+  <text x="732" y="219" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10.5"
+        font-weight="700" fill="var(--text-primary,#0b0b0b)">openshell-docker-gateway</text>
+  <text x="732" y="234" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">WSL2 management daemon</text>
+  <text x="732" y="247" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">polls container gRPC API via Docker bridge</text>
+  <text x="732" y="261" text-anchor="middle" font-family="ui-monospace,monospace" font-size="8.5"
+        font-style="italic" fill="var(--text-secondary,#888)">(NOT the OpenClaw gateway)</text>
+
+  <!-- ══════════════════════════════════════════════════════
+       LAYER 3 — DOCKER NETWORK + CONTAINER
+  ══════════════════════════════════════════════════════ -->
+  <rect x="15" y="308" width="870" height="370" rx="8"
+        fill="none" stroke="var(--accent,#4a6fa5)" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="28" y="324" font-family="ui-monospace,monospace" font-size="10" font-weight="700"
+        fill="var(--text-secondary,#52514e)">openshell-docker  (Docker custom bridge network · br-XXXX · 172.18.x.x/16)</text>
+
+  <!-- Container boundary -->
+  <rect x="35" y="334" width="840" height="334" rx="8"
+        fill="none" stroke="var(--border-color,#bbb)" stroke-width="1.2" stroke-dasharray="3,2"/>
+  <text x="48" y="350" font-family="ui-monospace,monospace" font-size="10" font-weight="700"
+        fill="var(--text-secondary,#52514e)">openshell-sandbox container  (openshell-my-assistant-{uuid})</text>
+
+  <!-- OpenClaw gateway — isolated namespace -->
+  <rect x="50" y="360" width="295" height="295" rx="6"
+        fill="var(--accent-secondary,#e8f0fe)" stroke="var(--accent,#4a6fa5)" stroke-width="1.2"/>
+  <text x="197" y="378" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11"
+        font-weight="700" fill="var(--text-primary,#0b0b0b)">OpenClaw gateway</text>
+  <text x="197" y="393" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">isolated network namespace</text>
+  <text x="197" y="408" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">0.0.0.0:18789  (inside namespace)</text>
+  <text x="197" y="428" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">• runs the agent loop</text>
+  <text x="197" y="443" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">• GetInferenceBundle / GetSandboxConfig</text>
+  <text x="197" y="458" text-anchor="middle" font-family="ui-monospace,monospace" font-size="8.5"
+        font-style="italic" fill="var(--text-secondary,#888)">(one-time config at agent startup)</text>
+  <text x="197" y="476" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">• routes tool calls → Squid</text>
+  <text x="197" y="500" text-anchor="middle" font-family="ui-monospace,monospace" font-size="8.5"
+        font-style="italic" fill="var(--text-secondary,#888)">UI path: reached via forward service</text>
+  <text x="197" y="518" text-anchor="middle" font-family="ui-monospace,monospace" font-size="8.5"
+        font-style="italic" fill="var(--text-secondary,#888)">also serves GetInferenceBundle to</text>
+  <text x="197" y="533" text-anchor="middle" font-family="ui-monospace,monospace" font-size="8.5"
+        font-style="italic" fill="var(--text-secondary,#888)">openshell_router via cross-NS socket</text>
+
+  <!-- Default NS — gRPC API -->
+  <rect x="365" y="360" width="210" height="65" rx="6"
+        fill="var(--surface-secondary,#f5f5f5)" stroke="var(--border-color,#aaa)" stroke-width="1.2"/>
+  <text x="470" y="378" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11"
+        font-weight="700" fill="var(--text-primary,#0b0b0b)">gRPC API</text>
+  <text x="470" y="393" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">default namespace · :8080</text>
+  <text x="470" y="408" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">status / config / sandbox ops</text>
+  <text x="470" y="420" text-anchor="middle" font-family="ui-monospace,monospace" font-size="8.5"
+        font-style="italic" fill="var(--text-secondary,#888)">mgmt path: Docker bridge 172.18.x.x</text>
+
+  <!-- Default NS — Squid proxy -->
+  <rect x="365" y="478" width="210" height="65" rx="6"
+        fill="var(--surface-secondary,#f5f5f5)" stroke="var(--border-color,#aaa)" stroke-width="1.2"/>
+  <text x="470" y="496" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11"
+        font-weight="700" fill="var(--text-primary,#0b0b0b)">Squid proxy</text>
+  <text x="470" y="511" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">default namespace · 10.200.0.1:3128</text>
+  <text x="470" y="526" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">enforces egress policy via OPA</text>
+  <text x="470" y="538" text-anchor="middle" font-family="ui-monospace,monospace" font-size="8.5"
+        font-style="italic" fill="#e06c00">⚠ iptables conntrack fix required</text>
+
+  <!-- Default NS — OPA -->
+  <rect x="365" y="558" width="210" height="55" rx="6"
+        fill="#fef3c7" stroke="#d97706" stroke-width="1.2"/>
+  <text x="470" y="576" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11"
+        font-weight="700" fill="var(--text-primary,#0b0b0b)">OPA</text>
+  <text x="470" y="591" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">Open Policy Agent · default namespace</text>
+  <text x="470" y="606" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">evaluates egress allow / deny verdicts</text>
+
+  <!-- Default NS — openshell_router -->
+  <rect x="595" y="360" width="255" height="145" rx="6"
+        fill="var(--surface-secondary,#f5f5f5)" stroke="var(--border-color,#aaa)" stroke-width="1.2"/>
+  <text x="722" y="378" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11"
+        font-weight="700" fill="var(--text-primary,#0b0b0b)">openshell_router</text>
+  <text x="722" y="393" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">default namespace</text>
+  <text x="722" y="408" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">intercepts CONNECT inference.local:443</text>
+  <text x="722" y="423" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">calls GetInferenceBundle per request</text>
+  <text x="722" y="438" text-anchor="middle" font-family="ui-monospace,monospace" font-size="8.5"
+        font-style="italic" fill="var(--text-secondary,#888)">(gets real API key via cross-NS socket)</text>
+  <text x="722" y="456" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9"
+        fill="var(--text-secondary,#52514e)">→ direct HTTPS to NVIDIA endpoint</text>
+  <text x="722" y="496" text-anchor="middle" font-family="ui-monospace,monospace" font-size="8.5"
+        font-style="italic" fill="#e06c00">⚠ needs iptables conntrack rule</text>
+
+  <!-- ══════════════════════════════════════════════════════
+       EXTERNAL — integrate.api.nvidia.com (outside Docker)
+  ══════════════════════════════════════════════════════ -->
+  <rect x="595" y="698" width="255" height="36" rx="5"
+        fill="var(--surface-secondary,#f5f5f5)" stroke="var(--border-color,#aaa)" stroke-width="1"
+        stroke-dasharray="3,2"/>
+  <text x="722" y="719" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10.5"
+        fill="var(--text-primary,#0b0b0b)">integrate.api.nvidia.com  (Internet)</text>
+
+  <!-- ══════════════════════════════════════════════════════
+       ARROWS
+  ══════════════════════════════════════════════════════ -->
+
+  <!-- Browser → http.server -->
+  <line x1="390" y1="69" x2="170" y2="120"
+        stroke="var(--border-color,#bbb)" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#arr-dashed)"/>
+  <text x="263" y="87" text-anchor="middle" font-family="ui-monospace,monospace" font-size="8.5"
+        fill="#2563eb">serves pages</text>
+
+  <!-- Browser → openclaw_proxy.py -->
+  <line x1="442" y1="69" x2="432" y2="120"
+        stroke="var(--border-color,#999)" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="460" y="98" font-family="ui-monospace,monospace" font-size="8.5" fill="#2563eb">HTTP/WS</text>
+
+  <!-- Browser → cors_proxy (dashed) -->
+  <line x1="415" y1="69" x2="310" y2="120"
+        stroke="var(--border-color,#bbb)" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#arr-dashed)"/>
+
+  <!-- Browser → policy_proxy (dashed) -->
+  <line x1="470" y1="69" x2="607" y2="120"
+        stroke="var(--border-color,#bbb)" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#arr-dashed)"/>
+
+  <!-- openclaw_proxy → forward service -->
+  <line x1="348" y1="150" x2="295" y2="210"
+        stroke="var(--border-color,#999)" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="298" y="176" text-anchor="middle" font-family="ui-monospace,monospace" font-size="8.5"
+        fill="#2563eb">HTTP/WS</text>
+
+  <!-- policy_proxy → openshell-docker-gateway -->
+  <line x1="685" y1="163" x2="716" y2="200"
+        stroke="var(--border-color,#bbb)" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#arr-dashed)"/>
+  <text x="726" y="185" text-anchor="middle" font-family="ui-monospace,monospace" font-size="8"
+        font-style="italic" fill="var(--text-secondary,#888)">openshell policy get</text>
+
+  <!-- forward service → OpenClaw gateway (near-straight down, UI path) -->
+  <line x1="162" y1="270" x2="162" y2="300"
+        stroke="var(--border-color,#999)" stroke-width="1.5"/>
+  <line x1="162" y1="300" x2="197" y2="300"
+        stroke="var(--border-color,#999)" stroke-width="1.5"/>
+  <line x1="197" y1="300" x2="197" y2="360"
+        stroke="var(--border-color,#999)" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="248" y="295" font-family="ui-monospace,monospace" font-size="8.5"
+        fill="#2563eb">gRPC :18789 (isolated NS) · UI path</text>
+
+  <!-- openshell-docker-gateway → gRPC API (dashed, right to mid) -->
+  <line x1="732" y1="270" x2="732" y2="288"
+        stroke="var(--border-color,#bbb)" stroke-width="1.2" stroke-dasharray="3,2"/>
+  <line x1="732" y1="288" x2="470" y2="288"
+        stroke="var(--border-color,#bbb)" stroke-width="1.2" stroke-dasharray="3,2"/>
+  <line x1="470" y1="288" x2="470" y2="360"
+        stroke="var(--border-color,#bbb)" stroke-width="1.2" stroke-dasharray="3,2" marker-end="url(#arr-dashed)"/>
+  <text x="604" y="283" text-anchor="middle" font-family="ui-monospace,monospace" font-size="8.5"
+        font-style="italic" fill="#2563eb">Docker bridge :8080 · mgmt path</text>
+
+  <!-- OpenClaw gateway → Squid (CONNECT) -->
+  <line x1="345" y1="510" x2="365" y2="510"
+        stroke="var(--border-color,#999)" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="328" y="505" text-anchor="middle" font-family="ui-monospace,monospace" font-size="8.5"
+        fill="#2563eb">CONNECT</text>
+
+  <!-- Squid → OPA -->
+  <line x1="470" y1="543" x2="470" y2="558"
+        stroke="var(--border-color,#999)" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="510" y="554" font-family="ui-monospace,monospace" font-size="8.5"
+        fill="#2563eb">consults</text>
+
+  <!-- Squid → openshell_router (inference.local, after OPA allows) -->
+  <line x1="575" y1="510" x2="595" y2="445"
+        stroke="var(--border-color,#999)" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="613" y="480" font-family="ui-monospace,monospace" font-size="8.5"
+        fill="#2563eb">inference.local</text>
+
+  <!-- openshell_router ◄──► OpenClaw gateway (cross-NS socket, GetInferenceBundle) -->
+  <!-- Bi-directional: openshell_router sends request, OpenClaw gateway returns API key + endpoint -->
+  <line x1="354" y1="450" x2="586" y2="450"
+        stroke="#7c3aed" stroke-width="1.2" stroke-dasharray="4,2"/>
+  <!-- Arrowhead at OpenClaw gateway end (left) — request direction -->
+  <polygon points="345,450 354,445 354,455" fill="#7c3aed"/>
+  <!-- Arrowhead at openshell_router end (right) — response direction -->
+  <polygon points="595,450 586,445 586,455" fill="#7c3aed"/>
+  <!-- Label -->
+  <text x="470" y="442" text-anchor="middle" font-family="ui-monospace,monospace" font-size="8"
+        fill="#7c3aed">GetInferenceBundle (cross-NS socket)</text>
+  <text x="470" y="461" text-anchor="middle" font-family="ui-monospace,monospace" font-size="8"
+        font-style="italic" fill="#7c3aed">◄── request · response (API key + endpoint) ──►</text>
+
+  <!-- openshell_router → integrate.api.nvidia.com (exits Docker box) -->
+  <line x1="722" y1="505" x2="722" y2="698"
+        stroke="var(--border-color,#999)" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+  <text x="740" y="610" font-family="ui-monospace,monospace" font-size="8.5"
+        fill="#2563eb">HTTPS</text>
+
 </svg>
