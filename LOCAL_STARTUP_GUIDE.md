@@ -57,6 +57,22 @@ docker ps       # verify — should list containers without permission error
 pip3 install aiohttp --break-system-packages
 ```
 
+**Generate an SSH key and register it with GitHub**:
+```bash
+# 1. Generate key (press Enter for all prompts — default path, no passphrase)
+ssh-keygen -t ed25519 -C "jiyangw@nvidia.com"
+
+# 2. Copy the public key
+cat ~/.ssh/id_ed25519.pub
+```
+Go to **github.com → Settings → SSH and GPG keys → New SSH key**, paste the output, and save.
+
+Verify the key is accepted:
+```bash
+ssh -T git@github.com
+# Expected: Hi jiyangw-at-nvidia! You've successfully authenticated...
+```
+
 **Clone the course repo**:
 ```bash
 git clone git@github.com:jiyangw-at-nvidia/NemoClawDLI-zh.git ~/nemoclaw-zh
