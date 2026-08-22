@@ -231,7 +231,7 @@ console.log("[local-deploy] window.__SBX_POLICY pre-loaded —",
       allow-or-deny decision in a sandbox the agent cannot rewrite.
     </p>
     <p class="lead">
-      On this page, you send real commands to your launchable, read each
+      On this page, you send real commands to your local OpenClaw sandbox, read each
       verdict, and trace it to the rule that produced it. Then you inspect a
       second boundary: the operator control plane above the sandbox.
     </p>
@@ -325,7 +325,7 @@ console.log("[local-deploy] window.__SBX_POLICY pre-loaded —",
   </details>
 
   <h2>How the sandbox mechanisms answer testable questions</h2>
-  <p>This launchable combines four operating-system mechanisms. Each answers a
+  <p>This local OpenClaw sandbox combines four operating-system mechanisms. Each answers a
      question you can test, and together they apply policy at more than one
      boundary. Read the live policy later on this page before treating any one
      guarantee as universal.</p>
@@ -361,7 +361,7 @@ console.log("[local-deploy] window.__SBX_POLICY pre-loaded —",
          perform an operation. <a href="https://docs.kernel.org/userspace-api/seccomp_filter.html" target="_blank" rel="noopener"><code>seccomp</code></a>
          is Linux syscall filtering; its BPF filter checks each request against
          an allowlist. A denied call returns <code>EPERM</code>, meaning
-         "operation not permitted," before the operation runs. This launchable
+         "operation not permitted," before the operation runs. This local OpenClaw sandbox
          excludes dangerous primitives such as <code>ptrace</code>,
          <code>mount</code>, and <code>setuid</code>.</p>
     </div>
@@ -500,7 +500,7 @@ console.log("[local-deploy] window.__SBX_POLICY pre-loaded —",
 // The cell runs each in YOUR sandbox and shows the command, its output, and its exit code.
 helpers.mountChatUI("#trajectory-artifact", {
   disabled: () => { const c = helpers.getOpenClawConnection(); return !(c.token && c.rawUrl); },
-  disabledMsg: "Connect your launchable in Module 3a first. This exercise runs commands in your sandbox.",
+  disabledMsg: "Connect your local OpenClaw sandbox in Module 3a first. This exercise runs commands in your sandbox.",
   greeting: "Describe a goal and I plan the shell commands an agent would run for it, then we run each one in your sandbox and read the result, in order. Watch what each command returns. A secret that prints to the screen has already left the box, whatever the network blocks afterward.",
   models: [
     { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
@@ -560,9 +560,9 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
   </div>
   </details>
 
-  <h2>Read your launchable's live policy, then see it as a map</h2>
+  <h2>Read your local OpenClaw sandbox's live policy, then see it as a map</h2>
   <p>Now that you have watched the kernel decide, you can see that every one of those verdicts traces
-     back to a single policy file, which is worth reading off your launchable before you work with it.
+     back to a single policy file, which is worth reading off your local OpenClaw sandbox before you work with it.
      The cell below calls <code>helpers.policyGet()</code>, which runs <code>openshell policy get</code>
      over the operator terminal and parses the result for you.</p>
   <p>The page now computes from <em>your</em> box's policy instead of a baked
@@ -590,7 +590,7 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
      <code>openshell policy prove</code> command checks a property of a policy or
      returns a counterexample while the proxy makes a deterministic allow/deny
      decision on every connection. You compute that same decision in the browser
-     from your launchable's real policy, then run the action in the live sandbox and
+     from your local OpenClaw sandbox's real policy, then run the action in the live sandbox and
      confirm the kernel's verdict matches your prediction.</p>
   <p>The policy test below exercises <em>binary identity</em>. The policy grants egress per program rather than per
      host so the proxy always checks which binary opened a connection before it ever looks at the
@@ -601,10 +601,10 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
 
   <div class="callout">
     <strong>Each result is a real kernel decision.</strong> The live half of each flow runs
-    on the launchable you connected in Kickstart
+    on the local OpenClaw sandbox you connected in Kickstart
     through <code>openshell sandbox exec</code>, so each result you read back is
     a decision the kernel made on the wire.
-    Keep your launchable open in another tab so its access session stays
+    Keep your local OpenClaw sandbox open in another tab so its access session stays
     fresh.
   </div>
 
@@ -698,7 +698,7 @@ helpers.log("trajectory agent mounted below. Describe a goal and watch the plan 
     agent's identity and schedule entirely outside the reach of anything the sandbox checks.
   </div>
 
-  <p>Enumerate it against your own launchable. The cell only reads, so it measures the
+  <p>Enumerate it against your own local OpenClaw sandbox. The cell only reads, so it measures the
      reach and leaves everything unchanged.</p>
 
   <div id="cell-token"></div>
@@ -913,13 +913,13 @@ return { probes: results.length, denied: results.filter(result => result.blocked
 // Until then, a placeholder points the student at the cell.
 {
   const _pm = document.querySelector("#policy-map");
-  if (_pm) _pm.innerHTML = "<p style='color:var(--tf,#8a8a8a);font-size:.85rem;margin:.5rem 0'>Run the live-policy cell above to draw your launchable's policy as an interactive map.</p>";
+  if (_pm) _pm.innerHTML = "<p style='color:var(--tf,#8a8a8a);font-size:.85rem;margin:.5rem 0'>Run the live-policy cell above to draw your local OpenClaw sandbox's policy as an interactive map.</p>";
 }
 
 // ── Read your live policy, draw the map from it ───────────────────────────────
 mountRunCell("#cell-live-policy", {
-  label: "Read your launchable's live policy",
-  intro: "Fetch the live policy through the operator terminal and print its YAML, then compare it with the snapshot that drives the map. Keep the launchable open for its access session; connect in Module 3a first if needed. The exact call remains in the code dropdown.",
+  label: "Read your local OpenClaw sandbox's live policy",
+  intro: "Fetch the live policy through the operator terminal and print its YAML, then compare it with the snapshot that drives the map. Keep the local OpenClaw sandbox open for its access session; connect in Module 3a first if needed. The exact call remains in the code dropdown.",
   code: `// helpers.policyGet() returns the command, raw output, status, and parsed policy.
 const p = await helpers.policyGet();
 helpers.log("called:  " + p.command);          // the exact command that ran on your box
@@ -928,7 +928,7 @@ helpers.log(p.status || "(no status header returned)");
 
 if (!p.policy) {
   helpers.log("\\nCould not parse the live policy: " + (p.parseError || "unknown parser error"));
-  helpers.log("Keep your launchable open in another tab, then re-run. Check the sandbox name with: openshell sandbox list");
+  helpers.log("Keep your local OpenClaw sandbox open in another tab, then re-run. Check the sandbox name with: openshell sandbox list");
   helpers.log.details("raw output", p.raw);
   return;
 }
@@ -963,10 +963,10 @@ mountCanvasFlow("#cell-predict-confirm", {
       id: "predict", icon: "🧮", title: "Predict (static, in-browser)", x: 0, y: 0,
       showCode: false,
       summary: "Compute the policy verdict for the action you picked above, without touching the network. The buttons set window.__sbxAction; this node reads it and runs the same allow/deny evaluation the proxy uses, computing the verdict live in your browser rather than reading a baked example.",
-      code: `// This predicts from YOUR launchable's live policy. Run the live-policy cell above first
+      code: `// This predicts from YOUR local OpenClaw sandbox's live policy. Run the live-policy cell above first
 // so window.__SBX_POLICY is set; there is one policy here, not a baked copy.
 const policy = window.__SBX_POLICY;
-if (!policy) { helpers.log("Run the 'Read your launchable's live policy' cell above first, so this predicts from YOUR box's policy."); return; }
+if (!policy) { helpers.log("Run the 'Read your local OpenClaw sandbox's live policy' cell above first, so this predicts from YOUR box's policy."); return; }
 
 // The candidate action comes from the buttons above the cell (window.__sbxAction).
 // A network attempt is { binary, host, port, method?, path? }; edit this default to try another target.
