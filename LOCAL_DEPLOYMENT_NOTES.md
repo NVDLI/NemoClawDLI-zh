@@ -442,9 +442,58 @@ nemoclaw onboard --resume
 
 ---
 
-## 4. Key Concepts
+## 4. Code Changes for Local (Non-Brev) Adaptation
 
-### 4.1 Base URL, Sub-path, Handler
+This section tracks all source changes made to adapt the course for local deployment.
+
+### 4.1 `cors_proxy.py` — Firefox CORS preflight fix
+
+**Problem:** Firefox includes `user-agent` in `Access-Control-Request-Headers` during CORS
+preflights; Chrome/Edge do not. The original proxy had a fixed allowed-headers list that
+omitted `user-agent`, so preflights from Firefox were rejected and the actual POST was
+blocked with "CORS Missing Allow Header".
+
+**Fix:** Echo back whatever headers the browser requests instead of using a fixed list:
+
+```python
+# Before
+self.send_header("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Billing-Invoke-Origin")
+
+# After
+requested = self.headers.get("Access-Control-Request-Headers", "")
+allowed = requested if requested else "Authorization, Content-Type, X-Billing-Invoke-Origin, User-Agent"
+self.send_header("Access-Control-Allow-Headers", allowed)
+```
+
+This makes the proxy browser-agnostic (works with Firefox, Chrome, Edge).
+
+### 4.2 `web/nemoclaw/04a-safety.html` — Brev terminology
+
+Replaced all occurrences of "launchable" (Brev's term for a cloud sandbox) with
+"local OpenClaw sandbox" so instructions make sense in local deployment context.
+
+### 4.3 `web/nemoclaw/04b-modern-clis.html` — Brev terminology
+
+Same replacement as 04a. JavaScript identifiers (`launchableUrl`, `data-learning-id`)
+were preserved; only visible display text was changed.
+
+### 4.4 API base URL — proxy vs direct
+
+Course pages default to calling `https://integrate.api.nvidia.com` directly, which the
+browser blocks (CORS). In local deployment, set both Chat and Embedder base URLs to the
+CORS proxy:
+
+- Via DGX browser (localhost): `http://127.0.0.1:8010/v1`
+- Via Windows browser + SSH tunnel (DGX-only): `http://127.0.0.1:8013/v1`
+- Via Windows browser (WSL2): `http://127.0.0.1:8010/v1`
+
+The proxy at port 8010 adds the required CORS headers and forwards to NVIDIA.
+
+---
+
+## 5. Key Concepts
+
+### 5.1 Base URL, Sub-path, Handler
 
 | Term | Meaning | Example |
 |------|---------|---------|
@@ -457,7 +506,7 @@ The course pages let you configure **Chat API Base URL** and **Embedding API Bas
 separately. Set them to the proxy addresses (`http://localhost:8010/v1`) so the browser
 can reach NVIDIA through the CORS proxy.
 
-### 4.2 CORS (Cross-Origin Resource Sharing)
+### 5.2 CORS (Cross-Origin Resource Sharing)
 
 The **same-origin policy** blocks a web page from making HTTP requests to a different
 origin (scheme + host + port combination).
@@ -485,7 +534,7 @@ to OPTIONS with 200/204 and the CORS headers above before the browser sends the 
 access to the control UI — it does **not** add CORS headers to HTTP REST endpoints.
 That's why a separate HTTP proxy is needed for REST calls to OpenClaw.
 
-### 4.3 SSE (Server-Sent Events) / Streaming
+### 5.3 SSE (Server-Sent Events) / Streaming
 
 NVIDIA's chat completions API returns responses in two modes:
 
@@ -498,7 +547,7 @@ The TTFT (Time To First Token) test requires `stream: true` to measure latency t
 the first token. A buffering proxy defeats this — the proxy must forward chunks
 to the browser as they arrive.
 
-### 4.4 Bearer Token / API Key
+### 5.4 Bearer Token / API Key
 
 NVIDIA's `integrate.api.nvidia.com` requires authentication via HTTP header:
 
@@ -516,7 +565,7 @@ HTTP 401: Header of type `authorization` was missing
 **Lesson**: The GET `/v1/models` endpoint appears to be public (returns 200 without auth
 in some configurations), while POST `/v1/chat/completions` always requires auth.
 
-### 4.5 OpenClaw Gateway
+### 5.5 OpenClaw Gateway
 
 OpenClaw is NeMoClaw's local agent gateway. It:
 - Runs inside a Docker container (NeMoClaw sandbox)
