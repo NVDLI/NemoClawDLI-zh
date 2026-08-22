@@ -57,6 +57,23 @@ docker ps       # verify — should list containers without permission error
 pip3 install aiohttp --break-system-packages
 ```
 
+**China network only — add Docker Hub mirrors** (Docker Hub is blocked in China):
+```bash
+sudo tee /etc/docker/daemon.json > /dev/null <<'EOF'
+{
+  "registry-mirrors": [
+    "https://hub-mirror.c.163.com",
+    "https://mirror.baidubce.com",
+    "https://docker.m.daocloud.io",
+    "https://docker.mirrors.ustc.edu.cn"
+  ]
+}
+EOF
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+docker pull hello-world   # verify mirrors work
+```
+
 **Generate an SSH key and register it with GitHub**:
 ```bash
 # 1. Generate key (press Enter for all prompts — default path, no passphrase)
@@ -83,28 +100,52 @@ git clone git@github.com:jiyangw-at-nvidia/NemoClawDLI-zh.git ~/nemoclaw-zh
 Run in the terminal where you'll use NeMoClaw (Ubuntu-24.04 terminal for WSL2; any terminal for DGX):
 
 ```bash
-curl -fsSL https://www.nvidia.com/nemoclaw.sh | bash
+# Two-step form avoids pipe-to-bash stdin freeze on slow connections:
+curl -fsSL https://www.nvidia.com/nemoclaw.sh -o /tmp/nemoclaw-install.sh
+bash /tmp/nemoclaw-install.sh
 source ~/.bashrc
 nemoclaw --version    # expected: nemoclaw v0.0.55 or newer
 ```
+
+> **Note:** `curl ... | bash` can freeze if the download is slow (pipe consumes stdin).
+> The two-step form above avoids this.
 
 ### 0.4 NeMoClaw Onboarding (both platforms)
 
 > ⚠️ **WSL2 only**: Always prefix with `NEMOCLAW_SANDBOX_GPU=0`. Without it, onboarding forces
 > `--gpu` and produces a broken sandbox on WSL2.
 
+> ⚠️ **DGX + SSH**: Onboarding downloads container images and can take 30–90 minutes on a slow
+> connection. Run it inside `tmux` so an SSH disconnect does not kill the process:
+> ```bash
+> tmux new-session -s nemoclaw
+> # run onboarding inside this tmux window
+> # if SSH drops, reconnect and run: tmux attach -t nemoclaw
+> ```
+
+> ⚠️ **DGX + pip openshell venv**: If you installed openshell via pip into a virtualenv,
+> **deactivate the venv before running `nemoclaw onboard`**. Otherwise nemoclaw detects the
+> pip version (0.0.109) and tries to downgrade, which fails if GitHub is unreachable.
+> ```bash
+> deactivate       # exit any active venv
+> which openshell  # must show /usr/local/bin/openshell
+> ```
+
 ```bash
 # WSL2:
 NEMOCLAW_SANDBOX_GPU=0 nemoclaw onboard
 
-# DGX (native Linux):
+# DGX (native Linux, inside tmux, venv deactivated):
 nemoclaw onboard
 ```
 
 During onboarding select:
-- Provider: **NVIDIA Endpoints** (`integrate.api.nvidia.com`)
-- Chat model: e.g. `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning`
-- Messaging channel: **Slack** (optional — requires a Slack Bot Token; can skip for course exercises)
+- Provider: **NVIDIA Endpoints** (`integrate.api.nvidia.com`) — recommended; works everywhere.
+  Local vLLM (DGX Spark option) requires HuggingFace model download, which is blocked in China.
+- Chat model: e.g. `nvidia/nemotron-3-super-120b-a12b`
+- Resource profile: **No profile** (option 6) for DGX Spark
+- Web search: **No web search** (option 1)
+- Messaging channel: skip (not needed for course exercises)
 
 After onboarding:
 ```bash
@@ -113,16 +154,35 @@ nemoclaw my-assistant status
 
 ### 0.5 DGX — SSH port forwarding (access pages from Windows browser)
 
-On your **Windows machine**, reconnect SSH with port forwarding so `localhost:8081` in your
-Windows browser tunnels to the DGX:
+On your **Windows machine**, open an SSH tunnel so your Windows browser can reach the DGX
+course pages and proxies. Keep this terminal open for the whole session.
 
+**Scenario A — DGX only (WSL2 deployment not running):**
+All standard ports are free on Windows:
 ```bash
 # In Git Bash on Windows:
-ssh -L 8081:localhost:8081 -L 18789:localhost:18789 <username>@<dgx-ip>
+ssh -L 8081:localhost:8081 \
+    -L 8010:localhost:8010 \
+    -L 8011:localhost:8011 \
+    jiyang_wang@<dgx-ip>
 ```
+Open `http://localhost:8081/web/nemoclaw/03a-kickstart.html` in Windows browser.
+Configure base URLs as `http://127.0.0.1:8010/v1` for both Chat and Embedder.
 
-Keep this terminal open for the whole session. Then open the course pages at
-`http://localhost:8081/...` in your Windows browser as normal.
+**Scenario B — DGX and WSL2 running simultaneously:**
+WSL2 holds ports 8081/8010/8011 on Windows. Use alternate local ports for DGX:
+```bash
+ssh -L 8082:localhost:8081 \
+    -L 8013:localhost:8010 \
+    -L 8014:localhost:8011 \
+    jiyang_wang@<dgx-ip>
+```
+Open `http://localhost:8082/web/nemoclaw/03a-kickstart.html` in Windows browser.
+Configure base URLs as `http://127.0.0.1:8013/v1` for both Chat and Embedder.
+
+> **Alternative — no tunnel needed**: If you have a monitor connected to the DGX, open a
+> browser directly on the DGX at `http://localhost:8081/...` and configure base URLs as
+> `http://127.0.0.1:8010/v1`. No port conflicts, no SSH tunnel required.
 
 ---
 

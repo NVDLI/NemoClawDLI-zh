@@ -304,9 +304,147 @@ The OpenClaw gateway listens on port **18789** inside WSL2 (Docker container).
 
 ---
 
-## 3. Key Concepts
+## 3. China Network Restrictions (DGX Spark behind China firewall)
 
-### 3.1 Base URL, Sub-path, Handler
+Several external services are blocked or severely throttled in China. This section documents
+each blocker encountered during DGX Spark deployment and the working workaround.
+
+### 3.1 Docker Hub blocked
+
+`registry-1.docker.io` is unreachable. Add Chinese mirror registries to Docker's config:
+
+```bash
+sudo tee /etc/docker/daemon.json > /dev/null <<'EOF'
+{
+  "registry-mirrors": [
+    "https://hub-mirror.c.163.com",
+    "https://mirror.baidubce.com",
+    "https://docker.m.daocloud.io",
+    "https://docker.mirrors.ustc.edu.cn"
+  ]
+}
+EOF
+sudo systemctl daemon-reload && sudo systemctl restart docker
+docker pull hello-world   # verify
+```
+
+### 3.2 GitHub CDN blocked — OpenShell binary download fails
+
+`github.com` port 443 times out (connection refused after 133 s). The nemoclaw installer
+downloads OpenShell release assets from GitHub, so `nemoclaw onboard` fails mid-step.
+
+**What is not blocked:** `api.github.com` (the API host) is accessible and responds normally.
+
+**Workaround — download via GitHub API asset endpoint:**
+
+```bash
+# 1. List v0.0.101 release assets (api.github.com works)
+curl -s "https://api.github.com/repos/NVIDIA/OpenShell/releases/tags/v0.0.101" \
+  | python3 -c "import json,sys; [print(a['name'], a['id']) for a in json.load(sys.stdin).get('assets',[])]"
+
+# 2. Download gateway and sandbox binaries via API (replace IDs from step 1)
+#    Connection is slow (~12 kB/s); use nohup + long timeout + -C - for resume
+GATEWAY_ID=505288846   # id for openshell-gateway-aarch64-unknown-linux-gnu.tar.gz
+SANDBOX_ID=<id from step 1>
+
+nohup curl -L --max-time 7200 -C - \
+  -H "Accept: application/octet-stream" \
+  "https://api.github.com/repos/NVIDIA/OpenShell/releases/assets/$GATEWAY_ID" \
+  -o /tmp/openshell-gateway.tar.gz > /tmp/gateway-dl.log 2>&1 &
+
+nohup curl -L --max-time 7200 -C - \
+  -H "Accept: application/octet-stream" \
+  "https://api.github.com/repos/NVIDIA/OpenShell/releases/assets/$SANDBOX_ID" \
+  -o /tmp/openshell-sandbox.tar.gz > /tmp/sandbox-dl.log 2>&1 &
+
+# Monitor progress
+watch -n 30 'ls -lh /tmp/openshell-*.tar.gz'
+
+# 3. Once complete, extract and install
+tar xzf /tmp/openshell-gateway.tar.gz -C /tmp/
+tar xzf /tmp/openshell-sandbox.tar.gz -C /tmp/
+sudo cp /tmp/openshell-gateway /usr/local/bin/openshell-gateway
+sudo cp /tmp/openshell-sandbox /usr/local/bin/openshell-sandbox
+sudo chmod +x /usr/local/bin/openshell-gateway /usr/local/bin/openshell-sandbox
+```
+
+The three binaries nemoclaw needs for Docker-driver mode on aarch64 are:
+
+| Binary | Source | Notes |
+|--------|--------|-------|
+| `/usr/local/bin/openshell` | Downloaded by nemoclaw installer (100% OK) | CLI |
+| `/usr/local/bin/openshell-gateway` | Manual download via API above | Docker-driver gateway |
+| `/usr/local/bin/openshell-sandbox` | Manual download via API above | Sandbox process |
+
+`openshell-driver-vm` is **not needed** on DGX (it is the VM-driver binary for WSL2).
+
+### 3.3 HuggingFace blocked — local vLLM unavailable
+
+`huggingface.co` is unreachable. The "Install vLLM (DGX Spark)" onboarding option fails with
+`[Errno 101] Network is unreachable`. Select **NVIDIA Endpoints** (option 1) instead —
+`integrate.api.nvidia.com` is accessible from China.
+
+### 3.4 ghcr.io (GitHub Container Registry) — accessible but slow
+
+`ghcr.io` returns HTTP 401 (auth required) and is reachable, but downloads are very slow
+(~12 kB/s). The 20 GB sandbox-base image can take 6–8 hours to pull.
+
+**If a previous pull was interrupted**, the image layers are cached locally as an untagged image.
+Re-tag it to avoid re-downloading:
+
+```bash
+# Find the untagged image ID
+docker images -a
+
+# Re-tag it (replace IMAGE_ID with the ~20 GB untagged entry)
+docker tag <IMAGE_ID> ghcr.io/nvidia/nemoclaw/sandbox-base:v0.0.109
+
+# Verify
+docker images
+```
+
+If `nemoclaw onboard` then runs a new `docker pull`, the pull will complete in seconds because
+all layers are already cached.
+
+### 3.5 SSH disconnects kill long-running onboarding
+
+`nemoclaw onboard` can run for 30–90 minutes (image pull + sandbox creation). An SSH Broken
+Pipe kills the process and leaves NeMoClaw in a stale transaction state, which subsequent
+resume attempts report as:
+
+```
+Sandbox 'my-assistant' has a different recreate transaction in progress
+```
+
+**Prevention:** Always run onboarding inside `tmux`:
+
+```bash
+tmux new-session -s nemoclaw
+# run nemoclaw onboard inside this window
+# reconnect after SSH drop: tmux attach -t nemoclaw
+```
+
+**Recovery if state is corrupted:** `nemoclaw onboard --fresh` clears the stale state.
+Because binaries and Docker images are already cached, `--fresh` completes in minutes.
+
+### 3.6 pip openshell venv conflicts with nemoclaw version check
+
+If openshell 0.0.109 is installed via pip into an active virtualenv, nemoclaw detects it in
+PATH and tries to downgrade to 0.0.101, which fails because GitHub CDN is blocked.
+
+**Fix:** Deactivate the venv before running nemoclaw onboard:
+
+```bash
+deactivate
+which openshell   # must show /usr/local/bin/openshell (not ~/openshell-env/bin/openshell)
+nemoclaw onboard --resume
+```
+
+---
+
+## 4. Key Concepts
+
+### 4.1 Base URL, Sub-path, Handler
 
 | Term | Meaning | Example |
 |------|---------|---------|
@@ -319,7 +457,7 @@ The course pages let you configure **Chat API Base URL** and **Embedding API Bas
 separately. Set them to the proxy addresses (`http://localhost:8010/v1`) so the browser
 can reach NVIDIA through the CORS proxy.
 
-### 3.2 CORS (Cross-Origin Resource Sharing)
+### 4.2 CORS (Cross-Origin Resource Sharing)
 
 The **same-origin policy** blocks a web page from making HTTP requests to a different
 origin (scheme + host + port combination).
@@ -347,7 +485,7 @@ to OPTIONS with 200/204 and the CORS headers above before the browser sends the 
 access to the control UI — it does **not** add CORS headers to HTTP REST endpoints.
 That's why a separate HTTP proxy is needed for REST calls to OpenClaw.
 
-### 3.3 SSE (Server-Sent Events) / Streaming
+### 4.3 SSE (Server-Sent Events) / Streaming
 
 NVIDIA's chat completions API returns responses in two modes:
 
@@ -360,7 +498,7 @@ The TTFT (Time To First Token) test requires `stream: true` to measure latency t
 the first token. A buffering proxy defeats this — the proxy must forward chunks
 to the browser as they arrive.
 
-### 3.4 Bearer Token / API Key
+### 4.4 Bearer Token / API Key
 
 NVIDIA's `integrate.api.nvidia.com` requires authentication via HTTP header:
 
@@ -378,7 +516,7 @@ HTTP 401: Header of type `authorization` was missing
 **Lesson**: The GET `/v1/models` endpoint appears to be public (returns 200 without auth
 in some configurations), while POST `/v1/chat/completions` always requires auth.
 
-### 3.5 OpenClaw Gateway
+### 4.5 OpenClaw Gateway
 
 OpenClaw is NeMoClaw's local agent gateway. It:
 - Runs inside a Docker container (NeMoClaw sandbox)
