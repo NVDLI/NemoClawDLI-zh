@@ -69,7 +69,9 @@ class CORSProxy(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", origin)
         self.send_header("Access-Control-Allow-Credentials", "true")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Billing-Invoke-Origin")
+        requested = self.headers.get("Access-Control-Request-Headers", "")
+        allowed = requested if requested else "Authorization, Content-Type, X-Billing-Invoke-Origin, User-Agent"
+        self.send_header("Access-Control-Allow-Headers", allowed)
 
     def log_message(self, fmt, *args):
         pass  # suppressed; debug prints below handle output
