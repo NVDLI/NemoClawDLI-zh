@@ -3,7 +3,7 @@
 This guide covers two deployment targets:
 
 - **Windows 11 + WSL2 + Docker** — run everything inside Ubuntu-24.04 on WSL2
-- **DGX Spark Station (native Ubuntu Linux)** — same steps, native Docker, access pages from a Windows browser via SSH tunnel
+- **DGX Spark Station (native Ubuntu Linux)** — same steps, native Docker; access pages either directly from the DGX's own browser (Firefox) at `http://localhost:8081`, or from a Windows browser via SSH tunnel (see § 0.5)
 
 Section 0 is **one-time setup** (skip if `nemoclaw --version` already works).
 Section 1 onward is the **every-session startup** after setup is complete.
