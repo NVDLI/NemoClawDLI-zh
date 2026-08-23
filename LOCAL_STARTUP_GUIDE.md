@@ -77,7 +77,7 @@ docker pull hello-world   # verify mirrors work
 **Generate an SSH key and register it with GitHub**:
 ```bash
 # 1. Generate key (press Enter for all prompts — default path, no passphrase)
-ssh-keygen -t ed25519 -C "jiyangw@nvidia.com"
+ssh-keygen -t ed25519 -C "your-email@example.com"
 
 # 2. Copy the public key
 cat ~/.ssh/id_ed25519.pub
@@ -87,12 +87,12 @@ Go to **github.com → Settings → SSH and GPG keys → New SSH key**, paste th
 Verify the key is accepted:
 ```bash
 ssh -T git@github.com
-# Expected: Hi jiyangw-at-nvidia! You've successfully authenticated...
+# Expected: Hi <your-github-username>! You've successfully authenticated...
 ```
 
 **Clone the course repo**:
 ```bash
-git clone git@github.com:jiyangw-at-nvidia/NemoClawDLI-zh.git ~/nemoclaw-zh
+git clone git@github.com:<your-github-username>/NemoClawDLI-zh.git ~/nemoclaw-zh
 ```
 
 ### 0.3 NeMoClaw Installation (both platforms)
@@ -196,7 +196,7 @@ export NVAPI_KEY="nvapi-..."   # paste your key here
 
 # ── 1b. Start all background services (web server + proxies) ─────────────
 # WSL2:
-bash "/mnt/c/Users/jiyangw/OneDrive - NVIDIA Corporation/NVIDIA/DLI/Courses/NeMoClaw/repo/start_proxies.sh"
+bash "/mnt/c/Users/<your-username>/OneDrive - NVIDIA Corporation/NVIDIA/DLI/Courses/NeMoClaw/repo/start_proxies.sh"
 # DGX:
 # bash ~/nemoclaw-zh/start_proxies.sh
 # Starts: http.server :8081, cors_proxy :8010, openclaw_proxy :8011, policy_proxy :8012
