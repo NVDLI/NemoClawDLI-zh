@@ -2,7 +2,7 @@
 
 > **This is the Chinese (zh) localization fork** of the NeMoClaw DLI course, maintained at
 > [`DLI / expand-the-funnel / NeMoClawDLI-zh`](https://gitlab-master.nvidia.com/dli/expand-the-funnel/nemoclawdli-zh).
-> It is adapted for **non-Brev local deployment (WSL2 + Docker)** and will carry Simplified Chinese
+> It is adapted for **non-Brev local deployment (WSL2 + Docker and DGX Spark Station)** and will carry Simplified Chinese
 > content once the full course is verified to run end-to-end without Brev. Until then, course
 > content remains in English. For the upstream English source see
 > [`NVDLI/NemoClawDLI`](https://github.com/NVDLI/NemoClawDLI).
@@ -24,10 +24,11 @@ Start at [`web/index.html`](web/index.html), then open the
 [`NemoClaw course`](web/nemoclaw/index.html). Interactive model exercises require a user-supplied
 NVIDIA API key.
 
-**In this fork (local WSL2 + Docker deployment):** Modules 3 and 4 connect to the local
-openshell-sandbox Docker container instead of a Brev launchable. Start all services with
-`bash start_proxies.sh` before opening the course pages — see
-[`LOCAL_STARTUP_GUIDE.md`](LOCAL_STARTUP_GUIDE.md) for full instructions. No GPU required.
+**In this fork (local non-Brev deployment):** Modules 3 and 4 connect to the local
+openshell-sandbox Docker container instead of a Brev launchable. Supported on Windows 11 +
+WSL2 + Docker (no GPU required) and DGX Spark Station (native Ubuntu Linux, GPU optional).
+Start all services with `bash start_proxies.sh` before opening the course pages — see
+[`LOCAL_STARTUP_GUIDE.md`](LOCAL_STARTUP_GUIDE.md) for full instructions.
 
 The learner release is a static browser site. It does not vendor learner credentials. The
 NemoClaw product and runtime are external dependencies, not releases of this course repository.
@@ -37,7 +38,7 @@ NemoClaw product and runtime are external dependencies, not releases of this cou
 This fork is designed to run without a Brev launchable on two supported platforms:
 
 - **Windows 11 + WSL2 + Docker** — all services run inside Ubuntu-24.04 on WSL2
-- **DGX Spark Station (native Ubuntu Linux)** — same services, native Docker; access course pages from a Windows browser via SSH port forwarding
+- **DGX Spark Station (native Ubuntu Linux)** — same services, native Docker; access course pages directly from the DGX browser or from a Windows browser via SSH port forwarding
 
 The full step-by-step procedure — including one-time NeMoClaw installation and onboarding — is in
 [`LOCAL_STARTUP_GUIDE.md`](LOCAL_STARTUP_GUIDE.md). Architecture notes and troubleshooting are in
