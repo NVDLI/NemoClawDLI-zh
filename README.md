@@ -59,8 +59,10 @@ export NVAPI_KEY="nvapi-..."
 # 3. Recover the container, set up the forward service, fix iptables rules
 #    (see LOCAL_STARTUP_GUIDE.md steps 1c–1f for the full commands)
 
-# DGX only — SSH tunnel from Windows so your browser reaches the DGX:
-#    ssh -L 8081:localhost:8081 -L 18789:localhost:18789 <user>@<dgx-ip>
+# DGX only — two options to access course pages:
+#   Option A: open Firefox directly on the DGX at http://localhost:8081/...
+#   Option B: SSH tunnel from Windows (see LOCAL_STARTUP_GUIDE.md § 0.5 for port details)
+#    ssh -L 8081:localhost:8081 -L 8010:localhost:8010 -L 8011:localhost:8011 <user>@<dgx-ip>
 ```
 
 First open `http://localhost:8081/web/nemoclaw/03a-kickstart.html` to enter your API key and
