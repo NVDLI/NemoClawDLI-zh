@@ -1,5 +1,16 @@
 # Securing Agents with OpenShell and NemoClaw
 
+> Go from one model call to coordinated agents, grounded retrieval, deep planning, and safer execution. NemoClaw provides the reference stack; OpenShell provides the sandbox.
+
+| Start learning | Prepare the lab | Access models |
+| --- | --- | --- |
+| **[Open the course](web/nemoclaw/index.html)** | **[Local setup guide](LOCAL_STARTUP_GUIDE.md)** | **[Open NVIDIA Build](https://build.nvidia.com/?ncid=ref-dli-146986)** |
+| Work through the four modules. | Install NeMoClaw locally (WSL2 or DGX Spark). | Create an API key when prompted. |
+
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-76B900)](LICENSE)
+
+---
+
 > **This is the Chinese (zh) localization fork** of the NeMoClaw DLI course, maintained at
 > [`DLI / expand-the-funnel / NeMoClawDLI-zh`](https://gitlab-master.nvidia.com/dli/expand-the-funnel/nemoclawdli-zh).
 > It is adapted for **non-Brev local deployment (WSL2 + Docker and DGX Spark Station)** and will carry Simplified Chinese
