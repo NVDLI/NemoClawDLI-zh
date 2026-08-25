@@ -206,3 +206,5 @@ and [`docs/security-design.md`](docs/security-design.md) defines its trust bound
 
 The proposed public release uses the [Apache License 2.0](LICENSE). Contributions use the same
 inbound license with DCO signoff; this project does not require a separate CLA.
+
+NVIDIA 的名称、徽标和商标不授权一般性重复使用。
