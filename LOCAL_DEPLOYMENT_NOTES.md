@@ -270,29 +270,44 @@ command = service docker start
 
 ### 2.3 NeMoClaw Installation
 
-Install script (run in WSL2):
+Install script (run in WSL2 terminal or DGX terminal):
 
 ```bash
-curl -fsSL https://www.nvidia.com/nemoclaw.sh | bash
+# Two-step form avoids pipe-to-bash stdin freeze on slow connections:
+curl -fsSL https://www.nvidia.com/nemoclaw.sh -o /tmp/nemoclaw-install.sh
+bash /tmp/nemoclaw-install.sh
+source ~/.bashrc
 ```
 
 > ⚠️ The URL `https://install.nemoclaw.nvidia.com` does NOT exist — use the one above.
+> `curl ... | bash` can freeze on slow connections (pipe consumes stdin); use the two-step form.
 
 Verify: `nemoclaw --version` → `nemoclaw v0.0.55` (or newer).
 
 ### 2.4 Onboarding
 
 ```bash
+# WSL2:
 NEMOCLAW_SANDBOX_GPU=0 nemoclaw onboard
+
+# DGX (native Linux):
+nemoclaw onboard
 ```
 
 > ⚠️ **WSL2 GPU bug**: `nemoclaw onboard` without the env var forces `--gpu` and produces
 > a dead sandbox on WSL2. Always set `NEMOCLAW_SANDBOX_GPU=0` on WSL2.
 
-During onboarding you select:
-- Provider: **NVIDIA Endpoints** (uses `integrate.api.nvidia.com`)
-- Chat model: e.g. `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning`
-- Messaging channel: **Slack** (requires a Slack Bot Token, optional for course exercises)
+> ⚠️ **DGX + SSH**: Onboarding can take 30–90 minutes. Run inside `tmux` so SSH disconnects
+> don't kill the process: `tmux new-session -s nemoclaw`. Reconnect with `tmux attach -t nemoclaw`.
+
+> ⚠️ **DGX + pip venv**: Deactivate any active openshell venv before onboarding:
+> `deactivate && which openshell  # must show /usr/local/bin/openshell`
+
+During onboarding select:
+- Provider: **NVIDIA Endpoints** (uses `integrate.api.nvidia.com`) — works on all platforms.
+  Local vLLM requires HuggingFace download (blocked in China).
+- Chat model: e.g. `nvidia/nemotron-3-super-120b-a12b`
+- Messaging channel: skip (not needed for course exercises)
 
 After onboarding, check status:
 
@@ -300,7 +315,7 @@ After onboarding, check status:
 nemoclaw my-assistant status
 ```
 
-The OpenClaw gateway listens on port **18789** inside WSL2 (Docker container).
+The OpenClaw gateway listens on port **18789** inside the Docker sandbox container (both WSL2 and DGX).
 
 ---
 
