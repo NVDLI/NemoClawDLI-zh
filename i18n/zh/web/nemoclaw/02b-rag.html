@@ -1,0 +1,947 @@
+
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>索引智能体 · 安全智能体</title>
+<link rel="stylesheet" href="styles/_style.css"/>
+<script src="vendor/highlight-11.10.0.min.js"></script>
+<link rel="stylesheet" href="vendor/codemirror-5.65.21.css"/>
+<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.css"/>
+<script src="vendor/codemirror-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-xml-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-javascript-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-css-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-htmlmixed-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-python-5.65.21.js"></script>
+<style>
+  figure.lp-video { margin: 1.4em 0; }
+  figure.lp-video .video-wrap { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;
+     border-radius: 8px; border: 1px solid var(--bd); background: var(--e1); }
+  figure.lp-video .video-wrap iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
+  figure.lp-video figcaption { font-size: .88rem; color: var(--td,#b0b0b0); line-height: 1.6; margin-top: .55em; }
+  figure.lp-video figcaption b { color: var(--gs,#aee23a); }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="logo" href="index.html">NVIDIA · 安全智能体</a>
+  <nav id="nav"></nav>
+  <div class="spacer"></div>
+  <span class="key-pill" id="key-status" onclick="location.href=&#x27;01a-loop.html?openKeyPanel=1&#x27;">…</span>
+</div>
+
+<main>
+  <div id="journey-map"></div>
+
+  <div class="hero">
+    <div class="eyebrow">模块 2 · 第 2/3 部分</div>
+    <h1><span>索引</span>智能体</h1>
+    <p class="lead">
+      数据有多种形态，每种形态都需要不同的检索策略；为数据匹配了错误的策略，是索引智能体在生产环境中悄然失效的最常见原因。
+    </p>
+    <p class="lead">
+      索引智能体通过开发者定义的工作流，将这一工作流理念应用于外部知识。它会预先对语料库进行嵌入和索引，然后检索匹配的段落，并依据范围受限的上下文包生成答案。接下来的构建先沿这一路径处理非结构化文本，再将检索封装为工具，供外层 ReAct 循环调用。对于其它数据形态，课程将提供深入学习的相关指引。
+    </p>
+  </div>
+
+  <!-- video removed: short teaser, more distraction than signal. Re-enable by uncommenting.
+  <figure class="lp-video">
+    <div class="video-wrap">
+      <iframe src="https://www.youtube-nocookie.com/embed/e7Io9dr_WhI?autoplay=0&rel=0"
+        title="Introduction: Agentic RAG" loading="lazy"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    </div>
+    <figcaption><b>Watch:</b> A walkthrough of agentic RAG, where the model reasons over a query and decides when to retrieve rather than running a fixed lookup on every turn. The narrated version fills in the moving parts that a static page leaves implicit. Part of NVIDIA's <a href="https://developer.nvidia.com/topics/ai/agentic-ai-learning-path/how-to-build-agentic-ai-rag" target="_blank" rel="noopener">Agentic AI Learning Path</a>.</figcaption>
+  </figure>
+  -->
+
+  <!-- ── Foundations: RAG began as one jointly-trained system ── -->
+
+
+
+  <h2>RAG 的起源：一个经过端到端训练的系统</h2>
+  <p>
+    如今普遍使用的 RAG 已舍弃原始设计中的大部分机制。了解这一点，会改变您对即将接入的检索器的认识。
+  </p>
+  <p>
+    2020 年，
+    <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis 及其同事</a>提出检索增强生成 (RAG) 时，它并不是一个外接搜索框的模型。<strong>检索器和生成器会针对需要执行的任务共同训练</strong>。请先从左向右阅读图示，再查看顶部横贯全图的箭头。
+  </p>
+  <div style="display:flex;justify-content:center;margin:1.4em 0">
+    <figure style="margin:0;max-width:940px;width:100%">
+      <div class="fig-embed" data-figure-mode="fixed-white" data-svg-src="assets/figures/rag_arch_2021.svg" style="margin:0;background:var(--gfx-paper-surface,#fff);border:1px solid var(--gfx-line,#2a2a2a);border-radius:8px;padding:16px"></div>
+      <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.5em">
+        原始架构出自 <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis et al. 2020</a>，其中包含如今构建的大多数系统都会省略的顶行反向传播标签。
+      </figcaption>
+    </figure>
+  </div>
+  <p>
+    该设计的关键在标有 "End-to-End Backprop through q and p<sub>&theta;</sub>" 的箭头中。一个损失函数会同时更新两部分。查询编码器学习生成器可以利用哪些段落，生成器则学习更多依赖检索到的证据，而非自身记忆。
+  </p>
+  <p>
+    检索器最初就是模型的一部分，并由需要执行的任务塑造。直到很久以后，人们才将其描述为置于模型之前的搜索工具。
+  </p>
+
+  <!-- ── Why production simplified it ── -->
+  <h2>为什么如今的 RAG 不再采用联合训练</h2>
+  <p>
+    如今几乎没有人再以这种方式训练 RAG，主要有两个实际原因。您无法对通过 API 访问的前沿模型执行反向传播；即使自行托管，端到端检索训练也成本高昂且很容易变得不稳定。
+  </p>
+  <p>
+    实践最终采用了一种更简单的组合方式：取一个已有模型，将其冻结，再在前面接入检索器，让提示词在送达时已经载入证据，完全不进行训练。各个组件分别构建后再拼接起来。久而久之，"RAG" 开始指代这种外接式方案，而不再是论文所述的联合优化系统。
+  </p>
+  <div class="callout">
+    <strong>外接式方案的代价。</strong>如果检索器从未接触生成器的损失函数，就只能猜测生成器需要什么，因此检索质量的上限取决于嵌入模型与数据的匹配程度。重排序、查询改写和经过微调的嵌入模型，都只能补回端到端训练原本自然获得的一小部分能力。完善的检索栈需要不断增加处理阶段，才能找回其余能力。将外接式方案理解为对曾经统一系统的一种务实替代，您就能看清它的能力上限，以及哪些调节手段可以提高这一上限。
+  </div>
+
+
+
+  <!-- ── The practical pipeline you build ── -->
+  <h2>您将构建的“先检索、后生成”工作流</h2>
+  <p>
+    了解这一上限后，下面来看完整的组合架构。检索器位于冻结模型之前，系统沿两条独立的时间线运行：一条时间线提前构建索引，另一条则利用该索引处理实时请求。下图展示了这两条时间线。
+  </p>
+  <figure style="margin:1.4em 0 1.8em">
+    <div class="fig-embed" data-svg-src="assets/figures/02b-rag-1.svg" style="aspect-ratio:1220 / 480"></div>
+    <figcaption>
+      本课程复现的两阶段工作流参考了 <a href="https://developer.nvidia.com/blog/rag-101-demystifying-retrieval-augmented-generation-pipelines/" target="_blank" rel="noopener">Hayden Wolff, <em>RAG 101</em></a>（NVIDIA，2023 年）和 <a href="https://developer.nvidia.com/blog/tips-for-building-a-rag-pipeline-with-nvidia-ai-langchain-ai-endpoints/" target="_blank" rel="noopener">Amit Bleiweiss, <em>tips for building a RAG pipeline</em></a>（NVIDIA，2024 年）。
+    </figcaption>
+  </figure>
+  <div class="callout">
+    <p class="pipeline-stage"><strong>离线：</strong>对每个段落生成嵌入并存储，以便快速查询，一次性构建索引。</p>
+    <p class="pipeline-stage"><strong>实时：</strong>对问题生成嵌入，检索 top-K 个段落，再将这些段落与问题一同传给模型。</p>
+  </div>
+  <p>
+    本页接下来的内容将逐阶段构建实时路径。
+  </p>
+
+  <!-- ── Part 1: The bundle principle ──────────────────────────────────────── -->
+
+
+
+  <h2>选择存储方案前，先定义上下文包</h2>
+  <p>
+    选择检索原语之前，您应先定义一个<strong>上下文包</strong>。上下文包是您打算在工作流中传递的一组完整且边界明确的上下文。
+  </p>
+  <ul>
+    <li><strong>对于简单的单轮问答系统</strong>，上下文包可以很小：用户问题、为回答该问题而检索到的少量文本块，以及答案本身。</li>
+    <li><strong>对于自主智能体</strong>，上下文包是它在多个轮次间携带的工作记忆。其中存储智能体的约束、先前决策、阶段性结果、可用工具接口和运行规则。</li>
+    <li><strong>对于任意 Index 智能体</strong>，智能体返回的上下文包可能只包含检索到的上下文块，以及相应的文本块来源、相关性分数和可能生成的摘要。另一个独立的内部上下文包可以采用上文扁平的实时请求处理工作流，也可以采用 ReAct 风格的循环：反复检索、判断检索结果的相关性并重试，直到积累足够的上下文。</li>
+  </ul>
+  <p>
+    上下文包原则是一种规划方法：<em>先定义上下文包，再选择数据库</em>。先选择向量存储，再期望它能涵盖一切需求，是大多数“演示中有效、生产中失效”案例的根源。下面的四类形态体系可用于检查候选原语能否为任务提供所需的上下文包。
+  </p>
+
+  <h2>MCP 在检索系统中的定位</h2>
+  <p>
+    MCP 为检索系统提供了发现和调用外部上下文来源的一种边界。智能体仍需要运行时来决定何时检索、验证结果，并将结果与当前任务状态的其余部分组合起来。同一系统的其它部分可以通过其它边界传递：
+    skills 封装可复用的能力说明，A2A 可以将工作路由给远程专家，而 UI 协议可以将生成的状态流式传回应用。
+  </p>
+  <p>
+    下图区分了这些边界。从左向右阅读，可了解
+    MCP 上下文输入和 A2A 任务交付；再从下向上阅读，可了解
+    skill 代理、运行时执行和生成的 UX。请选择与上下文包及其必须承载的系统状态相匹配的边界。
+  </p>
+  <figure style="margin:1.4em 0 1.8em">
+    <div class="fig-embed" data-svg-src="assets/figures/02b-retrieval-boundaries.svg" style="aspect-ratio:1100 / 460"></div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.5em">
+      检索运行时周围的四种系统边界：MCP 用于上下文输入，A2A 用于任务交付，skills/runtime/UX 用于能力流转。
+    </figcaption>
+  </figure>
+
+  <!-- ── Part 2: Four data shapes ──────────────────────────────────────────── -->
+  <h2>根据数据形态选择合适的检索原语</h2>
+  <p>
+    每种数据形态都需要相应的检索原语。如果选错路径，检索会不断返回看似合理的结果，却悄无声息地遗漏查询真正需要的信息，而且不会出现任何错误提醒您。下表列出了每种形态应使用的原语。
+  </p>
+
+  <table style="width:100%;border-collapse:collapse;font-size:.9rem;margin:.8em 0">
+    <thead><tr style="border-bottom:2px solid var(--bd)">
+      <th style="text-align:left;padding:8px 12px;color:var(--td);font-size:.78rem;text-transform:uppercase">形态</th>
+      <th style="text-align:left;padding:8px 12px;color:var(--td);font-size:.78rem;text-transform:uppercase">示例</th>
+      <th style="text-align:left;padding:8px 12px;color:var(--td);font-size:.78rem;text-transform:uppercase">合适的原语</th>
+    </tr></thead>
+    <tbody>
+      <tr><td style="padding:8px 12px"><strong>非结构化文本</strong></td><td style="padding:8px 12px">文档、文章、代码注释、文字记录</td><td style="padding:8px 12px">稠密向量 + 交叉编码器重排序</td></tr>
+      <tr><td style="padding:8px 12px"><strong>层次化文档</strong></td><td style="padding:8px 12px">法律合同、技术手册、嵌套规范</td><td style="padding:8px 12px">带父节点指针的树索引</td></tr>
+      <tr><td style="padding:8px 12px"><strong>结构化表格／受治理表格</strong></td><td style="padding:8px 12px">客户记录、财务账簿、HR 表</td><td style="padding:8px 12px">构建在事实来源之上的语义层</td></tr>
+      <tr><td style="padding:8px 12px"><strong>关系／图</strong></td><td style="padding:8px 12px">组织结构图、代码依赖关系、知识图谱</td><td style="padding:8px 12px">图遍历（<a href="https://opencypher.org/" target="_blank" rel="noopener">Cypher</a>、GraphQL、自定义方案）</td></tr>
+    </tbody>
+  </table>
+
+  <p>
+    <strong>非结构化文本</strong>示例让语料库依次经过检索和生成，最终得到有依据的答案。
+  </p>
+  <figure style="margin:1.4em 0">
+    <div class="fig-embed" data-svg-src="assets/figures/02b-rag-2.svg" style="aspect-ratio:900 / 420"></div>
+  </figure>
+  <p>每个请求都会经过相同的四个步骤：</p>
+  <ul>
+    <li>将查询<strong>嵌入</strong>为向量。</li>
+    <li>在段落索引中<strong>搜索</strong> top-K 个最近邻段落。</li>
+    <li>将这些段落<strong>拼接</strong>到提示词中。</li>
+    <li>根据这些段落<strong>生成</strong>有依据的答案。</li>
+  </ul>
+  <p>
+    管理其它原语的 Index 智能体大体采用相同的结构，只是搜索、嵌入和验证逻辑有所不同。因此，请大胆尝试更适合您数据的形态。
+  </p>
+
+
+
+  <!-- ── Part 3: Embeddings ────────────────────────────────────────────────── -->
+  <h2>嵌入：构建其它一切的基础原语</h2>
+  <p>
+    每个面向非结构化文本的 Index 智能体都从同一种原语开始。嵌入是通过学习得到的一段文本的数值地址，即一个固定长度的向量；它在向量空间中的位置使语义相近的文本彼此接近。由此产生两个实际结果：
+  </p>
+  <div class="callout">
+    <p class="embedding-consequence"><strong>比较：</strong>对两个向量计算<a href="https://en.wikipedia.org/wiki/Cosine_similarity" target="_blank" rel="noopener">余弦相似度</a>，只需一次点积和两个向量的模。</p>
+    <p class="embedding-consequence"><strong>存储：</strong>向量索引按照文本在该空间中的位置进行组织，以便高效执行最近邻搜索。</p>
+  </div>
+  <p>
+    两者都依赖同一种原语：嵌入模型。本课程通过 <code>helpers.embed</code> 路由嵌入调用，由它代理访问托管的 NVIDIA 嵌入 API 入口，因而所有内容都能在浏览器中运行，无需实验路径或本地服务器。
+  </p>
+
+  <div id="cell-m3b-p1"></div>
+
+
+
+
+  <div class="callout">
+    <strong>嵌入 API 契约。</strong>
+    <p>嵌入 API 入口接收包含三个字段的 JSON 请求，并返回一个向量数组：</p>
+    <ul>
+      <li><code>input</code> 是待嵌入的文本批次，类型为 <code>string[]</code>。</li>
+      <li><code>model</code> 指定嵌入模型，类型为 <code>string</code>。</li>
+      <li><code>input_type</code> 的值为 <code>"query"</code> 或 <code>"passage"</code>。</li>
+      <li>响应包含一个 <code>data</code> 数组，其中每个条目都包含类型为 <code>embedding</code> 的 <code>number[]</code>。</li>
+    </ul>
+    <p>NVIDIA 嵌入模型会根据您传入的
+    <code>input_type</code>，为同一文本生成不同的向量。训练目标会让问题更接近能够回答它的段落，而不是仅仅重复其用词的文本，因此，对两个类型正确的输入计算余弦分数可以很好地反映相关性。如果使用
+    <code>"passage"</code> 类型嵌入查询，或反过来使用错误类型，评分函数会悄无声息地失效，召回率随之降低，但不会显示错误消息。</p>
+  </div>
+
+
+
+  <!-- ── Part 4: Vector index ──────────────────────────────────────────────── -->
+  <h2>用三十行 top-K 余弦代码实现完整检索器</h2>
+  <p>
+    “向量数据库”只是为 Index 智能体已经完成的简单任务加了一层包装。它将每个段落与其嵌入一同存储，并根据余弦相似度，为任意查询嵌入返回最接近的 top-K 个段落。在浏览器中，只需三十行 JavaScript 即可实现。
+  </p>
+  <p>
+    下面的单元将基于少量文档构建一个 Index 智能体，并对其执行查询。请编辑语料库和查询，然后观察哪些段落排到了最前面，并思考其中的原因。
+  </p>
+
+  <div id="cell-m3b-p2"></div>
+
+  <div class="callout warn">
+    <strong>故障模式：陈旧的嵌入。</strong>
+    <p>向量索引是嵌入模型输出的缓存。生产系统必须防范以下几种特定故障：</p>
+    <ul style="margin:8px 0 0 22px">
+      <li>一旦更换嵌入模型，所有缓存向量都会失去意义，直到您重新嵌入每个段落。</li>
+      <li>提供商悄悄升级模型，分数随之漂移，却不会触发任何错误。</li>
+      <li>两个服务共享同一索引，却固定使用不同的模型 ID；该索引会向其中一个服务返回毫无意义的结果。</li>
+    </ul>
+    <p>可靠的索引会为每个缓存向量同时固定嵌入模型 ID，并拒绝混用不同版本。本课程的规范固定值是
+    <code>nvidia/llama-nemotron-embed-1b-v2</code>，通过课程托管在
+    build.nvidia.com 的代理提供服务。</p>
+  </div>
+
+  <!-- ── Part 5: Hierarchies ──────────────────────────────────────────────── -->
+
+
+
+  <h2>搜索小文本块，返回其父文档</h2>
+  <p>
+    基础的 top-K Index 智能体需要权衡召回率与精确率，这不是任何嵌入模型能够解决的问题。您必须在短文本块和长文档之间做出选择：
+  </p>
+  <ul>
+    <li>短文本块的嵌入更精准（向量表示的是一个聚焦的概念），但缺少上下文（仅凭一句话通常不足以作答）。</li>
+    <li>长文档具有完整的上下文（每项事实都有其所属语境），但嵌入结果较为模糊（向量是许多观点的平均表示）。</li>
+  </ul>
+  <p>
+    生产环境通常采用两级索引。对小文本块进行嵌入，以保持检索精度；某个文本块匹配后，则返回其父文档，使模型仍能看到该文本块周围的完整上下文。
+  </p>
+  <p>
+    下面的练习使用三个父文档构建这种模式。每个文档都拆分为简短的句子块，查询则返回匹配的<em>父文档</em>。
+  </p>
+
+  <figure style="margin:1.4em 0">
+    <div id="cell-m3b-p3"></div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">对小型子文本块进行嵌入和搜索，每个匹配项都会将其完整父文档交给 LLM。</figcaption>
+  </figure>
+
+
+
+  <!-- ── Part 6: Retrieval as a tool ──────────────────────────────────────── -->
+
+
+
+  <h2>将索引封装为由模型决定是否调用的工具</h2>
+  <p>
+    检索索引本身只会在收到查询时给出答案。将其封装为模型可选择调用的工具后，它便成为一个<strong>索引智能体</strong>，由模型判断是否值得执行检索。下面的单元格分五步实现这一过程：
+  </p>
+  <ol>
+    <li>语料库只需嵌入一次，并保存在内存索引中。</li>
+    <li>使用 JSON 模式声明一个 <code>retrieve(question, k)</code> 工具。</li>
+    <li>智能体接收用户的问题，并决定是否调用该工具。</li>
+    <li>如果调用，系统会在索引上执行余弦检索，并将 Top-K 段落作为工具消息追加到上下文中。</li>
+    <li>第二次调用 LLM，依据检索到的段落撰写最终答案。</li>
+  </ol>
+  <p>
+    您刚刚搭建的“将检索器用作工具”模式可直接扩展到生产环境。将内存中的余弦函数替换为服务器端的 FAISS+<a href="https://en.wikipedia.org/wiki/Okapi_BM25" target="_blank" rel="noopener">BM25</a>+重排序工作流，只会改变执行器；工具模式、智能体循环和最终答案步骤均保持不变。
+  </p>
+
+  <div id="cell-m3b-p4"></div>
+
+
+
+
+
+
+  <h2>其它三种模式如何构建</h2>
+  <p>
+    您刚刚构建了从语料库到答案的非结构化文本路径。这里列出其它三种模式，帮助您在实际场景中识别它们并选用正确的基础技术。每种模式都有成熟的生产实现方式，概要如下。
+  </p>
+  <ul>
+    <li><strong>层次化文档。</strong>使用保留标题层级的文本分块器，并结合原子化表格提取、父级指针以及用于结构搜索和语义搜索的双索引。为提高召回率，对小型子文本块建立索引；命中后获取其所属父级内容，使模型能够同时阅读匹配的条款及其所在章节。</li>
+    <li><strong>面向图形和图表的页面图像检索。</strong>采用双向量配置，同时嵌入渲染后的页面图像及其文本，使查询在答案位于图形或幻灯片中时也能将其检索出来。</li>
+    <li><strong>结构化表格与受治理表格。</strong>本课程不构建此模式。标准的生产模式是在智能体和行级数据之间设置语义层，仅公开该数据包所需的精选指标。</li>
+    <li><strong>关系数据与图数据。</strong>智能体调用图遍历工具（Cypher、GraphQL 或自定义工具），而不是向量存储。返回的数据包是一个子图，其中的显式边会随数据一起进入提示词，从而将实体间的关系完整传递给模型。</li>
+  </ul>
+
+
+
+  <!-- ── Frontier: GraphRAG for global questions ───────────────────────────── -->
+
+
+
+  <h2>当 Top-K 并不适用时：GraphRAG 与全局问题</h2>
+  <p>
+    本页介绍的每种检索器都用于回答<em>局部</em>问题。这类问题的答案存在于少量段落中，Top-K 相似度检索可以找到这些段落供模型阅读，例如询问合同对终止事项有何规定，或哪篇论文提出了 <a href="https://arxiv.org/abs/2212.10496" target="_blank" rel="noopener">HyDE</a>。另一类问题的答案根本不存在于任何单独段落中。例如，询问一千份文档的主要主题时，答案过于分散，不会存在于某个段落里，只有从整个语料库中才能归纳出来。
+  </p>
+  <p>
+    Top-K 只返回三个最佳匹配项，因此模型只会总结这三个文本块，完全看不到语料库中的其它九百九十七个段落。GraphRAG（<a href="https://arxiv.org/abs/2404.16130" target="_blank" rel="noopener">Edge et al. 2024</a>）并不提高 K，而是改变问题的处理方式。它会在建立索引时预先投入一次 LLM，以便：
+  </p>
+  <ul>
+    <li>读取语料库，将实体及其相互关系提取到知识图谱中；</li>
+    <li>检测图中的<a href="https://en.wikipedia.org/wiki/Community_structure" target="_blank" rel="noopener">社区</a>，即由紧密连接的实体组成的集群；</li>
+    <li>分别总结每个社区。</li>
+  </ul>
+  <p>
+    随后，在查询时通过汇总相关社区的摘要来回答全局问题，再将这些局部答案归并为一个答案。这个过程是在结构上执行 MapReduce，而不是按相似度进行查找。
+  </p>
+
+  <div style="display:flex;justify-content:center;margin:1.4em 0">
+    <figure style="margin:0;max-width:1200px;width:100%">
+      <div class="fig-embed" data-svg-src="assets/figures/02b-rag-3.svg" style="aspect-ratio:1160 / 660"></div>
+
+      <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.5em">
+        GraphRAG 工作流，根据 <a href="https://arxiv.org/abs/2404.16130" target="_blank" rel="noopener">Edge et al. 2024</a> 的图重新绘制。蓝色阶段离线构建一次，绿色阶段则针对每个问题运行。
+      </figcaption>
+    </figure>
+  </div>
+
+  <p>
+    下面的单元格通过一个小型语料库具体展示两者的差异，并运行真实工作流，而不是回放预设脚本。它以两种方式提出同一个全局问题：普通 Top-K 检索，以及 GraphRAG 针对命名社区执行的 MapReduce。请观察 Top-K 如何依据偶然匹配问题用词的文本块作答，而社区处理方式如何还原整个语料库的共同主题。修改语料库、社区或问题，然后再次运行。
+  </p>
+  <div id="cell-graphrag"></div>
+  <script type="module">
+    import { mountRunCell } from "./scripts/_shared.js";
+    mountRunCell("#cell-graphrag", {
+      label: "代码中的 Top-K 与 GraphRAG 对比",
+      autorun: true,
+      code: `// Two retrieval strategies, same corpus, same global question.
+// BASIC top-K embeds and cosine-ranks, then answers from the K best chunks.
+// GRAPHRAG summarizes each community (map), then answers from those
+// summaries (reduce). Edit anything below and Run to re-render.
+
+// Six algorithm docs in three "community" families.
+// Top-K never sees the labels; GraphRAG retrieves by them.
+// TOP_K below is 2, so top-K reaches two families at most, never all three.
+const CORPUS = [
+  { text: "Dijkstra 从一个源点出发，每次贪心选择距离最近且尚未访问的顶点，逐步求出最短路径。", community: "贪心算法" },
+  { text: "Kruskal 在避免形成环的同时，不断加入代价最低且安全的边，从而构建最小生成树。", community: "贪心算法" },
+  { text: "Bellman-Ford 通过对每条边执行 V-1 轮松弛来求最短路径，同时还能检测负权环。", community: "动态规划" },
+  { text: "Floyd-Warshall 依次将每个顶点视为中间节点，从而计算所有顶点对之间的最短路径。", community: "动态规划" },
+  { text: "归并排序将数组一分为二，分别对两半排序，再在线性时间内合并两个已排序的部分。", community: "分治算法" },
+  { text: "快速排序以一个基准值进行分区，然后递归地对小于和大于该基准值的元素排序。", community: "分治算法" },
+];
+
+// A GLOBAL question: no single chunk states the answer, so top-K is at a
+// disadvantage and the community pass should win.
+const QUESTION = "这个语料库中主要有哪些算法类别，它们有何区别？";
+
+const TOP_K = 2;
+
+
+// Basic top-K: embed, rank by cosine similarity, answer from the top chunks.
+const chunkVecs = await helpers.embed(CORPUS.map(d => d.text), { model: "nvidia/llama-nemotron-embed-1b-v2", inputType: "passage" });
+const [qVec]    = await helpers.embed(QUESTION, { model: "nvidia/llama-nemotron-embed-1b-v2", inputType: "query" });
+
+const ranked = CORPUS
+  .map((d, i) => ({ ...d, score: helpers.cosineSim(qVec, chunkVecs[i]) }))
+  .sort((a, b) => b.score - a.score);
+
+const topK = ranked.slice(0, TOP_K);
+helpers.log("top-K 检索结果：", topK.map(d => d.text.slice(0, 40) + "…"));
+
+const basicResp = await helpers.chat({
+  messages: [
+    { role: "system", content: "仅使用下方段落回答问题 ONLY。答案要简洁。\\n\\n" + topK.map((d, i) => "[" + (i + 1) + "] " + d.text).join("\\n") },
+    { role: "user", content: QUESTION },
+  ],
+  max_tokens: 8196,
+});
+const basicAnswer = basicResp.choices[0].message.content;
+
+
+// ── 2 · GRAPHRAG map-reduce ────────────────────────────────────────────────────
+// MAP: summarize each community's chunks into one community summary.
+const communities = [...new Set(CORPUS.map(d => d.community))];
+
+const summaries = [];
+for (const name of communities) {
+  const members = CORPUS.filter(d => d.community === name);
+  const resp = await helpers.chat({
+    messages: [
+      { role: "system", content: "用一句话概括这组相关文档，并说明它们的共同点。" },
+      { role: "user", content: "社区 \\"" + name + "\\":\\n" + members.map(d => "- " + d.text).join("\\n") },
+    ],
+    max_tokens: 8196,
+  });
+  summaries.push({ name, summary: resp.choices[0].message.content });
+}
+helpers.log("社区摘要：", summaries.map(s => s.name));
+
+// REDUCE: answer from the community summaries only, never the raw chunks.
+// Every family rides in through its summary, so the answer covers all of them.
+const graphResp = await helpers.chat({
+  messages: [
+    { role: "system", content: "仅使用这些社区摘要回答问题 ONLY。答案要简洁。\\n\\n" + summaries.map(s => s.name + ": " + s.summary).join("\\n") },
+    { role: "user", content: QUESTION },
+  ],
+  max_tokens: 8196,
+});
+const graphAnswer = graphResp.choices[0].message.content;
+
+
+// ── 3 · render both answers side by side ────────────────────────────────────────
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+const panel = (title, sub, body) =>
+  '<div style="flex:1 1 320px;border:1px solid var(--bd,#2a2a2a);border-radius:8px;background:var(--e2,#1c1f24);padding:12px;max-height:340px;overflow:auto">' +
+    '<div style="font-weight:700;color:var(--td,#c9c9c9);font-size:.9rem">' + title + '</div>' +
+    '<div style="font-size:.74rem;color:var(--tf,#8a8a8a);margin:.1em 0 .7em">' + sub + '</div>' +
+    '<div style="font-size:.84rem;color:var(--td,#c9c9c9);line-height:1.55;white-space:pre-wrap">' + esc(body) + '</div>' +
+  '</div>';
+
+helpers.log.html(
+  '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px">' +
+    panel("基础 RAG · top-" + TOP_K, "根据与问题最接近的 " + TOP_K + " 个文本块作答", basicAnswer) +
+    panel("GraphRAG · map-reduce", "先汇总每个社区，再根据这些摘要作答", graphAnswer) +
+  '</div>'
+);
+
+helpers.log("请注意，top-K 遗漏了全局主题，但社区处理步骤将其找了回来。");
+`,
+    });
+  </script>
+
+  <p>
+    在冻结模型前设置 Top-K 检索器，可以很好地回答局部问题，却完全无法回答全局问题。将语料库重组为带摘要的社区后，便能获得全局答案，代价是执行一次成本高昂的索引构建。
+  </p>
+
+
+
+  <h2>继续学习之前</h2>
+  <ol>
+    <li>第 4 部分中的余弦方法以相同方式计算任意两个向量的得分，不考虑哪个向量是查询；但此处使用的 NVIDIA 嵌入模型会通过 <code>input_type</code> 区分查询和段落。这种非对称性提供了哪些纯余弦方法无法提供的能力？</li>
+    <li>构建索引时会对语料库中的每个段落嵌入一次，而在线处理路径会嵌入每个新问题。哪些更改需要完整地重建索引，哪些更改只需生成一个新的查询嵌入？</li>
+    <li>Top-K 始终返回 K 个段落，即使所有得分都很低。在允许这些段落进入提示词之前，智能体应检查什么信号？</li>
+  </ol>
+
+
+
+
+  <div class="references">
+    <h3>参考资料</h3>
+    <ul>
+      <li><a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis et al., <em>Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks</em> (NeurIPS 2020)</a>。这篇论文奠定了先检索、后生成的经典范式；上图根据该论文重新绘制。</li>
+      <li><a href="https://arxiv.org/abs/2004.04906" target="_blank" rel="noopener">Karpukhin et al., <em>Dense Passage Retrieval</em> (EMNLP 2020)</a>。该论文提出的双编码器结构是查询/段落嵌入非对称性的基础，此处的 NVIDIA 嵌入模型会执行这种区分。</li>
+      <li><a href="https://arxiv.org/abs/1702.08734" target="_blank" rel="noopener">Johnson, Douze &amp; Jégou, <em>Billion-scale similarity search with GPUs</em> (FAISS, 2017)</a>。您所了解的每种“向量数据库”都采用了这种向量索引数据结构。</li>
+      <li><a href="https://arxiv.org/abs/2212.10496" target="_blank" rel="noopener">Gao et al., <em>HyDE: Precise Zero-Shot Dense Retrieval without Relevance Labels</em> (2022)</a>。该方法生成一个假设答案并嵌入该答案，而不是直接嵌入问题；对于简短或含义模糊的查询，通常能快速取得成效。</li>
+      <li><a href="https://arxiv.org/abs/2010.06467" target="_blank" rel="noopener">Lin et al., <em>Pretrained Transformers for Text Ranking</em> (2020)</a>。生产级检索技术栈在第二阶段采用的重排序器模式。</li>
+      <li><a href="https://arxiv.org/abs/2404.16130" target="_blank" rel="noopener">Edge et al., <em>From Local to Global: A Graph RAG Approach to Query-Focused Summarization</em> (2024)</a>。该方法构建由 LLM 派生的知识图谱，并预先总结其中的社区，以便回答覆盖整个语料库的全局问题；上方的工作流图根据该论文重新绘制。</li>
+    </ul>
+    <p class="references-note">完整列表请参阅<a href="04c-going-further.html#refs">深入探索 · 参考资料</a>。</p>
+  </div>
+
+
+
+  <h2>动手试用 · 实时检索</h2>
+  <p>
+    请输入一个问题。该交互组件会使用本页相同的 API 入口对其进行嵌入，并按余弦相似度对内置的小型语料库排序。条形图会显示所有得分。随后，组件根据排名靠前的段落作答并引用来源。修改问题，观察排名如何变化。
+  </p>
+  <p>
+    语料库已离线嵌入，并作为预构建索引随页面一同提供，因此只有问题需要实时嵌入。您正在看到上图所示的索引构建与在线服务分离机制在此实际运行。示例问题甚至自带预构建向量，因此在您添加密钥前即可完成检索；编辑某个段落时，也只会重新嵌入该段落。
+  </p>
+  <div id="rag-cell"></div>
+  <div id="rag-artifact"></div>
+  <script type="module">
+    import { mountRunCell } from "./scripts/_shared.js";
+    mountRunCell("#rag-cell", {
+      label: "“动手试试”练习代码",
+      autorun: true,
+      code: `// Try-it artifact: loads a PREBUILT vector index (corpus embedded offline by
+// Use the prebuilt corpus index, then embed only the live question each turn.
+const MODEL_PIN = "nvidia/llama-nemotron-embed-1b-v2";   // the prebuilt index is valid only for this model
+const CORPUS = [
+  "智能体循环让无状态模型按以下步骤循环运行：读取消息、做出决策、调用工具、追加结果，并重复以上过程，直到 finish_reason 为 stop。",
+  "ReAct 交替进行推理和行动：模型先思考，可选择调用工具，再读取观察结果，并在作答前重新规划。",
+  "从机制上说，工具由结构化输出和执行器组成：模型发出 tool_calls 请求，代码运行相应函数，结果再以工具消息的形式返回。",
+  "检索增强生成 (RAG) 将查询和文档嵌入同一向量空间，检索最接近的文本块，并将其作为事实依据提供给模型。",
+  "余弦相似度通过两个嵌入向量之间的夹角进行评分；分数越接近 1，表示语义相关性越高。",
+  "深度研究智能体会规划任务，在全新上下文中启动子智能体，并通过虚拟文件系统共享工作成果，以避免上下文溢出。",
+  "OpenClaw 是一种智能体框架，其配置由一个 Markdown 文件夹组成；框架会在每一轮将这些文件整合到系统提示词中。",
+  "OpenShell 是智能体外围的内核级沙箱：netns、Landlock、seccomp 和 OPA-评测代理共同决定每次工具调用可以访问哪些资源。",
+];
+
+// Load the index once; recompute vectors if the embedding model changed.
+let _index = null;
+async function loadIndex() {
+  if (_index) return _index;
+  try {
+    const m = await (await helpers.fetch("assets/rag_index.json")).json();
+    const ok = m.model === MODEL_PIN;
+    if (!ok) helpers.log("预构建索引使用的模型是 " + m.model + "，而不是 " + MODEL_PIN + "；改为实时生成嵌入。");
+    _index = ok
+      ? { byDoc: new Map(m.docs.map(d => [d.text, d.vec])), byQuery: new Map(m.queries.map(q => [q.text, q.vec])) }
+      : { byDoc: new Map(), byQuery: new Map() };
+  } catch (e) {
+    _index = { byDoc: new Map(), byQuery: new Map() };
+  }
+  return _index;
+}
+
+helpers.mountChatUI("#rag-artifact", {
+  memory: true,
+  greeting: "可以询问本课程中的任何内容。我会嵌入问题，按余弦相似度对一个小型语料库进行排序，并根据最匹配的内容作答。后续提问会保留对话上下文，但每次仍会重新检索；🧠 开关可清除对话，✎ 编辑可回退。",
+  models: [
+    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
+    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
+  ],
+  examples: ["什么是检索增强生成 (RAG)？", "为什么要使用余弦相似度？", "ReAct 循环如何工作？", "从机制上说，工具是什么？", "OpenShell 沙箱有什么作用？", "什么是深度研究智能体？"],
+  respond: async (text, ctx) => {
+    const idx = await loadIndex();
+    // corpus vectors come from the prebuilt index; only passages it does not cover (edits) embed live
+    const miss = CORPUS.filter(t => !idx.byDoc.has(t));
+    if (miss.length) { ctx.view.tool("正在嵌入 " + miss.length + " 个已编辑段落；其余内容从预构建索引加载"); (await helpers.embed(miss, { inputType: "passage" })).forEach((v, i) => idx.byDoc.set(miss[i], v)); }
+    const docVecs = CORPUS.map(t => idx.byDoc.get(t));
+    // the example questions are prebuilt too, so they retrieve with no embed call; anything you type embeds live
+    let qv = idx.byQuery.get(text);
+    if (!qv) { [qv] = await helpers.embed(text, { inputType: "query" }); }
+    const ranked = CORPUS.map((t, i) => ({ t, s: helpers.cosineSim(qv, docVecs[i]) })).sort((a, b) => b.s - a.s);
+    const max = ranked[0].s || 1;
+    ctx.view.html('<table><tr><th>段落</th><th>余弦相似度</th></tr>' + ranked.map(r =>
+      '<tr><td><div style="display:flex;align-items:center;gap:8px"><div style="background:var(--g,#76b900);height:10px;border-radius:3px;width:' +
+      Math.max(4, Math.round(80 * r.s / max)) + 'px"></div><span style="color:var(--td,#b0b0b0)">' +
+      r.t.slice(0, 56).replace(/</g, "&lt;") + '…</span></div></td><td style="font-family:var(--mono,monospace);color:var(--gs,#aee23a)">' +
+      r.s.toFixed(3) + '</td></tr>').join("") + '</table>');
+    const top = ranked.slice(0, 3).map((r, i) => "[" + (i + 1) + "] " + r.t).join("\\n");
+    ctx.view.tool("已检索相似度最高的 3 个段落", top);   // the exact text handed to the model, in full
+    const s = await helpers.chatStream({ messages: [
+      { role: "system", content: "仅根据这些段落回答 ONLY，并以 [n] 格式引用。如果这些段落未涵盖该问题，请明确说明。\\n\\n" + top },
+      ...(ctx.history || []),
+      { role: "user", content: text }], model: ctx.model, max_tokens: 8196, signal: ctx.signal }, (t) => ctx.view.token(t), { onReasoning: (r) => ctx.view.reasoning(r) });
+    if (s.usage) ctx.view.usage({ input: s.usage.prompt_tokens, output: s.usage.completion_tokens, model: s.model });
+  },
+});
+helpers.log("结果呈现在下方。编辑配置后，点击“运行”。");
+
+// The panel calls helpers.embed(), ranks with helpers.cosineSim(), then answers.
+`,
+    });
+  </script>
+
+  <div class="foot-nav">
+    <a href="02a-routing.html">← 模块 2a：工作流</a>
+    <a class="next" href="02c-deep.html">模块 2c：深度智能体 →</a>
+  </div>
+</main>
+
+<script type="module">
+import { buildNav, chat, chatStream, updateKeyPill, mountJourneyMap, mountCanvasFlow, mountRunCell } from "./scripts/_shared.js";
+document.getElementById("nav").innerHTML = buildNav("02b-rag.html");
+const pill = document.getElementById("key-status");
+updateKeyPill(pill);
+mountJourneyMap("#journey-map", "2b");
+hljs.highlightAll();
+
+// ── M3b P1: one embedding ────────────────────────────────────────────────────
+mountRunCell("#cell-m3b-p1", {
+  openCode: false,
+  label: "检查一个嵌入",
+  intro: "默认模型返回 2,048 个值。选择一个示例，然后检查其固定长度和接近 1 的归一化模长。更改 EXAMPLE 或添加您自己的文本。",
+  code: `const EXAMPLES = [
+  "transformer 架构取代了用于序列建模的循环神经网络。",
+  "什么取代了用于序列建模的循环神经网络？",
+  "要做出酥松的派皮，需要使用冷黄油，并尽量减少搅拌。",
+  "OpenShell 限制智能体对文件系统和网络的访问。",
+];
+const EXAMPLE = 0; // Try 0, 1, 2, or 3.
+const text = EXAMPLES[EXAMPLE];
+
+const [v] = await helpers.embed(text, {
+  model:     "nvidia/llama-nemotron-embed-1b-v2",
+  inputType: "passage",
+});
+return {
+  text,
+  dimensions: v.length,
+  first_16: v.slice(0, 16).map(x => +x.toFixed(4)),
+  magnitude: +Math.sqrt(v.reduce((sum, x) => sum + x * x, 0)).toFixed(4),
+};
+`,
+});
+
+// ── M3b P2: in-memory vector index ───────────────────────────────────────────
+mountCanvasFlow("#cell-m3b-p2", {
+  label: "构建内存向量索引",
+  intro: "一个小型语料库只进行一次嵌入并保存在内存中。每个查询都会进行嵌入，并通过余弦相似度与所有段落评分，返回最接近的 top-K 项。这就是缩小到玩具规模的完整生产检索流程，每个步骤都清晰可见。",
+  edges: [
+    { from: "corpus", to: "index" },
+    { from: "query",  to: "retrieve" },
+    { from: "index",  to: "retrieve" },
+  ],
+  nodes: [
+    {
+      id: "corpus", icon: "📚", title: "语料库", x: 0, y: 0,
+      summary: "八个简短段落，涵盖智能体模式、检索和模型 API。内容特意保持多样，便于观察查询会将哪些段落推到前列，又会忽略哪些段落。编辑任意段落并重新运行，即可改变索引中的内容。",
+      code: `// Seed the small dataset this retrieval example searches.
+state.corpus = [
+  "ReAct 将推理步骤与工具调用交替进行，并在每次获得观察结果后决定下一步操作。",
+  "ReWOO 先通过一次 LLM 调用完整制定计划，再以确定性方式执行所有工具，最后综合生成答案。",
+  "余弦相似度比较两个向量之间的夹角；它忽略向量大小，取值范围为 -1 到 1。",
+  "向量数据库将文本的学习所得嵌入与原始段落一同存储，并建立索引以支持快速近邻搜索。",
+  "transformer 架构取代了用于序列建模的循环网络，因为自注意力可以并行计算。",
+  "函数调用向模型提供采用 JSON 模式定义的工具；模型输出结构化请求，而不是自由文本。",
+  "智能体循环会在每一步读取 finish_reason；“tool_calls”表示模型希望您运行函数，“stop”表示任务已完成。",
+  "OpenAI Responses API 在服务器端存储对话状态；后续调用通过 previous_response_id 引用该状态。",
+];
+return { n_docs: state.corpus.length };
+`,
+    },
+    {
+      id: "index", icon: "🗂", title: "构建索引（嵌入全部内容）", x: 0, y: 1,
+      summary: "使用 \'passage\' 输入类型嵌入每个段落，并将每个段落存储为由原始文本及其向量组成的对象。",
+      code: `// Embed the text so similarity search can compare vectors.
+const vecs = await helpers.embed(state.corpus, {
+  model:     "nvidia/llama-nemotron-embed-1b-v2",
+  inputType: "passage",
+});
+state.index = state.corpus.map((text, i) => ({ text, vector: vecs[i] }));
+return { indexed: state.index.length, dim: vecs[0].length };
+`,
+    },
+    {
+      id: "query", icon: "❓", title: "用户查询", x: 1, y: 0,
+      summary: "用于检索的问题。更改问题会改变排名最高的段落，因为查询使用 'query' 输入类型进行嵌入；模型经过训练，使该向量指向相关段落，而不只是指向相同文本。",
+      code: `// TODO: Try another query and rerun to watch the ranking shift.
+state.query = "ReAct 和 ReWOO 有什么区别？";
+// state.query = "what does the openshell sandbox do?";           // single-fact lookup
+// state.query = "how do RAG and a deep-research agent compare?"; // spans several passages
+return state.query;
+`,
+    },
+    {
+      id: "retrieve", icon: "🎯", title: "嵌入查询 + top-K", x: 1, y: 1,
+      summary: "使用 'query' 输入类型嵌入查询，计算它与每个段落的余弦相似度得分，并返回排名前三的段落。",
+      code: `// Embed the text so similarity search can compare vectors.
+const [qv] = await helpers.embed(state.query, {
+  model:     "nvidia/llama-nemotron-embed-1b-v2",
+  inputType: "query",
+});
+state.qv = qv;
+const scored = state.index.map((d, i) => ({
+  idx: i,
+  score: helpers.cosineSim(qv, d.vector),
+  text: d.text,
+}));
+scored.sort((a, b) => b.score - a.score);
+state.topK = scored.slice(0, 3);
+state.scored = scored;
+return state.topK.map(r => ({ score: r.score.toFixed(4), preview: r.text.slice(0, 90) }));
+`,
+    },
+  ],
+});
+
+// ── M3b P3: hierarchies (parent doc / child chunk) ───────────────────────────
+mountCanvasFlow("#cell-m3b-p3", {
+  label: "检索子文本块，返回父文档",
+  intro: "将三个父文档分别拆分为简短的句子块，然后对其进行嵌入并建立索引。命中任意文本块后都会返回 FULL 父文档，从而兼顾短文本块的精确性与完整文档的上下文。",
+  edges: [
+    { from: "docs",  to: "split" },
+    { from: "split", to: "index" },
+    { from: "query", to: "lookup" },
+    { from: "index", to: "lookup" },
+  ],
+  nodes: [
+    {
+      id: "docs", icon: "📄", title: "父文档", x: 0, y: 0,
+      showCode: false,
+      summary: "存储中包含三份不同主题的文档，LLM 最终读取的是完整文档。",
+      code: `// Seed the small dataset this retrieval example searches.
+state.docs = [
+  { id: "react",  title: "ReAct",  body: "ReAct（Reason+Act）是经典的智能体循环。模型会收到用户任务和一组工具。在每次迭代中，模型会输出工具调用请求或最终答案。如果模型请求调用工具，宿主代码就会执行该工具，将结果作为观察追加到上下文中，然后由模型继续处理。当 finish_reason 为“stop”且不存在 tool_calls 时，循环终止。这种模式的优势在于，每一步都能根据上一步的观察结果进行调整；劣势则是顺序执行成本：N 个步骤意味着必须依次调用模型 N 次。" },
+  { id: "rewoo",  title: "ReWOO", body: "ReWOO (Reason Without Observation) 是另一种模式。一次 planner LLM 调用会预先将完整计划写成工具调用列表。随后，确定性执行器运行所有工具，通常会并行执行。最后，综合器通过一次 LLM 调用读取收集到的全部观察结果并生成最终答案。ReWOO 以适应性换取并行能力：所有工具调用可以同时运行，但后续步骤无法根据先前的观察结果进行调整。" },
+  { id: "rag",    title: "RAG",   body: "检索增强生成（RAG）在推理时将外部知识注入模型上下文。文档语料库只需进行一次嵌入并存入向量索引。查询时，系统会对用户的问题进行嵌入，并检索最接近的 Top-K 个段落。检索到的段落会拼接到提示词中，模型再依据这些上下文作答。RAG 可以绕过模型的训练数据截止时间，并让您无需微调即可基于私有数据生成有据可依的答案。" },
+];
+return { n_docs: state.docs.length };
+`,
+    },
+    {
+      id: "split", icon: "✂️", title: "拆分为子文本块", x: 0, y: 1,
+      summary: "将每个父文档拆分为句子块，并保留其父级 ID。更小的检索单元可提高搜索精度，同时保留返回完整文档的路径。",
+      code: `// Seed the small dataset this retrieval example searches.
+state.chunks = [];
+for (const d of state.docs) {
+  const sentences = d.body.split(/(?<=\\.) /);
+  for (let i = 0; i < sentences.length; i++) {
+    state.chunks.push({ parent: d.id, idx: i, text: sentences[i] });
+  }
+}
+return { n_chunks: state.chunks.length, per_doc: state.docs.map(d => ({ id: d.id, chunks: state.chunks.filter(c => c.parent === d.id).length })) };
+`,
+    },
+    {
+      id: "index", icon: "🗂", title: "嵌入文本块", x: 0, y: 2,
+      summary: "嵌入每个子分块，以便按余弦相似度进行搜索。命中某个分块后，检索器会把该分块所属的完整父文档交给 LLM，从而恢复周边上下文。",
+      code: `// Embed the text so similarity search can compare vectors.
+const vecs = await helpers.embed(state.chunks.map(c => c.text), {
+  model:     "nvidia/llama-nemotron-embed-1b-v2",
+  inputType: "passage",
+});
+state.chunkIndex = state.chunks.map((c, i) => ({ ...c, vector: vecs[i] }));
+return { indexed: state.chunkIndex.length };
+`,
+    },
+    {
+      id: "query", icon: "❓", title: "用户查询", x: 1, y: 0,
+      summary: "待回答的问题，其结构与上一个画布相同。编辑问题并重新运行，查看哪个父文档升至首位。",
+      code: `// TODO: Try another query and watch which parent document ranks first.
+state.query = "每种检索模式分别在什么情况下更胜一筹？";
+// state.query = "how does chunking change what the model sees?";
+// state.query = "what is a reranker, and when is it worth the step?";
+return state.query;
+`,
+    },
+    {
+      id: "lookup", icon: "🎯", title: "命中分块 → 返回父文档（+ 分数可视化）", x: 1, y: 1,
+      showCode: false,
+      summary: "按余弦相似度取得排名最高的分块，并返回其完整父文档。代码默认折叠，因为检索步骤很短，其余部分主要用于构建分数条形图和层次结构卡片。",
+      code: `// Reading guide: the retrieval happens first: embed the query, score chunks, pick the
+// top hit, then return that hit's parent document. The lower half renders the score bars and cards.
+const [qv] = await helpers.embed(state.query, {
+  model:     "nvidia/llama-nemotron-embed-1b-v2",
+  inputType: "query",
+});
+const scored = state.chunkIndex.map(c => ({ ...c, score: helpers.cosineSim(qv, c.vector) }));
+const ranked = [...scored].sort((a, b) => b.score - a.score);
+const top = ranked[0];
+const parent = state.docs.find(d => d.id === top.parent);
+state.hit = { matched_chunk: top.text, score: top.score, parent_id: parent.id, parent_body: parent.body };
+
+// Score bars, ordered best-first.
+// The top chunk is the single hit; everything below it is the rest of the distribution.
+helpers.viz.retrievalBars(
+  ranked.map(c => ({
+    score: c.score,
+    text: state.docs.find(d => d.id === c.parent).title.toUpperCase() + " · " + c.text,
+  })),
+  1,
+  "文本块余弦分数 · ★ 表示唯一命中项",
+);
+
+// Render hierarchy as HTML cards. Search chunks, then return the winning chunk's parent document.
+const esc = (x) => String(x).replace(/[&<>]/g, c => c === "&" ? "&amp;" : c === "<" ? "&lt;" : "&gt;");
+const cards = state.docs.map((d) => {
+  const docChunks = scored.filter(c => c.parent === d.id);
+  const isWinnerParent = d.id === parent.id;
+  const rows = docChunks.map((c) => {
+    const isTop = c === top;
+    return '<div style="margin:3px 0;padding:5px 8px;border-radius:5px;border:1px solid ' +
+      (isTop ? "var(--g,#76b900)" : "var(--bd,#2a2a2a)") + (isTop ? ";background:rgba(118,185,0,.12)" : "") + '">' +
+      '<div style="font-family:var(--mono,monospace);font-size:11px;color:' + (isTop ? "var(--gs,#aee23a)" : "var(--tf,#8a8a8a)") + '">文本块 ' + c.idx + " · 分数 " + c.score.toFixed(3) + (isTop ? " ★ 已返回" : "") + '</div>' +
+      '<div style="font-size:12px;color:var(--td,#b0b0b0)">' + esc(c.text) + '</div></div>';
+  }).join("");
+  return '<div style="flex:1 1 280px;border:1px solid ' + (isWinnerParent ? "var(--g,#76b900)" : "var(--bd,#2a2a2a)") + ';border-radius:8px;padding:10px 12px">' +
+    '<div style="font-weight:600;color:var(--tx,#e6edf3)">' + esc(d.title) + '</div>' +
+    '<div style="font-size:11px;color:var(--tf,#8a8a8a);margin-bottom:5px">' + docChunks.length + " 个分块 · " + d.body.length + " 个字符" +
+    (isWinnerParent ? ' · <span style="color:var(--gs,#aee23a)">将完整父文档返回给 LLM</span>' : "") + '</div>' + rows + '</div>';
+}).join("");
+helpers.log.html('<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">' + cards + '</div>');
+
+return {
+  matched_chunk_preview: top.text.slice(0, 120),
+  chunk_score:           top.score.toFixed(4),
+  parent_returned:       parent.title,
+  parent_chars:          parent.body.length,
+  precision_gain:        "子分块得分；将 FULL 父文档正文传递给 LLM",
+};
+`,
+    },
+  ],
+});
+
+// ── M3b P4: RAG agent (retrieval as a tool) ──────────────────────────────────
+mountCanvasFlow("#cell-m3b-p4", {
+  label: "将检索功能公开为智能体工具",
+  intro: "语料库只建立一次索引并保存在内存中，随后将问题发送到公开了 retrieve 工具的聊天调用。模型决定是否检索；如果需要，余弦相似度会返回排名最高的段落，第二次调用再根据这些内容生成有依据的答案。",
+  edges: [
+    { from: "build_corpus", to: "agent" },
+    { from: "tool",         to: "agent" },
+    { from: "query",        to: "agent" },
+    { from: "agent",        to: "retrieve" },
+    { from: "retrieve",     to: "answer" },
+  ],
+  nodes: [
+    {
+      id: "build_corpus", icon: "📚", title: "语料库 + 索引", x: 0, y: 0,
+      showCode: false,
+      summary: "嵌入每个段落，并将段落与其向量一起存储。索引只在此处构建一次，并在流程的其余部分保存在内存中；后续每个查询都会读取同一结构，不会重新嵌入语料库。",
+      code: `// Seed the small dataset this retrieval example searches.
+state.corpus = [
+  "NVIDIA Nemotron 是 NVIDIA 开放权重推理模型系列。Nano 变体小巧快速；Super 和 Ultra 的规模更大。",
+  "Nemotron-3-Nano-30B-A3B 是一种采用混合专家架构、具有 30 亿个活跃参数的文本推理模型。其同系列的 Nemotron-3-Nano-Omni-30B-A3B 是还能读取图像的多模态变体。",
+  "本课程通过托管的 Cloudflare worker 代理，将模型调用和嵌入调用路由到 build.nvidia.com。浏览器中无需 API key。",
+  "本课程中的 Web 搜索 (helpers.webSearch) 会对课程随附的 NVIDIA AI 术语表进行排序。搜索直接在浏览器中进行，无需密钥；另一个 helpers.instantAnswer 会在查询中明确提及某个术语时返回其定义。",
+  "两个嵌入向量之间的余弦相似度用于衡量其语义接近程度，取值范围为 -1 到 1；数值越高，表示越相似。",
+  "LangChain.js 提供用于聊天补全的 ChatOpenAI 和用于嵌入的 OpenAIEmbeddings；二者都接受自定义 baseURL。",
+];
+const vecs = await helpers.embed(state.corpus, { inputType: "passage" });
+state.index = state.corpus.map((text, i) => ({ text, vector: vecs[i] }));
+return { indexed: state.index.length, dim: vecs[0].length };
+`,
+    },
+    {
+      id: "tool", icon: "📄", title: "检索工具规范", x: 2, y: 0,
+      showCode: false,
+      summary: "将 retrieve 工具声明为模型可读取的 JSON 模式。模型只能看到名称、说明和参数类型，无法看到背后的余弦相似度实现。这种分离非常重要：之后可以替换检索后端，而不必更改任何面向模型的契约。",
+      code: `// Define the tool schema the model can choose from next.
+state.RETRIEVE_SCHEMA = [{
+  type: "function",
+  function: {
+    name: "retrieve",
+    description: "在知识库中查找可能与问题相关的段落。",
+    parameters: {
+      type: "object",
+      properties: {
+        question: { type: "string", description: "要查找的问题。请使用用户的原始表述。" },
+        k:        { type: "integer", description: "要返回的段落数量；默认为 3。", default: 3 },
+      },
+      required: ["question"],
+    },
+  },
+}];
+return { tool: state.RETRIEVE_SCHEMA[0].function.name };
+`,
+    },
+    {
+      id: "query", icon: "❓", title: "用户查询", x: 1, y: 0,
+      summary: "用户问题，以及一条系统提示词，指示模型仅在需要训练知识无法可靠回答的具体事实时使用 retrieve 工具。有了这条指令，模型会逐轮判断并决定是否检索，而不会每次调用都进行检索。",
+      code: `// TODO: Choose a prompt that should retrieve, skip retrieval, or be ambiguous.
+
+const EXAMPLES = {
+  default: "本课程使用什么模型？是否需要 API key？",
+  skip: "12 乘以 8 等于多少？",
+  retrieve: "本课程的 OpenShell 沙箱会阻止哪些操作？",
+  direct: "用一句话解释余弦相似度。",
+};
+state.query = EXAMPLES.default;
+
+state.messages = [
+  {
+    role: "system",
+    content: [
+      "您是一名乐于助人的助手，可以通过 retrieve 工具访问知识库。",
+      "对于您无法高度确定的具体事实，请使用该工具。",
+      "否则，请直接回答。",
+    ].join(" "),
+  },
+  { role: "user", content: state.query },
+];
+return state.query;
+`,
+    },
+    {
+      id: "agent", icon: "🧠", title: "智能体作出判断", x: 1, y: 1,
+      summary: "第一次 LLM 调用会公开 retrieve 工具。当响应包含 tool_calls 时，表示模型要求代码执行检索并返回结果；当 finish_reason 为 \'stop\' 时，表示模型判断无需检索并已直接作答。",
+      code: `// Send the prepared messages and stream the model response.
+state.s1 = await helpers.chatStream({
+  messages:   state.messages,
+  tools:      state.RETRIEVE_SCHEMA,
+  max_tokens: 8196,   // a reasoning model thinks before it emits the tool call; 1500 can truncate mid-thought
+});
+state.messages.push({
+  role: "assistant",
+  content: state.s1.content || null,
+  tool_calls: state.s1.tool_calls.length ? state.s1.tool_calls : undefined,
+});
+return {
+  finish_reason: state.s1.finish_reason,
+  wants_to_retrieve: state.s1.tool_calls.length > 0,
+};
+`,
+    },
+    {
+      id: "retrieve", icon: "🎯", title: "余弦检索（+ 工作流可视化）", x: 1, y: 2,
+      summary: "普通 JavaScript 会嵌入问题，与索引中的每个段落计算分数并返回 top-K；分数条形图则显示完整分布，以及进入 LLM 上下文的 K 个段落。",
+      code: `// Handle the tool-call result from the previous model turn.
+if (!state.s1.tool_calls.length) { state.skipped = true; return { skipped: "模型直接作答" }; }
+const tc        = state.s1.tool_calls[0];
+const args      = JSON.parse(tc.function.arguments || "{}");
+const k         = args.k || 3;
+const question  = args.question || state.query;
+const [qv]      = await helpers.embed(question, { inputType: "query" });
+const scored    = state.index.map((d, idx) => ({ text: d.text, score: helpers.cosineSim(qv, d.vector), origIdx: idx }));
+const sorted    = [...scored].sort((a, b) => b.score - a.score);
+state.retrieved = sorted.slice(0, k);
+const toolMsg = state.retrieved.map((r, i) => \`[\${i+1}]（得分 \${r.score.toFixed(3)}）\${r.text}\`).join("\\n");
+state.messages.push({ role: "tool", tool_call_id: tc.id, content: toolMsg });
+// Steer the synthesis call: answer from these passages, no more retrieval.
+state.messages.push({ role: "user", content: "现在仅使用上方检索到的段落撰写最终答案。不要再次检索，也不要输出任何工具调用语法。" });
+
+helpers.viz.retrievalBars(
+  sorted.map(r => ({ score: r.score, text: r.text })),
+  k,
+  "余弦得分 · 前 " + k + "（★）将成为 LLM 上下文",
+);
+helpers.log("已检索 " + k + " of " + sorted.length + " 个段落用于 LLM 上下文");
+
+return { question, k, top_scores: state.retrieved.map(r => r.score.toFixed(3)) };
+`,
+    },
+    {
+      id: "answer", icon: "🧠", title: "最终答案（LLM #2）", x: 1, y: 3,
+      summary: "追加工具消息后进行第二次 LLM 调用。模型此时同时获得原始用户问题和检索到的段落，可以据此生成有依据的答案，而不只依赖训练知识。",
+      code: `// Handle the tool-call result from the previous model turn.
+if (state.skipped) return state.s1.content || "（模型直接作答，但未生成文本；引发 max_tokens）";
+// No tools here: the model must synthesize from retrieved passages.
+state.s2 = await helpers.chatStream({
+  messages:   state.messages,
+  max_tokens: 8196,
+});
+// Strip stray tool-call markup from models that emit it as text.
+const answer = (state.s2.content || "")
+  .replace(/<tool_call>[\\s\\S]*?<\\/tool_call>/g, "")
+  .replace(/<\\/?function[^>]*>|<\\/?parameter[^>]*>/g, "").trim();
+return answer || "（模型未生成最终答案；请尝试再次运行）";
+`,
+    },
+  ],
+});
+</script>
+</body>
+</html>

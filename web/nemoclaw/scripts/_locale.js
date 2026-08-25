@@ -237,10 +237,50 @@ const ES_ATTRS = new Map(Object.entries({
   "the saved nvapi key was refused (401/403). Re-enter it on Module 1a.": "la clave nvapi guardada fue rechazada (401/403). Introdúzcala de nuevo en el Módulo 1a."
 }));
 
+const ZH_TEXT = new Map(Object.entries({
+  "The Agent": "智能体",
+  "The ReAct Loop": "ReAct 循环",
+  "Tools at Scale": "规模化工具",
+  "Workflows": "工作流",
+  "The Index Agent": "索引智能体",
+  "Deep Agents": "深度智能体",
+  "Connect NemoClaw": "连接 NemoClaw",
+  "Always-On": "持续运行",
+  "Modern CLIs": "现代 CLI",
+  "Going Further": "深入探索",
+  "loop · LLM as function": "循环 · 将 LLM 作为函数",
+  "tools · finish_reason": "工具 · finish_reason",
+  "JSON · MCP · routing": "JSON · MCP · 路由",
+  "router · planner · ReWOO": "路由 · planner · ReWOO",
+  "embed · retrieve · bundle": "嵌入 · 检索 · 打包",
+  "planner · sub-agents · VFS": "planner · 子智能体 · VFS",
+  "launchable · first call": "可启动实例 · 首次调用",
+  "file-as-context · paste URL": "文件即上下文 · 粘贴 URL",
+  "sandbox · policy · CI gate": "sandbox · 策略 · CI 门控",
+  "Section": "章节",
+  "Section 1": "第 1 章",
+  "Section 2": "第 2 章",
+  "Section 3": "第 3 章",
+  "Section 4": "第 4 章",
+  "Course map": "课程地图",
+  "click to see all sections": "点击查看所有章节",
+  "start": "开始",
+  "end": "结束"
+}));
+
+const ZH_PREFIXES = new Map();
+
+const ZH_ATTRS = new Map(Object.entries({
+  "Course progression; current step highlighted.": "课程进度；当前章节已突出显示。",
+  "Show the whole course map": "显示完整课程地图",
+  "Choose language": "选择语言"
+}));
+
 const LOCALIZED_UI = "#journey-map,.topbar,.cf-wrap,.rc-card,.chatui,.key-panel,.claw-probe,.da-term";
 
 function localeMaps() {
   const locale = document.documentElement.lang.toLowerCase();
+  if (locale === "zh-cn") return { text: ZH_TEXT, attrs: ZH_ATTRS, prefixes: ZH_PREFIXES, previous: "上一课：", next: "下一课：" };
   if (locale === "pt-br") return { text: PT_TEXT, attrs: PT_ATTRS, prefixes: PT_PREFIXES, previous: "Anterior: ", next: "Próxima: " };
   if (locale === "es-es") return { text: ES_TEXT, attrs: ES_ATTRS, prefixes: ES_PREFIXES, previous: "Anterior: ", next: "Siguiente: " };
   return null;
@@ -372,7 +412,8 @@ function rewriteUnavailableCourseLinks(current, fallback, manifestUrl) {
     if (!file.endsWith(".html") || hasPage(current, file)) return;
     anchor.href = new URL(file, fallbackBase).href;
     anchor.dataset.languageFallback = fallback.code;
-    const note = current.locale === "pt-BR" ? "Ainda não disponível em português; abre em inglês."
+    const note = current.locale === "zh-CN" ? "当前语言暂不提供此页面，将打开英文版。"
+      : current.locale === "pt-BR" ? "Ainda não disponível em português; abre em inglês."
       : current.locale === "es-ES" ? "Aún no está disponible en español; se abre en inglés."
       : "Not available in this language; opens in English.";
     anchor.title = anchor.title ? `${anchor.title} · ${note}` : note;
@@ -404,7 +445,7 @@ export async function mountLanguageMenu() {
   button.className = "language-menu-button";
   button.type = "button";
   button.textContent = "🌐";
-  button.setAttribute("aria-label", current.locale === "pt-BR" ? "Escolher idioma" : current.locale === "es-ES" ? "Elegir idioma" : "Choose language");
+  button.setAttribute("aria-label", current.locale === "zh-CN" ? "选择语言" : current.locale === "pt-BR" ? "Escolher idioma" : current.locale === "es-ES" ? "Elegir idioma" : "Choose language");
   button.setAttribute("aria-haspopup", "menu");
   button.setAttribute("aria-expanded", "false");
   const menu = document.createElement("div");
@@ -420,7 +461,7 @@ export async function mountLanguageMenu() {
     if (entry.code === current.code) link.setAttribute("aria-current", "page");
     if (!hasPage(entry, file)) {
       const small = document.createElement("small");
-      small.textContent = entry.locale === "pt-BR" ? "página inicial" : entry.locale === "es-ES" ? "página de inicio" : "course home";
+      small.textContent = entry.locale === "zh-CN" ? "课程首页" : entry.locale === "pt-BR" ? "página inicial" : entry.locale === "es-ES" ? "página de inicio" : "course home";
       link.appendChild(small);
     }
     menu.appendChild(link);

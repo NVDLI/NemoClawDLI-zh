@@ -8,6 +8,8 @@ Localized prose, reviewed runnable-code language, and reviewed SVG text may dive
 structure, protocol literals, runtime modules, styles, data, and untranslated pages stay canonical,
 so a language cannot silently fork the application or silently fall back to English learner output.
 The committed overlay allow-lists in `localization_state.json` are the only locale files applied.
+Locale forks may explicitly set ``review_required`` to false in ``locale.json``; those overlays are
+published directly without creating Localization Studio review records.
 """
 from __future__ import annotations
 
@@ -51,6 +53,7 @@ def assemble(locale_root: Path, out: Path, canonical_root: Path = ROOT) -> list[
     reviews = state.get("reviews", {})
     asset_reviews = state.get("asset_reviews", {})
     locale_meta = json.loads((locale_root / "locale.json").read_text(encoding="utf-8"))
+    review_required = locale_meta.get("review_required", True) is not False
     profile_ref = locale_meta.get("profile")
     profile_path = canonical_root / profile_ref if profile_ref else None
     shell_path = profile_path.parent / "shell_translations.json" if profile_path else locale_root / "shell_translations.json"
@@ -67,14 +70,18 @@ def assemble(locale_root: Path, out: Path, canonical_root: Path = ROOT) -> list[
         review = (asset_reviews if rel in asset_files else reviews).get(rel.as_posix(), {})
         if not canonical.is_file():
             continue
+        dst = out / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        if not review_required:
+            shutil.copy2(src, dst)
+            applied.append(rel.as_posix())
+            continue
         canonical_raw = canonical.read_text(encoding="utf-8")
         scoped_html = rel.suffix == ".html" and 'data-localization-scope="en-shell"' in canonical_raw
         current_digest = translation_sha(canonical_raw) if scoped_html else source_sha(canonical)
         reviewed_digest = review.get("translation_sha256") if scoped_html else review.get("source_sha256")
         if reviewed_digest != current_digest:
             continue
-        dst = out / rel
-        dst.parent.mkdir(parents=True, exist_ok=True)
         if scoped_html:
             dst.write_text(project_locale_html(canonical_raw, src.read_text(encoding="utf-8"), shell_translations),
                            encoding="utf-8")
@@ -167,6 +174,19 @@ def self_test() -> list[str]:
         applied = assemble(locale, out, canonical)
         if svg_rel.as_posix() in applied or (out / svg_rel).read_text(encoding="utf-8") != svg_source.read_text(encoding="utf-8"):
             failures.append("stale localized SVG did not fall back to canonical source")
+        direct_meta = json.loads((locale / "locale.json").read_text(encoding="utf-8"))
+        direct_meta["review_required"] = False
+        (locale / "locale.json").write_text(json.dumps(direct_meta), encoding="utf-8")
+        state["reviews"] = {}
+        state["asset_reviews"] = {}
+        (locale / "localization_state.json").write_text(json.dumps(state), encoding="utf-8")
+        source.write_text("Direct locale source changed", encoding="utf-8")
+        svg_source.write_text('<svg><text>Direct locale source changed</text></svg>', encoding="utf-8")
+        applied = assemble(locale, out, canonical)
+        if rel.as_posix() not in applied or (out / rel).read_text(encoding="utf-8") != target.read_text(encoding="utf-8"):
+            failures.append("direct locale HTML overlay was not applied without review records")
+        if svg_rel.as_posix() not in applied or (out / svg_rel).read_text(encoding="utf-8") != svg_target.read_text(encoding="utf-8"):
+            failures.append("direct locale SVG overlay was not applied without review records")
     return failures
 
 

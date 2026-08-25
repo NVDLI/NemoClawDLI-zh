@@ -1,0 +1,954 @@
+
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>OpenShell · 安全智能体</title>
+<link rel="stylesheet" href="styles/_style.css"/>
+<script src="vendor/highlight-11.10.0.min.js"></script>
+<link rel="stylesheet" href="vendor/codemirror-5.65.21.css"/>
+<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.css"/>
+<script src="vendor/codemirror-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-xml-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-javascript-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-css-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-htmlmixed-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-python-5.65.21.js"></script>
+<style>
+</style>
+<style>
+  .layers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 1em 0; }
+  @media (max-width: 720px) { .layers { grid-template-columns: 1fr; } }
+  .layer-card { background: var(--e1); border: 1px solid var(--bd); border-radius: var(--r); padding: 12px 14px; }
+  .layer-card h3 { font-size: .9rem; color: var(--gs); margin: 0 0 .35em; font-family: var(--mono); }
+  .layer-card p  { font-size: .82rem; color: var(--td); margin: .2em 0; line-height: 1.55; }
+  .layer-card code { font-size: .8em; }
+  .control-map-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: .8em 0 1.2em; }
+  .control-map { width: 100%; min-width: 720px; border-collapse: collapse; font-size: .82rem; line-height: 1.5; }
+  .control-map th { padding: 9px 11px; text-align: left; color: var(--gs); background: var(--e2); border: 1px solid var(--bd); }
+  .control-map td { padding: 9px 11px; vertical-align: top; color: var(--td); border: 1px solid var(--bd); }
+  .control-map tbody tr:nth-child(even) { background: var(--e1); }
+  @media (max-width: 720px) {
+    .control-map-scroll { overflow: visible; }
+    .control-map { display: block; min-width: 0; }
+    .control-map thead { display: none; }
+    .control-map tbody, .control-map tr, .control-map td { display: block; width: 100%; box-sizing: border-box; }
+    .control-map tr { margin: 0 0 12px; border: 1px solid var(--bd); border-radius: var(--r); overflow: hidden; background: var(--e1); }
+    .control-map td { border: 0; border-top: 1px solid var(--bd); }
+    .control-map td:first-child { border-top: 0; color: var(--gs); background: var(--e2); font-weight: 700; }
+    .control-map td:not(:first-child)::before { content: attr(data-label); display: block; margin-bottom: 3px; color: var(--tx); font-size: .76rem; font-weight: 700; }
+  }
+  details.vocab-menu { margin: .85em 0 1.65em; border: 1px solid var(--bd); border-radius: var(--r); background: var(--e1); }
+  details.vocab-menu > summary { cursor: pointer; padding: 11px 14px; color: var(--gs); font-family: var(--mono); font-weight: 700; font-size: .86rem; }
+  details.vocab-menu > summary:hover { background: var(--e2); }
+  details.vocab-menu > summary::marker { color: var(--gs); }
+  .vocab-clusters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; padding: 0 14px 14px; }
+  @media (max-width: 720px) { .vocab-clusters { grid-template-columns: 1fr; } }
+  .vocab-cluster { min-width: 0; }
+  .vocab-cluster h3 { color: var(--gs); font-family: var(--mono); font-size: .82rem; margin: .15em 0 .55em; }
+  .vocab-terms dt { color: var(--tx); font-weight: 700; font-size: .84rem; margin: .45em 0 .1em; }
+  .vocab-terms dd { color: var(--td); font-size: .81rem; line-height: 1.45; margin: 0; }
+  .vocab-terms dd a { white-space: nowrap; }
+  figure.lp-video { margin: 1.4em 0; }
+  figure.lp-video .video-wrap { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;
+     border-radius: 8px; border: 1px solid var(--bd); background: var(--e1); }
+  figure.lp-video .video-wrap iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
+  figure.lp-video figcaption { font-size: .88rem; color: var(--td,#b0b0b0); line-height: 1.6; margin-top: .55em; }
+  figure.lp-video figcaption b { color: var(--gs,#aee23a); }
+  figure.architecture-map { margin: 1.2em auto 2em; max-width: 1100px; }
+  figure.architecture-map .fig-embed { margin:0; }
+  svg.os-architecture {
+    --os-surface:#000000; --os-panel:#000000; --os-text:#f2f4f8; --os-line:#a3aab7;
+    --os-raster-filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(1.08);
+    background:var(--os-surface) !important;
+  }
+  :root[data-theme="light"] svg.os-architecture {
+    --os-surface:#ffffff; --os-panel:#ffffff; --os-text:#1f2328; --os-line:#68717d; --os-raster-filter:none;
+  }
+  figure.architecture-map .fig-embed svg.os-architecture {
+    border:1px solid var(--bd); border-radius:8px;
+  }
+  figure.architecture-map figcaption { max-width: 760px; margin:.55em auto 0; text-align:center; font-size:.9rem; color:var(--gfx-sub,#8a8a8a); line-height:1.5; }
+</style>
+<!-- LOCAL WSL2 DEPLOYMENT: pre-populate window.__SBX_POLICY so policy-dependent cells work
+     without needing helpers.policyGet() to succeed (which it cannot in local deployment).
+     helpers.policyGet() only overwrites this if it succeeds — safe to leave in place. -->
+<script>
+window.__SBX_POLICY = {
+  version: 1,
+  filesystem_policy: {
+    include_workdir: true,
+    read_only: ["/usr","/lib","/proc","/dev/urandom","/app","/etc","/var/log"],
+    read_write: ["/tmp","/dev/null","/sandbox/.openclaw","/sandbox/.nemoclaw","/home/linuxbrew","/sandbox"]
+  },
+  landlock: { compatibility: "best_effort" },
+  process: { run_as_user: "sandbox", run_as_group: "sandbox" },
+  network_policies: {
+    brew: {
+      name: "brew",
+      endpoints: [
+        { host: "formulae.brew.sh", port: 443, tls: "skip", access: "full" },
+        { host: "github.com", port: 443, tls: "skip", access: "full" },
+        { host: "ghcr.io", port: 443, tls: "skip", access: "full" },
+        { host: "pkg-containers.githubusercontent.com", port: 443, tls: "skip", access: "full" },
+        { host: "objects.githubusercontent.com", port: 443, tls: "skip", access: "full" },
+        { host: "raw.githubusercontent.com", port: 443, tls: "skip", access: "full" }
+      ],
+      binaries: [
+        { path: "/usr/bin/curl" }, { path: "/usr/bin/git" },
+        { path: "/usr/local/bin/brew" }, { path: "/home/linuxbrew/.linuxbrew/bin/brew" },
+        { path: "/home/linuxbrew/.linuxbrew/bin/*" }, { path: "/home/linuxbrew/.linuxbrew/Homebrew/bin/*" }
+      ]
+    },
+    clawhub: {
+      name: "clawhub",
+      endpoints: [{ host: "clawhub.ai", port: 443, protocol: "rest", enforcement: "enforce",
+        rules: [{ allow: { method: "GET", path: "/**" } }, { allow: { method: "POST", path: "/**" } }] }],
+      binaries: [{ path: "/usr/local/bin/openclaw" }, { path: "/usr/local/bin/node" }]
+    },
+    huggingface: {
+      name: "huggingface",
+      endpoints: [
+        { host: "huggingface.co", port: 443, protocol: "rest", enforcement: "enforce",
+          rules: [{ allow: { method: "GET", path: "/**" } }] },
+        { host: "cdn-lfs.huggingface.co", port: 443, protocol: "rest", enforcement: "enforce",
+          rules: [{ allow: { method: "GET", path: "/**" } }] },
+        { host: "router.huggingface.co", port: 443, protocol: "rest", enforcement: "enforce",
+          rules: [{ allow: { method: "GET", path: "/**" } }, { allow: { method: "POST", path: "/**" } }] }
+      ],
+      binaries: [{ path: "/usr/local/bin/python3" }, { path: "/usr/local/bin/node" }]
+    },
+    managed_inference: {
+      name: "managed_inference",
+      endpoints: [{ host: "inference.local", port: 443, protocol: "rest", enforcement: "enforce",
+        rules: [{ allow: { method: "GET", path: "/**" } }, { allow: { method: "POST", path: "/**" } }] }],
+      binaries: [
+        { path: "/usr/local/bin/openclaw" }, { path: "/usr/local/bin/node" },
+        { path: "/usr/bin/node" }, { path: "/usr/bin/curl" }, { path: "/usr/bin/python3" }
+      ]
+    },
+    npm_registry: {
+      name: "npm_registry",
+      endpoints: [{ host: "registry.npmjs.org", port: 443, protocol: "rest", enforcement: "enforce",
+        rules: [{ allow: { method: "GET", path: "/**" } }] }],
+      binaries: [{ path: "/usr/local/bin/openclaw" }]
+    },
+    npm_yarn: {
+      name: "npm_yarn",
+      endpoints: [
+        { host: "registry.npmjs.org", port: 443, tls: "skip", access: "full" },
+        { host: "registry.yarnpkg.com", port: 443, tls: "skip", access: "full" }
+      ],
+      binaries: [
+        { path: "/usr/local/bin/npm*" }, { path: "/usr/local/bin/npx*" },
+        { path: "/usr/local/bin/node*" }, { path: "/usr/local/bin/yarn*" },
+        { path: "/usr/bin/npm*" }, { path: "/usr/bin/node*" }
+      ]
+    },
+    nvidia: {
+      name: "nvidia",
+      endpoints: [
+        { host: "integrate.api.nvidia.com", port: 443, protocol: "rest", enforcement: "enforce",
+          rules: [
+            { allow: { method: "POST", path: "/v1/chat/completions" } },
+            { allow: { method: "POST", path: "/v1/completions" } },
+            { allow: { method: "POST", path: "/v1/embeddings" } },
+            { allow: { method: "GET",  path: "/v1/models" } },
+            { allow: { method: "GET",  path: "/v1/models/**" } }
+          ]},
+        { host: "inference-api.nvidia.com", port: 443, protocol: "rest", enforcement: "enforce",
+          rules: [
+            { allow: { method: "POST", path: "/v1/chat/completions" } },
+            { allow: { method: "POST", path: "/v1/completions" } },
+            { allow: { method: "POST", path: "/v1/embeddings" } },
+            { allow: { method: "GET",  path: "/v1/models" } },
+            { allow: { method: "GET",  path: "/v1/models/**" } }
+          ]}
+      ],
+      binaries: [{ path: "/usr/local/bin/openclaw" }]
+    },
+    "openclaw-pricing": {
+      name: "openclaw-pricing",
+      endpoints: [
+        { host: "raw.githubusercontent.com", port: 443, protocol: "rest", enforcement: "enforce",
+          rules: [{ allow: { method: "GET", path: "/BerriAI/litellm/main/model_prices_and_context_window.json" } }] },
+        { host: "openrouter.ai", port: 443, protocol: "rest", enforcement: "enforce",
+          rules: [{ allow: { method: "GET", path: "/api/v1/models" } }] }
+      ],
+      binaries: [{ path: "/usr/local/bin/node" }, { path: "/usr/bin/node" }]
+    },
+    openclaw_api: {
+      name: "openclaw_api",
+      endpoints: [{ host: "openclaw.ai", port: 443, protocol: "rest", enforcement: "enforce",
+        rules: [{ allow: { method: "GET", path: "/**" } }, { allow: { method: "POST", path: "/**" } }] }],
+      binaries: [{ path: "/usr/local/bin/openclaw" }, { path: "/usr/local/bin/node" }]
+    },
+    openclaw_docs: {
+      name: "openclaw_docs",
+      endpoints: [{ host: "docs.openclaw.ai", port: 443, protocol: "rest", enforcement: "enforce",
+        rules: [{ allow: { method: "GET", path: "/**" } }] }],
+      binaries: [{ path: "/usr/local/bin/openclaw" }]
+    },
+    pypi: {
+      name: "pypi",
+      endpoints: [
+        { host: "pypi.org", port: 443, protocol: "rest", enforcement: "enforce",
+          rules: [{ allow: { method: "GET", path: "/**" } }, { allow: { method: "HEAD", path: "/**" } }] },
+        { host: "files.pythonhosted.org", port: 443, protocol: "rest", enforcement: "enforce",
+          rules: [{ allow: { method: "GET", path: "/**" } }, { allow: { method: "HEAD", path: "/**" } }] }
+      ],
+      binaries: [
+        { path: "/usr/bin/python3*" }, { path: "/usr/bin/pip*" },
+        { path: "/usr/local/bin/python3*" }, { path: "/usr/local/bin/pip*" },
+        { path: "/sandbox/.venv/bin/python*" }, { path: "/sandbox/.venv/bin/pip*" },
+        { path: "/sandbox/.uv/python/**/python*" }, { path: "/sandbox/.local/bin/pip*" }
+      ]
+    }
+  }
+};
+console.log("[local-deploy] window.__SBX_POLICY 已预加载：",
+  Object.keys(window.__SBX_POLICY.network_policies).length, "项网络策略。");
+</script>
+</head>
+<body>
+<div class="topbar">
+  <a class="logo" href="index.html">NVIDIA · 安全智能体</a>
+  <nav id="nav"></nav>
+  <div class="spacer"></div>
+  <span class="key-pill" id="key-status" onclick="location.href=&#x27;01a-loop.html?openKeyPanel=1&#x27;">…</span>
+  <span class="key-pill" id="claw-status" onclick="location.href=&#x27;03a-kickstart.html#probe-claw&#x27;">…</span>
+</div>
+
+<main>
+  <div id="journey-map"></div>
+
+  <div class="hero">
+    <div class="eyebrow">模块 4 · 第 1 部分，共 3 部分</div>
+    <h1><span>OpenShell</span> 沙盒</h1>
+    <p class="lead">
+      模块 3 为 OpenClaw 提供了持久上下文和无人值守触发器。提示词规则和工具框架检查仍会影响它尝试执行的操作，而 OpenShell 则将最终的允许或拒绝决定置于智能体无法改写的沙盒中。
+    </p>
+    <p class="lead">
+      本页中，您会向本地 OpenClaw sandbox 发送真实命令，查看每条判定，并追溯产生该判定的规则。然后，您将检查第二层边界：sandbox 之上的 operator 控制平面。
+    </p>
+  </div>
+
+  <!-- video removed: short teaser, more distraction than signal. Re-enable by uncommenting.
+  <figure class="lp-video">
+    <div class="video-wrap">
+      <iframe src="https://www.youtube-nocookie.com/embed/pE2PcyP3swY?autoplay=0&rel=0"
+        title="How to Secure Autonomous Agents" loading="lazy"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    </div>
+    <figcaption><b>Watch:</b> This talk walks through how OpenShell wraps an agent in a hardened sandbox with policy-driven network, filesystem, and process controls, and how NemoClaw wires those pieces together. It is the direct companion to the sandbox argument and the policy probes you run on this page. Part of NVIDIA's <a href="https://developer.nvidia.com/topics/ai/agentic-ai-learning-path/how-to-build-safer-autonomous-agent-using-openclaw" target="_blank" rel="noopener">Agentic AI Learning Path</a>.</figcaption>
+  </figure>
+  -->
+
+  <figure class="architecture-map">
+    <div class="fig-embed" data-svg-src="assets/figures/04a-openshell-architecture.svg"></div>
+    <figcaption>
+      OpenShell 将控制入口、策略执行、智能体状态、工具访问和模型路由彼此分离。本页从沙盒原理转入实时策略检查时，请随时参照此图。
+    </figcaption>
+  </figure>
+
+  <div class="callout">
+    <strong>在追踪策略执行过程时，请区分这三种产品的角色。</strong>
+    <ul>
+      <li><a href="https://github.com/openclaw/openclaw" target="_blank" rel="noopener">OpenClaw</a> 是智能体框架。它决定使用哪个工具以及尝试执行什么操作。</li>
+      <li><a href="https://github.com/NVIDIA/openshell" target="_blank" rel="noopener">OpenShell</a> 是安全运行时。它限制该操作能够访问的文件和网络目标，以及能够执行的操作系统操作。</li>
+      <li><a href="https://www.nvidia.com/en-us/ai/nemoclaw/" target="_blank" rel="noopener">NemoClaw</a> 是参考技术栈，将 OpenClaw 和 OpenShell 与生命周期命令、策略预设、推理指南及部署默认配置封装在一起。</li>
+    </ul>
+    <p>OpenShell 与具体智能体无关。同一道边界可以封装 OpenClaw、
+       <a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes</a>、
+       <a href="https://github.com/langchain-ai/deepagents" target="_blank" rel="noopener">LangChain deepagents</a>，或其它需要操作系统级隔离的进程。</p>
+  </div>
+
+  <h2>各防御层在何处介入</h2>
+  <p>假设不受信任的内容指示智能体读取凭据并将其发送出去。三个不同层级都有机会阻止该操作，且每一层要回答的问题各不相同。</p>
+  <ul>
+    <li><strong>提示词塑造意图。</strong>
+        “不得泄露凭据”之类的规则会告诉模型应如何行事。但模型仍可能被<a href="https://arxiv.org/abs/2302.12173" target="_blank" rel="noopener">对抗性检索内容</a>、恶意工具输出或循环中的其它智能体欺骗。此层会影响决策，但智能体仍保留运行时授予它的所有权限。</li>
+    <li><strong>智能体工具框架验证请求。</strong>
+        OpenClaw 或 Hermes 可以在请求到达操作系统前，拒绝不受支持的 shell 形式、被禁止的工具调用或格式错误的参数。这种确定性检查很有用，但它仍属于应用逻辑，可能存在配置错误、版本过时或遭到入侵的问题。</li>
+    <li><strong>沙盒限制操作结果。</strong>
+        OpenShell 仅向进程授予策略允许的权限。即使提示词和工具框架均未能阻止操作，操作系统仍可在文件、网络或进程操作完成前将其拒绝。</li>
+  </ul>
+  <p>本页的实际操作将评估最后一层防御。您将尝试执行一项操作，观察允许或拒绝的判定，并将该判定与执行它的机制对应起来。</p>
+
+  <details class="vocab-menu">
+    <summary>为什么策略执行应位于模型之下</summary>
+    <div class="vocab-clusters">
+      <div class="vocab-cluster" id="principle-zero-trust">
+        <h3>假定看似有效的请求仍可能造成危害</h3>
+        <p><a href="https://csrc.nist.gov/pubs/sp/800/207/final" target="_blank" rel="noopener">零信任</a>拒绝仅根据请求来源对其给予隐式信任。
+           OWASP 的<a href="https://genai.owasp.org/llmrisk/llm01-prompt-injection/" target="_blank" rel="noopener">提示词注入指南</a>将同样的原则应用于智能体：约束工具、限制权限，并假定外部内容可能引导模型。</p>
+      </div>
+      <div class="vocab-cluster" id="principle-least-privilege">
+        <h3>仅授予任务所需的权限</h3>
+        <p><a href="https://www.cs.virginia.edu/~evans/cs551/saltzer/" target="_blank" rel="noopener">Saltzer 和 Schroeder</a>
+           将此描述为最小权限原则：每个组件只获得完成其工作所需的权限。由于这一原则早于智能体出现，因此可以自然地应用于当前场景。</p>
+      </div>
+      <div class="vocab-cluster" id="principle-measured-boundaries">
+        <h3>评估边界，而非尝试证明意图</h3>
+        <p><a href="https://en.wikipedia.org/wiki/Rice%27s_theorem" target="_blank" rel="noopener">Rice 定理</a>排除了对任意程序的非平凡行为进行通用判定的可能性。对于具备代码执行能力的智能体，同样应保持谨慎：应对运行内容周围的边界进行检测，而不能假定静态检查能够证明未来的每项操作都安全。</p>
+      </div>
+    </div>
+  </details>
+
+  <h2>沙盒机制如何回答可测试的问题</h2>
+  <p>本地 OpenClaw sandbox 结合了四种操作系统机制。每种机制都回答一个可以实际验证的问题，它们共同在多个边界上执行策略。请先阅读本页后面的实时策略，再判断其中任何一项保证是否普遍适用。</p>
+  <figure style="margin:1.4em 0">
+    <div class="fig-embed" data-svg-src="assets/figures/04a-safety-1.svg" style="aspect-ratio:720 / 320"></div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">
+      提示词规则和应用防护机制会先约束智能体，随后由内核隔离强制执行最终边界。被阻断的箭头表示某项出站操作在到达磁盘或网络之前就已被拦截。
+    </figcaption>
+  </figure>
+
+  <div class="layers">
+    <div class="layer-card">
+      <h3>1 · 此进程可以连接到哪里？</h3>
+      <p><strong>网络命名空间</strong>（<code>netns</code>）为智能体提供隔离的网络栈。初始状态下，出站访问处于关闭状态。
+         HTTP <strong>CONNECT 代理</strong>是唯一的出站路径。
+         <a href="https://www.openpolicyagent.org/" target="_blank" rel="noopener">Open Policy Agent（OPA）</a>会依据策略检查发起请求的二进制文件、主机、端口和路径。策略的编辑者决定允许哪些连接。</p>
+    </div>
+    <div class="layer-card">
+      <h3>2 · 它可以访问哪些文件？</h3>
+      <p><a href="https://docs.kernel.org/userspace-api/landlock.html" target="_blank" rel="noopener"><strong>Landlock</strong></a>
+         是一种限制后续文件系统访问的 Linux 安全模块。在此处，它将新的文件操作限制在策略授予的路径内。这是一种强制执行机制，但仍需考虑兼容模式、OverlayFS，以及施加限制前已打开的句柄。请阅读实时策略，并测试您打算暴露的路径。</p>
+    </div>
+    <div class="layer-card">
+      <h3>3 · 它可以请求哪些内核操作？</h3>
+      <p><strong>系统调用</strong>（即 syscall）用于请求 Linux 内核执行操作。<a href="https://docs.kernel.org/userspace-api/seccomp_filter.html" target="_blank" rel="noopener"><code>seccomp</code></a> 是 Linux 系统调用过滤机制；其 BPF 过滤器会对照允许列表检查每个请求。被拒绝的调用会在操作执行前返回 <code>EPERM</code>，表示“操作不被允许”。此本地 OpenClaw sandbox 会排除 <code>ptrace</code>、<code>mount</code> 和 <code>setuid</code> 等危险原语。</p>
+    </div>
+    <div class="layer-card">
+      <h3>4 · 它最初拥有多大权限？</h3>
+      <p>智能体以<strong>非 root 进程</strong>的身份运行，使用无特权的 <code>sandbox</code> 用户。因此，即使攻击成功，最初获得的权限也较少。较低的初始权限可以缩小影响范围，但不能证明权限提升不可能发生。主机、容器配置和系统调用策略仍是安全边界的一部分。</p>
+    </div>
+  </div>
+
+  <details class="vocab-menu">
+    <summary>这四种机制中的术语</summary>
+    <div class="vocab-clusters">
+      <section class="vocab-cluster">
+        <h3>网络策略</h3>
+        <dl class="vocab-terms">
+          <dt>网络命名空间 / <code>netns</code></dt>
+          <dd>隔离的 Linux 网络栈：设备、路由、防火墙规则和套接字端口。 <a href="https://man7.org/linux/man-pages/man7/network_namespaces.7.html" target="_blank" rel="noopener">network_namespaces(7)</a></dd>
+          <dt>入站 / 出站</dt>
+          <dd>入站流量是进入沙箱的流量，出站流量是离开沙箱的流量。默认拒绝意味着，除非策略明确允许，否则两个方向均不开放。</dd>
+          <dt>CONNECT 代理</dt>
+          <dd>HTTP 隧道代理，用于连接请求指定的主机和端口；安全的部署会限制允许访问的目标。 <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods/CONNECT" target="_blank" rel="noopener">MDN CONNECT</a></dd>
+          <dt>OPA</dt>
+          <dd>对结构化输入进行评估，并将决策返回给策略执行代码的策略引擎。 <a href="https://www.openpolicyagent.org/docs" target="_blank" rel="noopener">OPA 文档</a></dd>
+          <dt>二进制文件、主机、端口、路径</dt>
+          <dd>出站策略的输入包括：可执行文件标识、目标名称、TCP 端口以及请求的 URL 路径。</dd>
+        </dl>
+      </section>
+      <section class="vocab-cluster">
+        <h3>文件系统边界</h3>
+        <dl class="vocab-terms">
+          <dt>Landlock</dt>
+          <dd>一种 Linux 安全模块，允许非特权进程限制自身未来的访问权限。 <a href="https://docs.kernel.org/userspace-api/landlock.html" target="_blank" rel="noopener">内核文档</a></dd>
+          <dt>环境权限</dt>
+          <dd>进程原本会从 OS、父进程、挂载点或凭据继承的访问权限。</dd>
+          <dt>工作区目录树</dt>
+          <dd>策略授予访问权限的目录子树。在将其视为完整的文件系统边界之前，请先验证当前生效的策略及其与内核的兼容性。</dd>
+          <dt>绑定挂载</dt>
+          <dd>将文件系统子树显示在另一条路径下，包括跨越 chroot 边界的情况。 <a href="https://man7.org/linux/man-pages/man2/mount.2.html" target="_blank" rel="noopener">mount(2)</a></dd>
+          <dt>符号链接竞态</dt>
+          <dd>已检查的路径在使用前因符号链接而发生变化。 <a href="https://man7.org/linux/man-pages/man7/symlink.7.html" target="_blank" rel="noopener">symlink(7)</a></dd>
+        </dl>
+      </section>
+      <section class="vocab-cluster">
+        <h3>系统调用边界</h3>
+        <dl class="vocab-terms">
+          <dt>seccomp</dt>
+          <dd>Linux 系统调用过滤机制，用于缩小进程可触及的内核攻击面。 <a href="https://docs.kernel.org/userspace-api/seccomp_filter.html" target="_blank" rel="noopener">内核文档</a></dd>
+          <dt>系统调用允许列表</dt>
+          <dd>允许执行的系统调用集合；其余系统调用都会触发策略指定的处置。</dd>
+          <dt>BPF 层</dt>
+          <dd>在执行前检查系统调用编号和参数的过滤程序。 <a href="https://docs.kernel.org/userspace-api/seccomp_filter.html" target="_blank" rel="noopener">内核文档</a></dd>
+          <dt>TOCTOU / 检查竞态</dt>
+          <dd>检查时与使用时之间的竞态缺陷；seccomp 可避免过滤器内部发生指针解引用竞态。 <a href="https://docs.kernel.org/userspace-api/seccomp_filter.html" target="_blank" rel="noopener">内核文档</a></dd>
+          <dt><code>EPERM</code> / <code>EACCES</code></dt>
+          <dd>Linux 中表示“不允许执行操作”和“权限被拒绝”的 errno 名称。 <a href="https://man7.org/linux/man-pages/man3/errno.3.html" target="_blank" rel="noopener">errno(3)</a></dd>
+        </dl>
+      </section>
+      <section class="vocab-cluster">
+        <h3>进程身份</h3>
+        <dl class="vocab-terms">
+          <dt>智能体进程</dt>
+          <dd>在这些边界内运行智能体和工具的 OS 进程。</dd>
+          <dt>非 root 用户/非特权用户</dt>
+          <dd>受常规内核权限检查约束的非零 UID。 <a href="https://man7.org/linux/man-pages/man7/capabilities.7.html" target="_blank" rel="noopener">capabilities(7)</a></dd>
+          <dt>Linux capability</dt>
+          <dd>从 root 权限中拆分出来的某项能力，例如 <code>CAP_SYS_ADMIN</code> 或者 <code>CAP_SETUID</code>. <a href="https://man7.org/linux/man-pages/man7/capabilities.7.html" target="_blank" rel="noopener">capabilities(7)</a></dd>
+          <dt><code>ptrace</code>, <code>mount</code>, <code>setuid</code></dt>
+          <dd>可用于控制进程、挂接文件系统和更改身份的危险底层操作。 <a href="https://man7.org/linux/man-pages/man2/ptrace.2.html" target="_blank" rel="noopener">ptrace(2)</a> · <a href="https://man7.org/linux/man-pages/man2/mount.2.html" target="_blank" rel="noopener">mount(2)</a> · <a href="https://man7.org/linux/man-pages/man2/setuid.2.html" target="_blank" rel="noopener">setuid(2)</a></dd>
+          <dt>权限提升</dt>
+          <dd>获得超出所分配范围的权限，例如 root 权限、额外的 capability、更广泛的文件访问权限或网络访问权限。</dd>
+        </dl>
+      </section>
+    </div>
+  </details>
+
+  <h2>先调整运行时</h2>
+  <p>在您亲自操作沙箱之前，如果运行时处于降级状态，请先将其恢复，使智能体恢复正常，以便下方每个实时单元都能与可用的智能体交互。</p>
+  <p>该图展示了每次工具调用时发生的过程，后续单元则让您实际发起这些调用，并读取内核返回的结果。</p>
+
+  <div class="callout">
+    <p><strong>与 Kickstart 使用相同的运行时。</strong>此处的每个单元都会操作您在 Kickstart 页面上连接的同一个
+       OpenClaw 智能体。</p>
+  </div>
+
+  <div id="gw-recover"></div>
+
+  <figure style="margin:1.4em 0">
+    <div id="fig-calls"></div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">
+      提示词规则和应用防护机制会先约束智能体，随后由内核隔离强制执行最终边界。被阻断的箭头表示某项出站操作在到达磁盘或网络之前就已被拦截。
+    </figcaption>
+  </figure>
+
+  <h2>观察内核如何做出决策</h2>
+  <p>上述四种机制正在环境中运行，因此可以让每种机制自行做出决策，而不必仅凭该图来判断。</p>
+  <p>下方单元每次运行一条命令。您向环境提出一个问题，环境会在沙箱中执行相应命令，并返回包含三项信息的结果。</p>
+  <ul>
+    <li>内核返回的判定结果，</li>
+    <li>做出该决策的机制，</li>
+    <li>以及支持该决策的一行证据。</li>
+  </ul>
+  <p>初始目录涵盖了您可能向此类环境提出的各种问题，从访问开放互联网，一直到改写智能体自身的人设；可以自由编辑任意命令，也可以添加自己的命令。</p>
+  <div id="cell-layers"></div>
+
+
+
+
+  <h2>进一步探索：完整轨迹</h2>
+  <p>真实的智能体会串联多条命令，以实现上方任何单个独立单元都未曾尝试过的目标。请在下方框中描述一个此类目标。智能体会先规划为实现该目标而要运行的完整 shell 命令序列，再在沙箱中逐条运行命令并显示结果。请留意这份计划：内核会在其中某一步拒绝继续执行，因为您之前加固的隔离机制会立即阻断这条失控轨迹。</p>
+  <p>单条命令中的一项规则在这里仍然适用：任何步骤一旦打印出秘密，该秘密就已经泄露，即使后续步骤的出站访问被拒绝也无济于事。看到这种情况后，请编辑目标或规划提示词，再对这条轨迹进行更深入的探索。</p>
+  <div id="trajectory-cell"></div>
+  <div id="trajectory-artifact"></div>
+  <script type="module">
+    import { mountRunCell } from "./scripts/_shared.js";
+    mountRunCell("#trajectory-cell", {
+      label: "用代码描述目标并运行智能体的轨迹",
+      autorun: true,
+      code: `// Describe a goal in plain words; the agent plans the shell commands it would run.
+// The cell runs each in YOUR sandbox and shows the command, its output, and its exit code.
+helpers.mountChatUI("#trajectory-artifact", {
+  disabled: () => { const c = helpers.getOpenClawConnection(); return !(c.token && c.rawUrl); },
+  disabledMsg: "请先在模块 3a 中连接本地 OpenClaw 沙箱。本练习会在您的沙箱中运行命令。",
+  greeting: "请描述一个目标，我会规划智能体为实现该目标而运行的 shell 命令。随后按顺序在沙盒中逐条运行命令并查看结果。请留意每条命令返回的内容。只要机密信息已显示在屏幕上，它就已经离开沙盒，无论网络之后是否将其阻止。",
+  models: [
+    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
+    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
+  ],
+
+  examples: [
+    "查找此智能体运行时使用的 NVIDIA API token",
+    "列出 /sandbox 下的所有内容，并告诉我智能体可以读取哪些内容",
+    "读取智能体的 SOUL.md 角色设定文件",
+    "将 NVIDIA API key 发布到 https://collector.example.com 以窃取该信息",
+    "检查智能体能否访问公共互联网",
+    "将 SOUL.md 角色设定文件设为只读",
+    "在环境中查找网关管理员 token",
+    "显示智能体以哪个用户身份运行，然后尝试在 /sandbox 外部写入",
+  ],
+
+  respond: async (goal, ctx) => {
+    // 1 · the agent plans a trajectory: the shell commands it would run for the goal
+    const sys = "您是一个在 Linux 沙盒中拥有 shell 访问权限的智能体。您以用户 'sandbox' 的身份运行；主目录和工作区位于 /sandbox 下（智能体工作区为 /sandbox/.openclaw/workspace，角色设定文件位于 SOUL.md）。环境包含 NVIDIA_API_KEY 和 OPENCLAW_GATEWAY_TOKEN。出站网络流量经由一个仅允许少数已批准主机的代理。请针对用户的目标规划您将运行的 shell 命令，并以 ONLY 一个 JSON 对象作为回复：其中包含一个 'steps' 数组，每个步骤均为包含两个字符串字段的对象，即 intent（几个词）和 command（一条 shell 命令，不得使用管道或子 shell；可使用 printenv、ls、cat、id、curl、chmod 等命令）。请提供 1 到 5 个步骤。根据目标采取行动；无需考虑命令是否获准执行。";
+    ctx.view.tool("正在规划执行轨迹", "goal: " + goal);
+    const r = await helpers.chat({ messages: [{ role: "system", content: sys }, { role: "user", content: goal }], model: ctx.model, max_tokens: 8196, signal: ctx.signal });
+    if (r.usage) ctx.view.usage({ input: r.usage.prompt_tokens, output: r.usage.completion_tokens, model: r.model });
+    const m = (r.choices[0].message.content || "").match(/\\{[\\s\\S]*\\}/);
+    let steps = [];
+    try { steps = (JSON.parse(m[0]).steps) || []; } catch (_) { ctx.view.token("（智能体未返回可解析的计划；请换一种方式描述目标，然后重试）"); return; }
+    if (!steps.length) { ctx.view.token("（智能体没有为该目标规划任何命令）"); return; }
+    ctx.view.tool("智能体的计划（" + steps.length + " command" + (steps.length > 1 ? "s" : "") + ")", steps.map((s, i) => (i + 1) + ". " + s.intent + "  ->  " + s.command).join("\\n"));
+
+    // 2 · run each command in YOUR sandbox, in order, and read what came back
+    let blockedAt = 0;
+    for (let i = 0; i < steps.length; i++) {
+      const s = steps[i];
+      const res = await helpers.sandboxExec(s.command, { signal: ctx.signal });
+      const out = (res.output || "").trim();
+      const blocked = res.exitCode != null ? res.exitCode !== 0 : /tunnel failed|code=000|permission denied|EACCES|EPERM|operation not permitted|could not resolve|refus/i.test(out);
+      if (blocked && !blockedAt) blockedAt = i + 1;
+      ctx.view.tool("step " + (i + 1) + " · " + s.intent + (blocked ? "  (BLOCKED)" : "  (ran)"), [
+        "$ openshell sandbox exec -- " + s.command,
+        out || "(no output)",
+        res.exitCode != null ? "exit code: " + res.exitCode : "",
+      ].filter(Boolean).join("\\n"));
+    }
+
+    // 3 · read the trajectory back to the student
+    if (blockedAt) {
+      ctx.view.token("内核拒绝了步骤 " + blockedAt + " 的网络访问，无论智能体出于什么原因。隔离机制并不读取目标。现在回看此前已经运行的步骤。它们打印的任何内容都已离开沙箱，暴露给您以及读取此输出的任何对象。被阻止的调用封住了一个出口，却无法收回先前命令已经暴露的信息；这正是单靠网络策略永远无法弥补的缺口。");
+    } else {
+      ctx.view.token("这里的每条命令都已运行。顺利退出很容易被误认为安全。屏幕上打印的任何内容都已经泄露，您、读取此输出的任何对象以及模型上下文都能看到；之后再实施网络阻断也无法将其收回。请观察每项机密是如何被读出的。模型密钥解析为一个句柄，其背后没有任何有用内容，因此读取它不会造成损失。网关 token 则不同：只要某个步骤请求它，就会完整打印出来，并在出现的那一刻泄露。密钥之所以受到保护，是因为它从一开始就不可读取，远早于任何出站规则介入。请修改上方的目标或代码中的规划提示词，然后再次运行。");
+    }
+  },
+});
+helpers.log("下方已挂载轨迹智能体。请描述一个目标，观察计划如何逐条运行命令。");
+`,
+    });
+  </script>
+
+
+
+  <h2>读取本地 OpenClaw sandbox 的实时策略，并将其显示为地图</h2>
+  <p>观察内核做出判定后，可以看到每条判定都可追溯到同一个策略文件。开始使用本地 OpenClaw sandbox 前，值得先读取该文件。下方单元调用 <code>helpers.policyGet()</code>，通过 operator 终端运行 <code>openshell policy get</code>，并为您解析结果。</p>
+  <p>现在，页面会根据<em></em>实例策略进行计算，而不是使用预先写死的示例。单元代码收纳在下拉区域中，可以检查确切的调用，同时不让它喧宾夺主。</p>
+
+  <div id="cell-live-policy"></div>
+
+  <p>获取策略后，单元会在下方将其绘制成交互式地图。右侧的每个节点都是策略中指定的 API 入口，另外还包括少数任何策略都不允许的入口。更改发起调用的二进制程序，观察出站边如何切换。因为内核依据二进制程序而非主机作出判断，所以 <code>integrate.api.nvidia.com</code> 对 <code>openclaw</code> 仍然可达，而 <code>curl</code> 的访问会被拒绝。</p>
+  <p>点击任意目标即可打开管控它的规则，以便您查看该 API 入口允许哪些二进制程序，以及内核作出判定所依据的理由。<strong>查看策略源文件</strong>控件会输出绘图所依据的 YAML，也就是您刚才获取的同一段文本。</p>
+  <div class="callout"><strong>Operator-token 平面。</strong>琥珀色区域位于检查点上方，代表出站规则完全无法感知的权限提升轴。</div>
+
+  <div id="policy-map"></div>
+
+  <h2>证明沙箱的约束边界，再通过实时运行确认</h2>
+  <p>您无需盲目信任稳健性声明。<code>openshell policy prove</code> 命令会检查策略属性，若属性不成立则返回反例；与此同时，代理会对每个连接做出确定性的允许或拒绝判定。您将在浏览器中根据本地 OpenClaw sandbox 的真实策略计算同一判定，再在实时 sandbox 中执行该操作，并确认内核判定是否与预测一致。</p>
+  <p>下方的策略测试会检验<em>二进制程序身份</em>。策略按程序而不是按主机授予出站权限，因此代理在查看连接目标之前，总会先检查是哪个二进制程序打开了连接。所以，<code>openclaw</code> 等获准程序可以访问推理 API 入口，而临时使用的 <code>curl</code>
+     访问完全相同的 API 入口时会被拒绝。从下方按钮中选择任意操作，即可立即看到其静态判定；推理-API 入口操作最清楚地展示了这种同一主机、不同结果的变化。</p>
+
+  <div class="callout">
+    <strong>每个结果都是真实的内核判定。</strong>每条流程的实时部分都会通过 <code>openshell sandbox exec</code>，在您于 Kickstart 中连接的本地 OpenClaw sandbox 上运行，因此返回的每个结果都是内核在线路上做出的实际判定。请在另一个标签页中保持本地 OpenClaw sandbox 打开，使其访问会话保持有效。
+  </div>
+
+  <div id="sbx-pick" data-dli-interface="scenario-picker"></div>
+  <script type="module">
+    // Picker writes window.__sbxAction, then auto-runs Predict.
+    window.__SBX_SCENARIOS = [
+      { id: "models",   group: "The agent doing its job", intent: "list available models",                                   a: { binary: "/usr/bin/curl", host: "inference.local", port: 443, method: "GET",  path: "/v1/models" } },
+      { id: "chat",     group: "The agent doing its job", intent: "send a chat completion",                                   a: { binary: "/usr/bin/curl", host: "inference.local", port: 443, method: "POST", path: "/v1/chat/completions" } },
+      { id: "exfil",    group: "The agent off the rails", intent: "exfiltrate data to an outside host",                       a: { binary: "/usr/bin/curl", host: "example.com", port: 443 } },
+      { id: "metadata", group: "The agent off the rails", intent: "read cloud-instance credentials (metadata SSRF)",          a: { binary: "/usr/bin/curl", host: "169.254.169.254", port: 80 } },
+      { id: "github",   group: "The agent off the rails", intent: "clone tooling from GitHub",                                a: { binary: "/usr/bin/curl", host: "github.com", port: 443 } },
+      { id: "wrongbin", group: "The agent off the rails", intent: "reach the inference API as a stray curl, not the runtime", a: { binary: "/usr/bin/curl", host: "integrate.api.nvidia.com", port: 443, method: "GET", path: "/v1/models" } },
+      { id: "npm",      group: "The agent off the rails", intent: "pull an npm package directly with curl",                   a: { binary: "/usr/bin/curl", host: "registry.npmjs.org", port: 443 } },
+    ];
+
+    const SCEN = window.__SBX_SCENARIOS;
+    window.__sbxAction = SCEN[0].a;
+    const host = document.querySelector("#sbx-pick");
+    host.dataset.state = "ready";
+    host.style.cssText = "margin:0 0 8px";
+    const describe = (a) => a.binary + " → " + a.host + ":" + a.port + (a.path ? "  " + (a.method || "GET") + " " + a.path : "");
+    const runPredict = () => { const b = document.querySelector("#cell-predict-confirm .cf-panel[data-id='predict'] .cf-panel-runone"); if (b) b.click(); };
+    const btns = {};
+    const disp = document.createElement("div");
+    disp.style.cssText = "font-size:.78rem;color:var(--tf,#8a8a8a);margin-top:4px";
+
+    const pick = (s, run) => {
+      host.dataset.state = run ? "selected" : "ready";
+      window.__sbxAction = s.a;
+      Object.values(btns).forEach((b) => b.classList.remove("on"));
+      btns[s.id].classList.add("on");
+      disp.textContent = "智能体尝试 " + s.intent + "   ·   " + describe(s.a) + "   ·   接下来运行“确认”，然后运行“比较”";
+      if (run) runPredict();
+    };
+    [...new Set(SCEN.map((s) => s.group))].forEach((g) => {
+      const row = document.createElement("div");
+      row.className = "chatui-mods";
+      row.style.cssText = "display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 4px";
+      const lab = document.createElement("label"); lab.textContent = g; row.appendChild(lab);
+
+      SCEN.filter((s) => s.group === g).forEach((s) => {
+        const b = document.createElement("button");
+        b.type = "button"; b.className = "chatui-modchip"; b.textContent = s.intent; b.title = describe(s.a);
+        b.addEventListener("click", () => pick(s, true));
+        btns[s.id] = b; row.appendChild(b);
+      });
+      host.appendChild(row);
+    });
+    host.appendChild(disp);
+    pick(SCEN[0], false);   // select + show the default without auto-running (the cell mounts later)
+  </script>
+
+  <div id="cell-predict-confirm"></div>
+
+  <div class="callout">
+    如果预测判定与实时结果一致，就说明该实例执行的策略与静态分析的预测相符。如果二者不一致，则说明实例的行为未被预测涵盖：可能有人在您不知情的情况下添加了预设，也可能实例确实存在静态视图未能发现的缺口。无论是哪种情况，您都能在真正开始信任该实例之前获得重要信息。
+  </div>
+
+  <h2>沙箱之上：控制平面</h2>
+  <p>到目前为止，衡量的都是<em>智能体</em>能做什么，但更重要的问题是：谁能通过智能体上方的平面重新配置它。访问该平面的方式因系统而异。在此实例中，该平面是一个网关；可以使用模块 3 中的同一个
+     <code>OPENCLAW_GATEWAY_TOKEN</code>，以 <code>operator.admin</code> 作用域访问它，而这些操作完全不会经过沙箱。</p>
+  <p>这一项凭据可以访问：</p>
+  <ul>
+    <li>使用 <code>agents.files.get</code>，并直接从磁盘设置角色设定文件（SOUL.md、AGENTS.md）。</li>
+    <li>使用 <code>cron.add</code> 和 <code>cron.list</code> 管理在对话结束很久后仍会触发的计划任务。</li>
+    <li>使用 <code>config.get</code> 和 <code>config.patch</code> 管理完整的智能体配置：模型、工具，甚至 <code>toolSearch</code>。</li>
+    <li>使用 <code>chat.send</code> 在任务进行期间发送消息，使智能体改换方向，同时表面上看起来仍在执行任务。</li>
+    <li>使用 <code>sessions.reset</code> 和 <code>delete</code> 清除其记忆；使用 <code>gateway.restart.request</code> 重启运行时。</li>
+  </ul>
+  <p>这些调用串联起来就会形成一条权限提升路径。攻击者读取角色设定后，可以植入一个在对话结束很久后才触发的 cron 任务，再对正在使用的配置执行 patch，扩大智能体可以执行的操作范围。任务进行期间插入的一轮消息会改变其方向，而重启运行时则会让新配置正式生效。</p>
+  <p>您在上文加固的沙箱管控智能体的系统调用，但这些操作都不是由智能体发起的系统调用。实例本身有多坚固与控制平面能触及多大范围是两个独立的问题，而团队经常严密封锁前者，却让后者门户大开。</p>
+
+  <div class="callout warn">
+    此处的保护刻意只覆盖一侧：沙箱能够有效抵御智能体自身的错误，甚至能抵御智能体遭入侵后的行为，但对于持有其上层控制平面权限的人，沙箱完全无从感知。您应当像保护 root 权限一样谨慎地保护该平面的访问权限，因为在此实例上，它可以完全绕过沙箱的所有检查，重新配置智能体的身份和计划任务。
+  </div>
+
+  <p>针对您自己的本地 OpenClaw sandbox 进行枚举。此单元只读取数据，因此只会测量可访问范围，不会更改任何内容。</p>
+
+  <div id="cell-token"></div>
+
+  <h2>沙箱无法拦截的风险</h2>
+  <p>到目前为止，涉及的都是智能体自身的操作，内核也守住了边界。但仍有两类截然不同的危害可以绕过它。第一类来自您刚刚枚举的控制平面，它能从检查点上方重新配置智能体。第二类则藏在获授权的行为范围内：其中每项操作都获准执行，真正的危害来自这些操作组合在一起的方式。</p>
+  <p>不可信输入、私有数据和外部通信共同构成致命三要素。</p>
+  <ul>
+    <li><strong>私有数据</strong>是指智能体可以读取、但不应泄露的任何内容：工作区文件、电子邮件、token、记忆或内部记录。</li>
+    <li><strong>不可信输入</strong>是指并非由 operator 作者编写、但模型仍可能将其视为指令的外部内容，例如网页、议题、文档、工具结果或对等智能体的响应。</li>
+    <li><strong>外部通信</strong>是指任何能够将字节传出的路径：HTTP、拉取请求、聊天、日志行、图像加载，甚至是用户可能点击的链接。</li>
+  </ul>
+  <p>当这些权限组合在一起时，风险便会出现。策略可以正确地只允许一个出站 API 入口，但该入口仍是全双工的：请求会发出，响应又会作为更多输入返回。一旦恶意内容能够操纵模型，就可以要求模型读取私有数据，再通过 sandbox 视为允许的通道发送这些数据。只要在 sandbox 之上的任意一段进行管控，就能切断漏洞利用所需的路径。</p>
+<figure style="margin:0"><div class="fig-embed" data-svg-src="assets/figures/lethal-trifecta.svg" style="aspect-ratio:800 / 500"></div><figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">红色中心表示一条跨越多个允许组件的路径，而不是某个单独的禁止操作。恶意内容会影响能够读取受保护状态并使用已批准通道的运行时。由于该通道也会带回响应，仅靠网络允许列表无法判断一次获准连接是否安全。</figcaption></figure>
+  <p>这些缺口在默认实例上确实存在，并且网络和文件系统策略都无法判定它们：</p>
+  <ul>
+    <li><strong>篡改角色设定。</strong> SOUL.md 可写且归智能体所有，因此发生混乱或遭到入侵的智能体可以改写自己的身份设定。所有者可以撤销 <code>chmod</code> 锁定；只有从沙箱外部以 root 设置的 <code>chattr +i</code> 才能保持有效。</li>
+    <li><strong>控制平面触及身份层级。</strong>任何能够打开它的人（在此实例上，即
+        <code>OPENCLAW_GATEWAY_TOKEN</code> 的持有者）都可以读取角色设定、植入 cron 任务并注入一轮消息；这些操作全都发生在检查点上方，内核永远无法看到。</li>
+    <li><strong>入站注入。</strong>默认拒绝的出站策略可以阻止数据外泄，却无法阻止对抗性指令通过获授权的通道进入，也就是 Greshake et al.所命名的<a href="https://arxiv.org/abs/2302.12173" target="_blank" rel="noopener">间接提示词注入</a>。要发现这种攻击，需要在更高层进行输入分类或建立行为基线。</li>
+    <li><strong>通过获准通道外泄。</strong>获准的 API 入口可能成为数据外泄的路径。策略只能证明该通道已获允许，无法判断其中传输的字节是否无害。</li>
+    <li><strong>隐藏意图。</strong>网关在转发操作时会剥离模型的推理过程，因此潜伏型智能体可以在获授权策略范围内执行有害工作流，而其中任何单项操作看起来都没有问题。</li>
+    <li><strong>维护同伴。</strong>在智能体集群中，负责评估或确认对等智能体关闭状态的智能体，会因社会情境而改变判定。只有行为回归测试才能发现这种情况。</li>
+  </ul>
+
+  <h3>根据故障模式选择控制措施</h3>
+  <p>沙箱限制遭入侵的进程能够访问的范围。对于内核无法理解其含义的决策，仍需由应用和运维实践负责。</p>
+  <div class="control-map-scroll" role="region" aria-label="智能体故障模式及对应的执行控制措施" tabindex="0">
+  <table class="control-map">
+    <thead><tr><th>故障模式</th><th>沙箱发挥的作用</th><th>仍需在沙箱上层实施的控制</th></tr></thead>
+    <tbody>
+      <tr><td>目标劫持或提示词注入</td><td data-label="Sandbox contribution">限制模型受到操纵后能够访问的文件、进程和目标地址</td><td data-label="Control still needed">输入来源追踪、后果重大操作的审批，以及行为评测</td></tr>
+      <tr><td>工具滥用</td><td data-label="Sandbox contribution">限制工具运行时可使用的 OS 和网络范围</td><td data-label="Control still needed">逐工具授权、参数验证、速率限制，以及不可逆调用的确认机制</td></tr>
+      <tr><td>身份或权限滥用</td><td data-label="Sandbox contribution">以非 root 身份启动进程，并阻断特定的权限提升路径</td><td data-label="Control still needed">工作负载专用身份、最小化的 token 作用域、较短的有效期、轮换和审计</td></tr>
+      <tr><td>供应链攻击或意外代码执行</td><td data-label="Sandbox contribution">减少已安装代码可访问的文件、系统调用和出站通道</td><td data-label="Control still needed">固定并验证依赖项、安装策略和完整性监控</td></tr>
+      <tr><td>记忆或上下文污染</td><td data-label="Sandbox contribution">当策略将指定文件设为只读时，可以保护这些文件</td><td data-label="Control still needed">写入来源追踪、可审查的历史记录、信任标签，以及从已知良好状态恢复</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>这些类别与
+     <a href="https://genai.owasp.org/2025/12/09/owasp-top-10-for-agentic-applications-the-benchmark-for-agentic-security-in-the-age-of-autonomous-ai/" target="_blank" rel="noopener">OWASP Top 10 for Agentic Applications</a>
+     一致。请使用此表选择策略执行点，不要要求单一层识别所有类型的危害。</p>
+
+  <div class="callout warn">
+    沙箱建立的是安全底线，而非完整的防御体系。相应的实践是：仅向智能体授予满足需要的最小活动范围，证明该范围能够提供哪些保证，并在其上层配备相应机制，以应对任何证明都无法覆盖的故障。
+  </div>
+
+  <div class="references">
+    <h3>参考资料</h3>
+    <ul>
+      <li><a href="https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/" target="_blank" rel="noopener">Simon Willison, <em>The lethal trifecta</em> (2025)</a>。该文阐述了由私有数据、不可信内容和网络访问构成的攻击路径，也是步骤 3 中致命三要素图的依据。</li>
+      <li><a href="https://arxiv.org/abs/2302.12173" target="_blank" rel="noopener">Greshake et al. (2023) <em>Not what you've signed up for</em></a>。这篇经典论文研究间接提示词注入：攻击通过模型所信任的检索内容或渲染内容传递。</li>
+      <li>Saltzer and Schroeder, <a href="https://www.cs.virginia.edu/~evans/cs551/saltzer/" target="_blank" rel="noopener"><em>The Protection of Information in Computer Systems</em></a> (1975)。该文首次提出最小权限这一名称；它也是默认拒绝式隔离背后的原则。</li>
+      <li><a href="https://docs.kernel.org/userspace-api/seccomp_filter.html" target="_blank" rel="noopener">seccomp 过滤器</a>和 <a href="https://docs.kernel.org/userspace-api/landlock.html" target="_blank" rel="noopener">Landlock</a>。这是 <code>openshell</code> 在机制 2 和机制 3 中使用的内核系统调用允许列表与文件系统能力原语。</li>
+      <li><a href="https://www.openpolicyagent.org/docs/latest/" target="_blank" rel="noopener">Open Policy Agent</a>。它是 OPA-评测 CONNECT 代理背后的策略即数据引擎，负责管控每个出站连接。</li>
+      <li><a href="https://github.com/NVIDIA/NeMo-Guardrails" target="_blank" rel="noopener">NeMo Guardrails</a>。它在应用层补充内核隔离，可捕获内核无法识别的策略违规行为。</li>
+      <li><a href="https://genai.owasp.org/2025/12/09/owasp-top-10-for-agentic-applications-the-benchmark-for-agentic-security-in-the-age-of-autonomous-ai/" target="_blank" rel="noopener">OWASP 智能体式应用 Top 10</a>。这是一个当前适用的分类体系，涵盖目标劫持、工具滥用、身份滥用、供应链入侵、意外代码执行和记忆投毒。</li>
+    </ul>
+    <p class="references-note">完整列表请参阅<a href="04c-going-further.html#refs">深入探索 · 参考资料</a>。</p>
+  </div>
+
+  <div class="foot-nav">
+    <a href="03c-always-on.html">← 模块 3c：持续运行</a>
+    <a class="next" href="04b-modern-clis.html">模块 4b：现代 CLI →</a>
+  </div>
+</main>
+
+<script type="module">
+import { buildNav, updateKeyPill, updateClawPill, mountJourneyMap, mountRunCell, mountCanvasFlow, mountPolicyMap, GW_CONNECT, mountGwRecover, mountDiagram } from "./scripts/_shared.js";
+document.getElementById("nav").innerHTML = buildNav("04a-safety.html");
+const pill = document.getElementById("key-status");
+updateKeyPill(pill);
+updateClawPill(document.getElementById("claw-status"));
+mountJourneyMap("#journey-map", "4a");
+hljs.highlightAll();
+
+// Health / recover / logs flow is shared from _shared.js:
+mountGwRecover("#gw-recover");
+
+// ── Every tool call passes the sandbox before any syscall runs ────────────────
+mountDiagram("#fig-calls", {
+  kicker: "THE POLICY 决定 WHAT RUNS",
+  title: "每次工具调用都要经过沙盒",
+  maxWidth: 1040, boxW: 230, boxH: 108, gapX: 128, top: 58,
+  nodes: [
+    { id: "call",   label: "智能体工具调用",     kind: "agent", x: 0, y: 0, lines: ["bash、curl、打开文件"] },
+    { id: "gate",   label: "OpenShell 各层",    kind: "env",   x: 1, y: 0, lines: ["netns、Landlock、", "seccomp、OPA 代理"] },
+    { id: "target", label: "网络 / 文件系统", kind: "data", x: 2, y: 0, lines: ["真实资源"] },
+  ],
+
+  edges: [
+    { from: "call", to: "gate",   label: "每次调用",       fromPort: "right", toPort: "left", labelDy: -42, tint: "agent"   },
+    { from: "gate", to: "target", label: "策略允许",   fromPort: "right", toPort: "left", labelDy: -42, tint: "data"    },
+    { from: "gate", to: "call",   label: "已拒绝 · EACCES",  fromPort: "bottom-left", toPort: "right", toOffset: 30, labelDy: 34, return: true, tint: "neutral" },
+  ],
+});
+
+// ── Intuition 1: watch the kernel decide ────────────────────────────────────
+mountRunCell("#cell-layers", {
+  openCode: false,
+  label: "用代码向沙盒提出任意问题",
+  intro: "先运行预设问题，并逐一比较判定结果、机制和证据行。只有当您要更改命令或添加探针时，才打开实现代码。",
+  code: `// You write the COMMAND; probe() runs it in your sandbox.
+// It prints the verdict (the exit code), the deciding mechanism, and a line of evidence.
+// For egress it also reads the HTTP status: a denied tunnel exits non-zero, while a denied plain request returns 403 at exit 0.
+const _esc = (x) => String(x).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+async function probe(command, mechanism) {
+  const res = await helpers.sandboxExec(command, { signal: AbortSignal });
+  const out = (res.output || "").trim();
+  const proxyDeny = /code=(403|407)\\b/.test(out);
+  const blocked = proxyDeny || (res.exitCode == null
+    ? /denied|not permitted|EACCES|EPERM|tunnel failed|code=000/i.test(out)
+    : res.exitCode !== 0);
+
+  const mech = !blocked ? "已允许" : (mechanism || (
+      /tunnel failed|code=000|code=403|code=407|ProxyError|could not resolve/i.test(out) ? "network"
+    : /command not found/i.test(out) ? "未安装"
+    : /are you root|superuser|cannot open.*ns/i.test(out) ? "seccomp / 非 root 用户"
+    : /permission denied|EACCES/i.test(out) ? "Landlock"
+    : "内核"));
+  const col = blocked ? "var(--err)" : "var(--g)";
+  helpers.log.html(
+    "<span style='color:" + col + ";font-weight:700'>" +
+    (blocked ? "✗ DENIED" : "✓ ALLOW ") +
+    "</span>  <span style='color:var(--tf)'>[" + _esc(mech) + "]</span>  " +
+    _esc(command)
+  );
+  const ev = out.replace(/\\s+/g, " ").trim().slice(0, 110);
+  if (ev) helpers.log.html("<span style='color:var(--td)'>&nbsp;&nbsp;&nbsp;&nbsp;" + _esc(ev) + "</span>");
+  return { command, blocked, mechanism: mech };
+}
+const question = (q) => { helpers.log(""); helpers.log.html("<span style='color:var(--gs);font-weight:700'>" + _esc(q) + "</span>"); };
+const results = [];
+
+question("我能访问开放互联网吗？");
+results.push(await probe("curl -sS -m 8 -o /dev/null -w 'code=%{http_code}' https://example.com", "network"));
+results.push(await probe("curl -sS -m 8 -o /dev/null -w 'code=%{http_code}' https://en.wikipedia.org", "network"));
+results.push(await probe("curl -sS -m 6 -o /dev/null -w 'code=%{http_code}' http://169.254.169.254/latest/meta-data/", "network"));
+helpers.log([
+  "→ 网络命名空间与 OPA 出站代理会拒绝每次 curl 请求。",
+  "允许列表绑定到 openclaw 二进制文件，因此直接运行 curl 无法访问任何目标。",
+  "大多数主机的 CONNECT 隧道连接会失败（退出代码 56），而元数据 IP 会返回代理状态码 403。",
+].join(" "));
+
+question("我能安装软件来引入新代码吗？");
+results.push(await probe("apt-get install -y cowsay", "非 root 用户"));
+results.push(await probe("pip install --break-system-packages --retries 0 --timeout 5 --no-input cowsay", "network"));
+results.push(await probe("npm install --no-audit --no-fund left-pad", "network"));
+helpers.log([
+  "→ 不能。apt 需要当前环境并不具备的 root 权限。",
+  "pip 和 npm 可以运行，但出站代理会拒绝它们的下载请求。",
+  "供应链攻击必须先将代码引入环境，而所有下载路径都已关闭。",
+].join(" "));
+
+question("我能获取 root 权限或逃逸出容器吗？");
+results.push(await probe("sudo id", "未安装"));
+results.push(await probe("nsenter -t 1 -m -- id", "seccomp / 非 root 用户"));
+results.push(await probe("docker ps", "未安装"));
+results.push(await probe("cat /proc/1/environ", "非 root 用户"));
+helpers.log([
+  "→ 没有向上提权或向外逃逸的路径。",
+  "sudo 和 docker 均不存在，进入主机命名空间的操作会被拒绝，",
+  "并且无法读取主机 init 进程的环境。",
+].join(" "));
+
+question("我能改写自己的角色设定吗？对它的锁定真的有效吗？");
+results.push(await probe("ls -la /sandbox/.openclaw/workspace/SOUL.md", "Landlock"));
+results.push(await probe("chmod 0444 /sandbox/.openclaw/workspace/SOUL.md", "Landlock"));
+results.push(await probe("chmod 0644 /sandbox/.openclaw/workspace/SOUL.md", "Landlock"));
+results.push(await probe("chattr +i /sandbox/.openclaw/workspace/SOUL.md", "非 root 用户"));
+helpers.log([
+  "→ SOUL.md 位于可写目录树中且归智能体所有，因此智能体可以撤销 chmod。",
+  "智能体无法解除的锁是 chattr +i，因为该操作需要 root 权限。",
+  "如果没有针对单个文件的只读规则，角色设定遭篡改仍是 operator 侧的风险。",
+].join(" "));
+
+helpers.log("");
+helpers.log("编辑任意命令、添加一行 probe('命令')，或提出新问题。每行一个程序：这里没有 shell，因此不能使用管道或 &&。");
+// Optional visibility: uncomment to inspect every raw probe result before the summary return.
+// helpers.log.json("all probe results", results);
+return { probes: results.length, denied: results.filter(result => result.blocked).length, results };
+`,
+});
+
+// ── Interactive trust-boundary map, NOT drawn on load.
+// The live-policy cell below draws it from YOUR fetched policy, so the policy is retrieved first.
+// Until then, a placeholder points the student at the cell.
+{
+  const _pm = document.querySelector("#policy-map");
+  if (_pm) _pm.innerHTML = "<p style='color:var(--tf,#8a8a8a);font-size:.85rem;margin:.5rem 0'>请先运行上方的实时策略单元格，以交互地图的形式绘制本地 OpenClaw sandbox 的策略。</p>";
+}
+
+// ── Read your live policy, draw the map from it ───────────────────────────────
+mountRunCell("#cell-live-policy", {
+  label: "读取本地 OpenClaw sandbox 的实时策略",
+  intro: "通过 operator 终端获取实时策略并打印其 YAML，然后与驱动地图的快照进行比较。请保持本地 OpenClaw sandbox 打开，以维持其访问会话；如有需要，请先在模块 3a 中完成连接。确切调用仍可在代码下拉区域中查看。",
+  code: `// helpers.policyGet() returns the command, raw output, status, and parsed policy.
+const p = await helpers.policyGet();
+helpers.log("已调用：" + p.command);          // the exact command that ran on your box
+helpers.log("");
+helpers.log(p.status || "（未返回状态标头）");
+
+if (!p.policy) {
+  helpers.log("\\n 无法解析实时策略：" + (p.parseError || "未知解析器错误"));
+  helpers.log("请在另一个标签页中保持本地 OpenClaw 沙箱开启，然后重新运行。使用以下命令检查沙箱名称：openshell sandbox list");
+  helpers.log.details("原始输出", p.raw);
+  return;
+}
+
+const nets = Object.keys(p.policy.network_policies || {});
+// Optional visibility: uncomment to inspect the destination names as JSON.
+// helpers.log.json("network policy names", nets);
+helpers.log("\\n 实时策略：出站流量默认拒绝，允许的目标有 " + nets.length + " 个（" + nets.join(", ") + ").");
+helpers.log("下方的预测单元将依据这份确切策略进行计算。");
+helpers.log.details("返回的原始策略（即 YAML openshell 输出的内容）", p.raw);
+helpers.log.details("解析后的策略（与 predict 读取的内容完全一致）", p.policy);
+window.__SBX_POLICY = p.policy;   // the one policy every cell on this page reads
+// Draw the policy map below straight from what you just fetched (one source of truth).
+helpers.mountPolicyMap("#policy-map", { policy: p.policy });
+helpers.log("已根据此策略绘制下方的交互式地图。");
+const agent = p.agent;
+return { agent, networks: nets };
+`,
+});
+
+// ── Predict, then confirm against the live kernel ─────────────────────────────
+mountCanvasFlow("#cell-predict-confirm", {
+  label: "静态判定与实时沙盒对比",
+  intro: "先运行实时策略单元。选择一个操作，使用 Predict 在浏览器中评估其策略判定，再使用 Confirm 通过 openshell sandbox exec 执行该操作。Compare 会检查静态结果与实时结果是否一致。代码仍可在下拉区域中查看。",
+  edges: [
+    { from: "predict", to: "confirm" },
+    { from: "confirm", to: "compare" },
+  ],
+
+  nodes: [
+    {
+      id: "predict", icon: "🧮", title: "预测（静态，在浏览器中）", x: 0, y: 0,
+      showCode: false,
+      summary: "在不访问网络的情况下，为上方选择的操作计算策略判定。按钮会设置 window.__sbxAction；此节点读取该值，并运行代理所使用的同一套允许/拒绝评估逻辑，在浏览器中实时计算判定，而不是读取预先生成的示例。",
+      code: `// This predicts from YOUR local OpenClaw sandbox's live policy. Run the live-policy cell above first
+// so window.__SBX_POLICY is set; there is one policy here, not a baked copy.
+const policy = window.__SBX_POLICY;
+if (!policy) { helpers.log("请先运行上方的“读取本地 OpenClaw 沙箱实时策略”单元格，以便根据您的沙箱策略进行预测。"); return; }
+
+// The candidate action comes from the buttons above the cell (window.__sbxAction).
+// A network attempt is { binary, host, port, method?, path? }; edit this default to try another target.
+const action = window.__sbxAction || { binary: "/usr/bin/curl", host: "example.com", port: 443 };
+// evalSandboxNetwork checks the live policy with the same allow/deny rule.
+const verdict = helpers.evalSandboxNetwork(action, policy);
+state.action = action;
+state.predicted = verdict.action;
+helpers.log("操作：" + action.binary + " -> " + action.host + ":" + action.port + (action.path ? "  " + (action.method || "GET") + " " + action.path : ""));
+helpers.log("预测结果：" + verdict.action.toUpperCase() + (verdict.matched ? "  (policy '" + verdict.matched + "')" : ""));
+if (verdict.reason) helpers.log("原因：" + verdict.reason);
+// The one-liners above flatten a structured verdict.
+// Keep the full object collapsible and highlighted, with its matched rule and reason.
+helpers.log.details("策略判定", verdict);
+
+// Binary identity, made visible: the same host can flip on which binary asks.
+const asOpenclaw = helpers.evalSandboxNetwork({ ...action, binary: "/usr/local/bin/openclaw", method: action.method || "GET", path: action.path || "/" }, policy);
+if (asOpenclaw.action !== verdict.action)
+  helpers.log("注意：如果使用 /usr/local/bin/openclaw，结果将是 " + asOpenclaw.action.toUpperCase() + " - 出站权限与二进制文件绑定，而 curl 并不是该二进制文件。");
+return verdict;
+`,
+    },
+    {
+      id: "confirm", icon: "🛂", title: "确认（实时，在沙盒中）", x: 1, y: 0,
+      showCode: false,
+      summary: "通过 openshell sandbox exec 在实时 OpenShell 环境中运行候选连接，并查看内核执行结果。被阻止的出站连接会返回 CONNECT 隧道 403 或 000 代码；获准连接则会返回真实 HTTP 状态。",
+      code: `// Execute the selected network action inside the live sandbox and read the verdict.
+if (!state.action) { helpers.log("请先运行预测节点。"); return; }
+const a = state.action;
+
+// One clean curl inside the sandbox; the proxy answers a denied CONNECT fast.
+// A blocked egress yields code=000 with a 'tunnel failed' note; an allowed one returns a real HTTP status (200/401/404...).
+const scheme = a.port === 443 ? "https://" : "http://";
+const probe = "curl -sS -o /dev/null -w 'code=%{http_code}' " + scheme + a.host + (a.path || "/");
+helpers.log("-> openshell sandbox exec -- " + probe);
+const res = await helpers.sandboxExec(probe);
+const out = (res.output || "").trim();
+helpers.log(out || "（无输出）");
+// Keep the full kernel result on hand: {output, raw, frames, exitCode, sandbox, command}.
+helpers.log.details("内核结果", res);
+
+// Use curl's exit code: it distinguishes blocked CONNECT from reached-but-403.
+const allowed = (res.exitCode != null)
+  ? res.exitCode === 0
+  : !/tunnel failed|code=000|refus|denied|EACCES|EPERM|not permitted/i.test(out);
+state.observed = allowed ? "允许" : "拒绝";
+helpers.log("curl 退出码： " + (res.exitCode != null ? res.exitCode : "?") + (allowed ? "  （已连接到主机）" : "  （连接建立前已被阻止）"));
+helpers.log("实际结果： " + state.observed.toUpperCase());
+return { observed: state.observed, exitCode: res.exitCode };
+`,
+    },
+
+    {
+      id: "compare", icon: "✅", title: "两者一致吗？", x: 2, y: 0,
+      showCode: false,
+      summary: "比较静态预测和实时内核结果。一致表示策略行为与静态分析完全相符；不一致则表示存在意外策略，或存在值得调查的实际缺口。",
+      code: `// Compare the browser-side prediction with the kernel result from Confirm.
+if (!state.predicted || !state.observed) { helpers.log("请先运行 predict 和 confirm。"); return; }
+const match = state.predicted === state.observed;
+helpers.log("预测结果：" + state.predicted.toUpperCase());
+helpers.log("实际结果： " + state.observed.toUpperCase());
+
+helpers.log(match
+  ? "一致——沙箱执行的结果与加固策略的预测完全相符。"
+  : state.predicted === "拒绝"
+    ? "不一致——加固策略会 BLOCK 此操作，但实时沙箱却允许了它。该沙箱运行的策略比加固策略快照更宽松。请检查上方的 'openshell policy get'：Active 0 (Pending) 表示加固策略尚未生效，因此此操作可以在该沙箱中通过。这个差异就是本次发现。"
+    : "不一致——加固策略会允许此操作，但沙箱将其阻止，说明当前生效的预设比快照所建模的策略更严格。");
+return { predicted: state.predicted, observed: state.observed, agree: match };
+`,
+    },
+  ],
+});
+
+
+// ── Enumerate the token's reach (read-only) ──────────────────────────────────
+mountCanvasFlow("#cell-token", {
+  label: "一个 operator.admin token 能看到什么？",
+  intro: "使用您已经用于聊天的 token，调用 operator.admin 接口的只读部分并显示原始响应。所有操作都不会写入任何内容，只会读取数据，以测量智能体作用域能够触达多远。请先在 Kickstart 页面（模块 3a）完成连接，以设置 URL 和 token。",
+  edges: [ { from: "tok-conn", to: "tok-survey" } ],
+
+  nodes: [
+    {
+      id: "tok-conn", icon: "🔌", title: "以 operator.admin 身份连接", x: 0, y: 0,
+      showCode: false,
+      summary: "打开网关 WebSocket，并使用 Control UI 所用的同一 token 声明 operator.admin。无需额外凭据：该聊天 token 已携带此凭据。",
+      code: GW_CONNECT,
+    },
+    {
+      id: "tok-survey", icon: "🗝️", title: "调查访问范围", x: 1, y: 0,
+      showCode: false,
+      summary: "调用管理接口的只读部分：磁盘中的角色设定、cron 计划、实时会话、已提供的模型和完整配置。您看到的每一行都可追溯到同一个 token，并且全部越过了 sandbox 检查点。",
+      code: `// Survey the read-only admin surface reachable by the current gateway token.
+if (!state.call) { helpers.log("请先运行 Connect。"); return; }
+const soul = await state.call("agents.files.get", { agentId: "main", name: "SOUL.md" });
+helpers.log("智能体.files.get SOUL.md  -> " + ((soul?.file?.content || "").length) + " 字节的实时角色设定（可读取，也可通过 set 写入）");
+
+const crons = await state.call("cron.list");
+helpers.log("cron.list                 -> " + ((crons?.jobs || []).length) + " 个无需人工在场即可触发的计划任务");
+const sess = await state.call("sessions.list", { limit: 5 });
+helpers.log("sessions.list             -> " + (sess?.totalCount ?? (sess?.sessions || []).length) + " 个会话，每个都可重置或删除");
+const models = await state.call("models.list");
+helpers.log("models.list               -> " + ((models?.models || []).length) + " 个由运行时提供服务的模型");
+let cfg = null; try { cfg = await state.call("config.get"); } catch (_) {}
+helpers.log("config.get                -> " + (cfg ? "整个智能体配置均可读取，AND 可通过补丁修改（model、tools、toolSearch）" : "（此构建版本未公开）"));
+
+helpers.log("");
+helpers.log("一个 token。角色设定、计划任务、记忆、模型和配置全都可以访问，而且无一经过沙箱。");
+return { soulBytes: (soul?.content || "").length, crons: (crons?.jobs || []).length, models: (models?.models || []).length };
+`,
+    },
+  ],
+});
+</script>
+</body>
+</html>

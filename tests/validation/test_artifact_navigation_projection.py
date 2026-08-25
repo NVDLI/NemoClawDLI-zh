@@ -12,12 +12,46 @@ import unittest
 from pathlib import Path
 
 from scripts.build.bundle_standalone import _copy_pyodide_review, project_artifact_navigation
+from scripts.build.build_language_manifest import build_manifest, project_default_route
 from scripts.build.project_artifact_navigation import project_generated_output_aliases, project_lab_static_urls
 from scripts.build.project_artifact_manifests import project_artifact_manifests
 from scripts.validation.artifact_link_audit import audit
 
 
 class ArtifactNavigationProjectionTests(unittest.TestCase):
+    def test_declared_chinese_default_routes_to_review_free_locale(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "index.html").write_text(
+                "<!doctype html><html><head></head><body>foyer</body></html>", encoding="utf-8"
+            )
+            english = root / "nemoclaw"
+            chinese = root / "zh/nemoclaw"
+            (chinese / "assets").mkdir(parents=True)
+            english.mkdir()
+            for course in (english, chinese):
+                (course / "index.html").write_text("course", encoding="utf-8")
+                (course / "01a-loop.html").write_text("lesson", encoding="utf-8")
+            (chinese / "assets/locale.json").write_text(json.dumps({
+                "locale": "zh-CN",
+                "url_code": "zh",
+                "label": "Simplified Chinese",
+                "native_label": "简体中文",
+                "default": True,
+                "review_required": False,
+            }), encoding="utf-8")
+
+            manifest = build_manifest(root)
+            project_default_route(root, manifest)
+
+            self.assertEqual("zh", manifest["default"])
+            localized = next(item for item in manifest["languages"] if item["code"] == "zh")
+            self.assertEqual(["01a-loop.html", "index.html"], localized["available_pages"])
+            self.assertEqual("简体中文", localized["native_label"])
+            landing = (root / "index.html").read_text(encoding="utf-8")
+            self.assertIn('id="default-language-route"', landing)
+            self.assertIn('new URL("zh/nemoclaw/", window.location.href)', landing)
+
     def test_source_projection_runs_after_docs_projection(self):
         """A docs link must not restore repository-only routes after public projection."""
         root = Path(__file__).resolve().parents[2]

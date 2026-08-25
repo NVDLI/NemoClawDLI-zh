@@ -1237,7 +1237,7 @@ curl http://localhost:8010/v1/models -H "Authorization: Bearer $NVAPI_KEY" | hea
 
 **Then in the browser:**
 
-1. Open **http://localhost:8081/web/nemoclaw/03a-kickstart.html**
+1. Open **http://localhost:8081/zh/nemoclaw/03a-kickstart.html**
 2. Enter your NVIDIA API key in the API key field
 3. Enter the gateway bearer token (from Step 10.7 above) in the Bearer token field
 4. On page 04a: run the **🛠 Recover** cell before the health check to ensure `toolSearch: false`

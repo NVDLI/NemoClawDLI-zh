@@ -698,6 +698,8 @@ def page_quality(source_raw: str, target_raw: str, profile: dict, *, skill: bool
 
 def scan(root: Path, locale: str) -> tuple[list[dict[str, str]], dict]:
     _, locale_root, _, profile, state = locale_paths(root, locale)
+    locale_meta = json.loads((locale_root / "locale.json").read_text(encoding="utf-8"))
+    review_required = locale_meta.get("review_required", True) is not False
     svg_map = root / "scripts" / "translate" / "locales" / locale / "svg_translations.json"
     profile["_svg_translations"] = json.loads(svg_map.read_text(encoding="utf-8")) if svg_map.is_file() else {}
     shell_map = root / "scripts" / "translate" / "locales" / locale / "shell_translations.json"
@@ -733,7 +735,7 @@ def scan(root: Path, locale: str) -> tuple[list[dict[str, str]], dict]:
     asset_reviews = state.get("asset_reviews", {})
     review_protocol = profile.get("review_protocol", {})
     style_reference = review_protocol.get("style_reference")
-    if style_reference:
+    if style_reference and review_required:
         if style_reference not in declared:
             findings.append({"code": "style-reference-boundary", "path": style_reference,
                              "detail": "locale style reference must be a declared reviewed overlay"})
@@ -772,8 +774,8 @@ def scan(root: Path, locale: str) -> tuple[list[dict[str, str]], dict]:
         reviewed_digest = review.get("translation_sha256") if scoped else review.get("source_sha256")
         target_digest = sha(target_raw) if target_raw else None
         reviewed_target = review.get("target_sha256")
-        require_target_review = bool(profile.get("reviewed_target_hashes"))
-        quality = page_quality(
+        require_target_review = review_required and bool(profile.get("reviewed_target_hashes"))
+        quality = [] if not review_required else page_quality(
             source_raw,
             target_raw,
             profile,
@@ -782,6 +784,8 @@ def scan(root: Path, locale: str) -> tuple[list[dict[str, str]], dict]:
         ) if target_raw else []
         if not target_raw:
             status = "missing"
+        elif not review_required:
+            status = "blocked" if quality else "current"
         elif not reviewed_digest or (require_target_review and not reviewed_target):
             status = "needs-review"
         elif reviewed_digest != source_digest:
@@ -792,7 +796,7 @@ def scan(root: Path, locale: str) -> tuple[list[dict[str, str]], dict]:
             status = "blocked"
         else:
             status = "current"
-        if reviewed_digest and reviewed_digest != source_digest:
+        if review_required and reviewed_digest and reviewed_digest != source_digest:
             findings.append({"code": "stale-source", "path": rel,
                              "detail": f"reviewed {reviewed_digest[:12]}, source is {source_digest[:12]}"})
         if require_target_review and reviewed_target and reviewed_target != target_digest:
@@ -801,7 +805,7 @@ def scan(root: Path, locale: str) -> tuple[list[dict[str, str]], dict]:
         elif require_target_review and target_raw and not reviewed_target:
             findings.append({"code": "target-unreviewed", "path": rel,
                              "detail": "locale requires an accepted target hash"})
-        if reviewed_digest:
+        if reviewed_digest or not review_required:
             findings.extend({"code": item["code"], "path": rel, "detail": item["detail"]} for item in quality)
         rows.append({
             "path": rel,
@@ -830,10 +834,13 @@ def scan(root: Path, locale: str) -> tuple[list[dict[str, str]], dict]:
         source_digest = sha(source_raw) if source_raw else None
         target_digest = sha(target_raw) if target_raw else None
         reviewed_target = review.get("target_sha256")
-        require_target_review = bool(profile.get("reviewed_target_hashes"))
-        quality = svg_quality(source_raw, target_raw, profile) if source_raw and target_raw else []
+        require_target_review = review_required and bool(profile.get("reviewed_target_hashes"))
+        quality = (svg_quality(source_raw, target_raw, profile)
+                   if review_required and source_raw and target_raw else [])
         if not target_raw:
             status = "missing"
+        elif not review_required:
+            status = "blocked" if quality else "current"
         elif not review.get("source_sha256") or (require_target_review and not reviewed_target):
             status = "needs-review"
         elif review.get("source_sha256") != source_digest:
@@ -844,7 +851,7 @@ def scan(root: Path, locale: str) -> tuple[list[dict[str, str]], dict]:
             status = "blocked"
         else:
             status = "current"
-        if review.get("source_sha256") and review.get("source_sha256") != source_digest:
+        if review_required and review.get("source_sha256") and review.get("source_sha256") != source_digest:
             findings.append({"code": "stale-asset-source", "path": rel,
                              "detail": f"reviewed {review['source_sha256'][:12]}, source is {source_digest[:12]}"})
         if require_target_review and reviewed_target and reviewed_target != target_digest:
@@ -853,7 +860,7 @@ def scan(root: Path, locale: str) -> tuple[list[dict[str, str]], dict]:
         elif require_target_review and target_raw and not reviewed_target:
             findings.append({"code": "target-asset-unreviewed", "path": rel,
                              "detail": "locale requires an accepted target hash"})
-        if review.get("source_sha256"):
+        if review.get("source_sha256") or not review_required:
             findings.extend({"code": item["code"], "path": rel, "detail": item["detail"]} for item in quality)
         asset_rows.append({"path": rel, "file": Path(rel).name, "source_sha256": source_digest,
                            "reviewed_source_sha256": review.get("source_sha256"),
@@ -1350,9 +1357,10 @@ def main() -> int:
             for item in errors:
                 print(f"  - {item}")
             return 1
-    _, _, _, profile, _ = locale_paths(ROOT, args.locale)
+    _, locale_root, _, profile, _ = locale_paths(ROOT, args.locale)
     findings, manifest = scan(ROOT, args.locale)
-    if not args.no_write:
+    locale_meta = json.loads((locale_root / "locale.json").read_text(encoding="utf-8"))
+    if not args.no_write and locale_meta.get("review_required", True) is not False:
         path = write_manifest(ROOT, profile, manifest)
         print(f"localization manifest: {path.relative_to(ROOT)}")
     result = {"ok": not findings, "findings": findings, "manifest": manifest}

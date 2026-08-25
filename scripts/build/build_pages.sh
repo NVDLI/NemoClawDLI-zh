@@ -378,7 +378,9 @@ fi
 # that actually exist in this artifact. The English URL follows COURSE_PREFIX;
 # translation courses live under <lang>/nemoclaw/.
 if [ -f "$T1/scripts/build/build_language_manifest.py" ]; then
-    python3 "$T1/scripts/build/build_language_manifest.py" --out "$OUT/languages.json" --site-root "$OUT" --course-prefix "$COURSE_PREFIX" || echo "[build_pages] language manifest skipped"
+    python3 "$T1/scripts/build/build_language_manifest.py" --out "$OUT/languages.json" \
+        --site-root "$OUT" --course-prefix "$COURSE_PREFIX" --project-default \
+        || echo "[build_pages] language manifest skipped"
 fi
 
 # Source mirrors execute the same foyer and locale runtime as their production projections.

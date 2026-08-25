@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>连接 NemoClaw · 安全智能体</title>
+  <link rel="stylesheet" href="styles/_style.css" />
+  <script src="vendor/highlight-11.10.0.min.js"></script>
+  <link rel="stylesheet" href="vendor/codemirror-5.65.21.css"/>
+  <link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.css"/>
+  <script src="vendor/codemirror-5.65.21.js"></script>
+  <script src="vendor/codemirror-mode-xml-5.65.21.js"></script>
+  <script src="vendor/codemirror-mode-javascript-5.65.21.js"></script>
+  <script src="vendor/codemirror-mode-css-5.65.21.js"></script>
+  <script src="vendor/codemirror-mode-htmlmixed-5.65.21.js"></script>
+  <script src="vendor/codemirror-mode-python-5.65.21.js"></script>
+  <style>
+    .url-pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin: 1em 0;
+    }
+
+    @media (max-width: 700px) {
+      .url-pair {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .url-card {
+      display: block;
+      text-decoration: none;
+      color: inherit;
+      background: var(--e1);
+      border: 1px solid var(--bd);
+      border-radius: var(--r);
+      padding: 14px 16px;
+      transition: opacity .15s;
+    }
+
+    a.url-card:hover {
+      opacity: .8;
+    }
+
+    .url-card h3 {
+      margin: 0 0 .35em;
+      font-size: .95rem;
+      color: var(--gs);
+      font-family: var(--mono);
+    }
+
+    .url-card h3 a {
+      color: inherit;
+    }
+
+    .url-card p {
+      margin: .25em 0;
+      font-size: .84rem;
+      color: var(--td);
+      line-height: 1.55;
+    }
+
+    .url-card code {
+      font-size: .82em;
+    }
+
+    figure.lp-video {
+      margin: 1.4em 0;
+    }
+
+    figure.lp-video .video-wrap {
+      position: relative;
+      padding-bottom: 56.25%;
+      height: 0;
+      overflow: hidden;
+      border-radius: 8px;
+      border: 1px solid var(--bd);
+      background: var(--e1);
+    }
+
+    figure.lp-video .video-wrap iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+
+    figure.lp-video figcaption {
+      font-size: .88rem;
+      color: var(--td, #b0b0b0);
+      line-height: 1.6;
+      margin-top: .55em;
+    }
+
+    figure.lp-video figcaption b {
+      color: var(--gs, #aee23a);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="topbar">
+    <a class="logo" href="index.html">NVIDIA · 安全智能体</a>
+    <nav id="nav"></nav>
+    <div class="spacer"></div>
+    <span class="key-pill" id="key-status" onclick="location.href='01a-loop.html?openKeyPanel=1'">…</span>
+    <span class="key-pill" id="claw-status" onclick="location.href='03a-kickstart.html#probe-claw'">…</span>
+  </div>
+
+  <main>
+    <div id="journey-map"></div>
+
+    <div class="hero">
+      <div class="eyebrow">模块 3 · 第 1/3 部分 · 开始实时调用</div>
+      <h1>连接 <span>NemoClaw</span> 技术栈</h1>
+      <p class="lead">
+        模块 1 和模块 2 中，编排一直在浏览器内进行。一旦页面不再承载消息、中间结果或分支状态，工作流便会结束。模块 3 将相同的智能体模式迁移到受 OpenShell 保护的 NemoClaw/OpenClaw 运行时。该运行时既可以是通过 <code>http://localhost:8011</code> 等浏览器端代理开放的本地 non-Brev 部署，也可以是公开课程使用的托管 Brev launchable。OpenClaw 会保留会话历史记录和基于文件的工作区，同时继续提供工具；OpenShell 则限制正在运行的智能体能够访问的范围。您将在浏览器中比较无状态模型 API 和持久化 OpenClaw 网关。
+      </p>
+      <figure style="margin:1.4em 0">
+        <div class="fig-embed" data-svg-src="assets/figures/03a-kickstart-1.svg" style="aspect-ratio:1300 / 400"></div>
+        <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">访问方式依次从无状态模型 HTTP、服务端对话状态、标准工具协议，发展到通过长连接 WebSocket 对实时 OpenClaw 智能体会话进行流式传输。</figcaption>
+      </figure>
+
+
+    </div>
+
+    <p>下图从左到右展示了这一演进过程：</p>
+    <ul>
+      <li><strong>HTTP REST API 入口。</strong>模型会独立处理每次调用：使用 <a href="https://platform.openai.com/docs/api-reference/chat" target="_blank" rel="noopener"><em>Chat Completions API</em></a> 时，历史记录由代码携带；使用 <em>Responses API</em> 时，则由服务器保存。</li>
+      <li><strong><a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">Model Context Protocol</a>。</strong>这是一种标准通信协议，使运行时无需为每个工具编写专用连接代码即可访问工具。</li>
+      <li><strong>持久化网关。</strong>OpenClaw 会保持 <code>/cli/gateway</code> <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API" target="_blank" rel="noopener">WebSocket</a> 连接，并通过 <a href="https://www.jsonrpc.org/specification" target="_blank" rel="noopener">JSON-RPC</a> 流式返回事件，而不是逐个请求进行响应。</li>
+    </ul>
+
+    <!-- video removed: hour-long NemoClaw session, too long and distracting for an inline companion. Re-enable by uncommenting.
+    <figure class="lp-video">
+      <div class="video-wrap">
+        <iframe src="https://www.youtube-nocookie.com/embed/DznyClsBZWY?autoplay=0&rel=0"
+          title="Introduction to Building Autonomous AI Agents" loading="lazy"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      </div>
+      <figcaption><b>Watch:</b> An introduction to designing and deploying long-running, self-evolving
+        autonomous agents with OpenClaw, NemoClaw, and OpenShell. It sets up the kickstart this page runs,
+        so it is a useful companion before you probe the endpoints below. Part of NVIDIA's
+        <a href="https://developer.nvidia.com/topics/ai/agentic-ai-learning-path/how-to-build-safer-autonomous-agent-using-openclaw"
+          target="_blank" rel="noopener">Agentic AI Learning Path</a>.
+      </figcaption>
+    </figure>
+    -->
+
+    <h2>接下来将使用的两个 API 入口</h2>
+    <p>
+      模型 API 入口仍使用前面介绍的 API。运行时网关连接到能够保留会话并运行工具的 OpenClaw 进程。支持这些协议的代码仍可在单元格中查看，但需要重点关注的是 API 入口、凭据和状态边界。
+    </p>
+
+    <div class="url-pair">
+      <a class="url-card" href="https://build.nvidia.com/?ncid=ref-dli-146986" target="_blank" rel="noopener">
+        <h3>build.nvidia.com</h3>
+        <p>Chat Completions API。无状态：一次 POST、一次回复，没有工具或会话。在 API Keys 中生成密钥。</p>
+        <p style="color:var(--tf);font-size:.8rem">您的 <code>nvapi-</code> 密钥。代理会原样转发。</p>
+      </a>
+      <article class="url-card" style="background:rgba(118,185,0,.06)">
+        <h3>NemoClaw/OpenClaw 运行时</h3>
+        <p>本地环境可以在 OpenShell 中运行 OpenClaw，并通过本地代理公开 Control UI，例如 <code>http://localhost:8011</code>。身份、工具、会话记忆和 sandbox 策略都位于该运行时中，而不在课程页面内。浏览器通过 <code>/cli/gateway</code> 上的 WebSocket 网关访问智能体。托管课程也可以改用 <a href="https://brev.nvidia.com/launchable/deploy?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS&amp;ncid=ref-dli-759990" target="_blank" rel="noopener">NemoClaw Brev launchable</a>；其 App URL 可能使用 Cloudflare Access 或 Pomerium，下方的连接下拉列表支持这两种方式。</p>
+        <p style="color:var(--tf);font-size:.8rem">网关 token 身份验证。会话通过 <code>x-openclaw-session-key</code> 标识。</p>
+      </article>
+    </div>
+
+    <h2>步骤 1 · 探测 API 入口</h2>
+    <p>下方组件会向每个 API 入口发送一个小型请求并显示返回内容。绿色表示已就绪。</p>
+
+    <h3>模型路由设置</h3>
+    <p>模型探测只读显示课程主页或模块 1a 中配置的持久化聊天路由。在此修改一次后，基准测试和后续课程都会复用该路由。下方的 NemoClaw/OpenClaw 运行时设置与其相互独立。</p>
+    <div id="model-route-settings"></div>
+    <div id="probe-llm"></div>
+
+    <h3>不同模型的延迟和首 token 时间</h3>
+    <p>选择模型前应先进行测量。下方单元格会从目录中筛选匹配的模型，向每个模型流式发送一个简短提示词，并记录各模型的首 token 时间 (TTFT) 和完成时间。获取目录的单元格默认展开，以便在运行基准测试前查看筛选列表。</p>
+
+    <div id="bench-llm"></div>
+
+    <div id="probe-claw"></div>
+
+    <div class="callout warn">
+      <strong>如果 OpenClaw 探测超时或返回 502。</strong>智能体运行框架可能尚未启动完成。这通常是因为 OpenClaw 还未完成策略 YAML 加载，运行时便已启动。请等待 30 秒，然后点击“再次探测”。如果服务仍未恢复，请先使用下方网关部分中的 Recover 单元，再继续操作。
+    </div>
+
+    <h3>可编辑代码：探测请求</h3>
+    <p>公开的代码会发出与探测工具相同的请求，并复用探测工具保存的 URL、token、访问提供商和会话。编辑 <code>PATH</code>、<code>METHOD</code> 和 <code>BODY</code> 即可发送其它请求。状态、标头和响应正文会显示在下方。</p>
+    <p><code>TRANSPORT</code> 控制凭据如何到达运行时：</p>
+    <ul>
+      <li><code>"configured"</code> 使用已保存的路由。本地代理 URL 通常保持直接连接；跨源 Brev Cloudflare URL 默认使用 NVIDIA 中继。</li>
+      <li><code>"direct"</code> 使用 <code>credentials:&nbsp;"include"</code> 调用已保存的运行时源，并依赖部署所使用的匹配浏览器 Cookie。</li>
+    </ul>
+    <p>
+      本地代理部署通常只需要网关 token。Pomerium launchable 将其签名会话保存在浏览器中。课程直接使用其 WebSocket，并通过经过身份验证的终端中的固定环回请求读取两个引导 API 入口。Cloudflare Access launchable 使用托管中继和显式会话字段。当课程内置于同一个 NemoClaw 运行时中时，直接模式属于同源访问，无需使用中继。
+    </p>
+
+    <div id="claw-raw-cell"></div>
+
+    <h2>步骤 2 · 网关</h2>
+
+    <p>模型 API 入口使用 Chat Completions API，一次 POST 即可携带调用所需的全部内容。</p>
+    <ul>
+      <li>请求行是发往 completions 路由的一次 <code>POST</code>。</li>
+      <li>JSON 请求正文包含 <code>model</code> 和 <code>messages</code>。</li>
+      <li><code>Authorization</code> 标头用于标识调用方。</li>
+    </ul>
+    <p>OpenClaw 内部也实现了同一路由，但单独托管的课程需要通过运行时访问层连接该路由，而不能从未经身份验证的浏览器请求直接访问。本地部署可以通过本地代理路由访问；Brev 部署则可能增加 Cloudflare Access、Pomerium 或托管中继。</p>
+    <p>向您开放的通道使用另一种协议：<code>/cli/gateway</code> 上通过 JSON-RPC 通信的 WebSocket。</p>
+
+    <div class="callout">
+      <p>浏览器标签页中的 Control UI 并未使用特殊的私有通道。它通过同一个 <code>/cli/gateway</code> WebSocket 与智能体通信，而您也可以访问该通道；它需要的唯一凭据是网关 token。上方探测使用的正是该网关 token。较旧的 launchable 可通过 <code>GET /api/agent</code> 的 <code>agent.dashboardUrl</code> 公开此 token。当前本地 OpenClaw 部署通常会改为输出包含 <code>#token=...</code> 的 dashboard URL；请让 Base URL 继续指向浏览器端代理，并将该 token 粘贴到探测工具中。</p>
+    </div>
+
+    <p>该 token 具有 <code>operator.admin</code> 作用域，与 Control UI 拥有相同的权限。借助它，可以：</p>
+    <ul>
+      <li><code>models.list</code> 会列出运行时提供的所有模型。</li>
+      <li><code>cron.add</code> 会调度无需您在场即可运行的任务。</li>
+      <li>带有 <code>chat.send</code> 的 <code>sessionKey</code> 会将消息直接送入正在运行的智能体循环。</li>
+    </ul>
+
+    <figure style="margin:1.4em 0">
+      <div id="fig-calls"></div>
+      <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">单个 POST 会驱动网关内的循环，而会话密钥会将记忆延续到下一次调用。</figcaption>
+    </figure>
+
+    <h3>更改运行时设置前先检查</h3>
+    <p>受支持的 NemoClaw/OpenClaw 部署通常会报告 <code>tools.toolSearch=false</code>。自定义配置仍可启用该选项，因此运行状况检查会先读取实时值，之后 Recover 才会进行任何更改：</p>
+    <ul>
+      <li><strong>症状：</strong>您请求执行命令后没有收到任何返回，运行过程停滞，随后超时。</li>
+      <li><strong>原因：</strong>toolSearch 允许模型通过为桥接器编写代码（<code>tool_search_code</code> &middot; &ldquo;运行桥接代码&rdquo;）来访问工具，导致模型在该桥接器上反复循环，而不调用 <code>exec</code>。
+      </li>
+      <li><strong>恢复：</strong>运行运行状况检查。如果 <code>toolSearch</code> 已开启且 exec 探测失败，Recover 可以通过 <code>config.patch</code> 将其关闭。清除会话和重启仍需您主动选择。</li>
+    </ul>
+
+    <figure style="margin:1.4em 0">
+      <div id="fig-toolsearch"></div>
+      <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">正常路径会直接使用 exec。只有实时检查发现 toolSearch 已启用时，Recover 才会更改该设置。</figcaption>
+    </figure>
+
+    <div id="gw-recover"></div>
+
+    <p>运行时调整完成后，您便可以将消息送入智能体循环。下方三个单元会按顺序运行：前面的单元先建立连接并列出模型和定时任务，后续单元再发送一轮聊天，最后一个单元则以流式方式返回跟踪记录。请逐行阅读该记录：</p>
+    <ul>
+      <li>每个 <code>⚙️</code> 行都表示一次工具调用及其输入参数。</li>
+      <li>每个 <code>✓</code>/<code>✗</code> 行都表示该工具的结果。</li>
+      <li>网关不会转发模型的推理过程，因此该输入/输出跟踪记录是您能够查看到的最详细逐步信息。如果运行过程停滞且没有返回结果，请改用上方的 📜 日志单元持续查看运行时日志。</li>
+    </ul>
+    <p>每次聊天运行都会自行检查：如果某次运行记录了 <code>⚠ DEGRADED</code>，请返回此处运行 Recover，然后重试。</p>
+
+    <div id="gw-demo"></div>
+
+    <div class="callout warn">
+      <p>任何能够读取运行时环境的人都能读取该 token，而 token 的读取者就是拥有上述所有权限的 operator。模块 4 将把这一便利机制转化为核心安全问题。</p>
+    </div>
+
+    <h2>步骤 3 · 记忆存储在会话密钥中</h2>
+    <p>每次 <code>chat.send</code> 都接受一个 <code>sessionKey</code>，该密钥决定当前轮次能记住哪些内容：</p>
+    <ul>
+      <li><strong>连续两次使用相同密钥：</strong>网关会在第二轮运行前恢复第一轮的历史记录，因此智能体可以根据客户端从未重新发送过的对话作答。</li>
+      <li><strong>使用不同密钥：</strong>全新开始，不继承任何内容。</li>
+    </ul>
+    <p>下方第一个单元会先写入一个事实，然后使用相同的密钥要求智能体复述该事实。由于网关在服务器端恢复了历史记录，智能体可以根据客户端从未重新发送过的轮次作答。另外两个单元可供您管理已存储的状态。</p>
+    <ul>
+      <li><strong>Clear</strong> 只需一次调用即可清除一个会话，使下一轮从空白状态开始。每个聊天单元还包含一行已注释的 <code>sessions.reset</code>，可用于直接重新开始。
+      </li>
+      <li><strong>Clean up</strong> 会清除您在实验过程中积累在 Control UI 中的临时会话（包括步骤 2 中每次运行所用的密钥），仅保留 Main Session。</li>
+    </ul>
+
+    <div id="session-call"></div>
+
+    <div class="callout warn">
+      <strong>客户端只发送会话密钥来标识对话。</strong>每次调用前，网关都会根据这一个字符串在服务器端解析出完整会话，因此客户端无需自行发送对话记录。任何两个存在差异的密钥都会指向两个不同的会话，即使它们背后的对话内容完全相同。
+    </div>
+
+    <h2>接下来</h2>
+    <p>模块 3b 将介绍影响 OpenClaw 每轮交互的文件。模块 3c 将添加技能和定时触发器，随后模块 4 将测试 OpenShell 如何限制这些持久指令可以发起的操作。</p>
+
+    <div class="references">
+      <h3>参考资料</h3>
+      <ul>
+        <li><a href="https://platform.openai.com/docs/api-reference/chat" target="_blank" rel="noopener">OpenAI Chat
+            Completions API</a>。模型 API 入口所使用的传输格式，包括本页面显示的 <code>finish_reason</code>
+          字段。</li>
+        <li><a href="https://build.nvidia.com/?ncid=ref-dli-146986" target="_blank" rel="noopener">NVIDIA build.nvidia.com</a>。课程代理背后的模型 API；将 nvapi- 密钥粘贴到 bearer 字段中即可完成身份验证。</li>
+        <li><a href="https://docs.anthropic.com/en/docs/claude-code/overview" target="_blank" rel="noopener">Anthropic，
+            <em>Claude Code</em>（文档）</a>。下一页将编辑这种“以目录作为会话”的模式，从而改变
+          OpenClaw 的特性。</li>
+        <li><a href="https://arxiv.org/abs/2304.03442" target="_blank" rel="noopener">Park et al., <em>Generative
+              Agents</em> (2023)</a>。该论文将服务端记忆与身份确立为持久的运行时结构，
+          session-key 标头正是对这一模型的实现。</li>
+      </ul>
+      <p class="references-note">完整列表请参阅<a href="04c-going-further.html#refs">深入探索 · 参考资料</a>。</p>
+    </div>
+
+    <h2>动手试试 · 与运行时对话</h2>
+    <p>
+      上方探测显示绿色后，此交互组件会打开同一个
+      <code>/cli/gateway</code> WebSocket，让您与实时运行的 OpenClaw
+      智能体聊天。它会以流式方式显示回复；智能体每次准备使用工具时，界面都会显示一个标签。您在此看到的每条回复都通过该实时网关连接返回。
+    </p>
+    <div id="kickstart-cell"></div>
+    <div id="kickstart-artifact"></div>
+    <script type="module">
+      import { mountRunCell } from "./scripts/_shared.js";
+      mountRunCell("#kickstart-cell", {
+        label: "“动手试试”练习代码",
+        autorun: true,
+        code: `// This opens the same /cli/gateway WebSocket the probe above used; openclawChat
+// streams the reply into the view and fires a chip per tool call.
+helpers.mountChatUI("#kickstart-artifact", {
+  disabled: () => { const c = helpers.getOpenClawConnection(); return !(c.token && c.rawUrl); },
+  disabledMsg: "请先在上方的探测工具中连接运行时。保存 URL 和 token 后即可使用此面板。",
+  greeting: "请先在上方的探测工具中连接运行时，然后打个招呼，或让智能体通过 exec 运行 whoami 和 pwd。",
+  examples: [
+    "使用 exec 工具运行 whoami 和 pwd，然后报告这两项结果",
+    "使用 exec 工具运行 ls -la /sandbox/.openclaw/workspace，然后解释每个文件",
+    "您正在运行哪个模型？",
+    "可以调用哪些工具？",
+    "读取 SOUL.md，并概述身份",
+    "尝试使用 curl 访问 https://example.com",
+  ],
+  respond: async (text, ctx) => { await helpers.openclawChat(text, { session: "art-" + ctx.thread, view: ctx.view, signal: ctx.signal }); },
+});
+helpers.log("结果呈现在下方。编辑配置后，点击“运行”。");
+
+// The panel is helpers.mountChatUI and it streams through helpers.openclawChat; open the helpers tab above to read either one's source.
+`,
+      });
+    </script>
+
+    <div class="foot-nav">
+      <a href="02c-deep.html">← 模块 2c：深度智能体</a>
+      <a class="next" href="03b-openclaw.html">模块 3b：OpenClaw →</a>
+    </div>
+  </main>
+
+  <script type="module">
+    import { buildNav, gatewayTokenFromAgentMetadata, getConfig, modelRequestCredentials, updateKeyPill, updateClawPill, mountJourneyMap, mountClawProbe, mountModelEndpointProbe, mountKeyPanel, mountCanvasFlow, mountRunCell, GW_CONNECT, mountGwRecover, mountDiagram } from "./scripts/_shared.js";
+    document.getElementById("nav").innerHTML = buildNav("03a-kickstart.html");
+    const pill = document.getElementById("key-status");
+    updateKeyPill(pill);
+    updateClawPill(document.getElementById("claw-status"));
+    mountJourneyMap("#journey-map", "3a");
+    hljs.highlightAll();
+
+    // ── The call, expanded: one POST drives a loop inside the gateway ────────────
+    mountDiagram("#fig-calls", {
+      kicker: "ONE POST · A LOOP INSIDE THE 网关",
+      title: "展开一次智能体调用",
+      maxWidth: 760, boxW: 268, boxH: 116, gapX: 86, top: 58,
+      nodes: [
+        {
+          id: "you", label: "代码", kind: "data", x: 0, y: 0,
+          lines: ["notebook 或浏览器", "每轮一个 POST"]
+        },
+
+        {
+          id: "gw", label: "OpenClaw 网关", kind: "agent", x: 1, y: 0,
+          lines: ["制定计划、调用工具，", "循环运行直至给出回答"],
+          socket: "循环在此处运行"
+        },
+      ],
+      edges: [
+        { from: "you", to: "gw", label: "POST", side: "top", tint: "data" },
+        { from: "gw", to: "you", label: "回复", side: "bottom", tint: "agent" },
+        { from: "gw", to: "gw", tint: "agent" },
+      ],
+    });
+
+    // ── toolSearch trap vs fix (the resilience graphic) ──────────────────────────
+    mountDiagram("#fig-toolsearch", {
+      kicker: "CHECK THE LIVE VALUE BEFORE REPAIR",
+      title: "toolSearch 是一种条件性故障模式",
+      maxWidth: 1040, boxW: 252, boxH: 98, gapX: 92, rowGap: 76,
+      nodes: [
+        { id: "on", label: "toolSearch ON", kind: "neutral", x: 0, y: 0, lines: ["自定义配置"] },
+        { id: "loop", label: "tool_search_code", kind: "tool", x: 1, y: 0, lines: ["模型在以下位置循环", "代码桥接层"] },
+        { id: "stall", label: "无输出", kind: "neutral", x: 2, y: 0, lines: ["exec 从未运行"] },
+        { id: "off", label: "toolSearch OFF", kind: "model", x: 0, y: 1, lines: ["正常配置"] },
+        { id: "exec", label: "exec", kind: "tool", x: 1, y: 1, lines: ["模型调用", "直接调用 shell"] },
+        { id: "ok", label: "命令输出", kind: "env", x: 2, y: 1, lines: ["shell 正常运行"] },
+      ],
+
+      edges: [
+        { from: "on", to: "loop", side: "top", tint: "tool" },
+        { from: "loop", to: "stall", side: "top", tint: "tool" },
+        { from: "off", to: "exec", side: "bottom", tint: "model" },
+        { from: "exec", to: "ok", side: "bottom", tint: "env" },
+      ],
+    });
+
+    const NVIDIA_BUILD_URL = "https://build.nvidia.com/?ncid=ref-dli-146986";
+
+    // ── Probe model endpoint ─────────────────────────────────────────────────────
+    async function renderModelEndpointProbe() {
+      const MODEL_API_CONFIG = await getConfig();
+      const MODEL_API_BASE_URL = MODEL_API_CONFIG.url;
+      mountModelEndpointProbe("#probe-llm", {
+      label: "探测当前模型 API 入口",
+      intro: "只读显示已保存的聊天路由。请在上方的模型路由设置中进行修改；此处不会读取或写入任何 NemoClaw/OpenClaw 运行时值。",
+      defaultUrl: MODEL_API_BASE_URL,
+      defaultToken: localStorage.getItem("nvapi") || "",
+      credentials: modelRequestCredentials(MODEL_API_BASE_URL),
+      failureHint: "请检查上方保存的模型路由、bearer 密钥、公网 HTTPS 隧道和提供服务的模型 ID。",
+      fieldHelp: {
+        url: `<p><strong>它是什么：</strong>课程主页上保存的模型 API 基础地址。</p>
+<p><strong>请求如何到达该地址：</strong>默认地址为 <code>integrate.api.nvidia.com</code>。演示者可以选择一次兼容的运行时；所有课程和此探测工具都会复用该值。Iframe 代理模式仅适用于默认的 NVIDIA API 入口。</p>
+<p><strong>当前 API 入口：</strong><code>${MODEL_API_BASE_URL}</code>。</p>`,
+
+        token: `<p><strong>它是什么：</strong>与当前模型 API 入口一起保存的 bearer 密钥。
+NVIDIA API 密钥以 <code>nvapi-</code> 开头。</p>
+<p><strong>如何获取：</strong>登录 <a href="${NVIDIA_BUILD_URL}" target="_blank" rel="noopener">build.nvidia.com</a>
+→ API Keys → Generate Key。</p>
+<p><strong>本地运行：</strong>同一密钥可在任何环境中使用。请将其存储为环境变量（<code>NVIDIA_API_KEY</code>），不要直接粘贴到代码中。</p>`,
+      },
+      actions: [
+        {
+          label: "GET /v1/models", path: "/models", method: "GET",
+          filterModels: ["120b", "glm", "kimi", "minimax"]
+        },
+
+        {
+          label: "聊天问候", path: "/chat/completions", method: "POST",
+          body: () => ({
+            model: MODEL_API_CONFIG.model,
+            max_tokens: 8196,   // reasoning model: leave room past the thinking for the answer
+            messages: [{ role: "user", content: "In one sentence: who runs you?" }],
+          })
+        },
+      ],
+    });
+    }
+    mountKeyPanel(document.getElementById("model-route-settings"), {
+      onSave: renderModelEndpointProbe,
+      onClear: renderModelEndpointProbe,
+    });
+    await renderModelEndpointProbe();
+
+    // ── TTFT / latency benchmark across matching models ──────────────────────────
+    const bench = document.querySelector("#bench-llm");
+    bench.innerHTML = `<div id="bench-fetch-models"></div><div id="bench-measure-models" style="margin-top:12px"></div>`;
+
+    mountRunCell("#bench-fetch-models", {
+      label: "获取匹配的模型",
+      openCode: true,
+      intro: "请先运行这个简短的发现请求。它会列出与可编辑前缀匹配的模型；由于修改该筛选条件正是本练习的内容，代码将保持可见。",
+      code: `// Fetch the model catalog and keep only the IDs this benchmark compares.
+const FILTER = ["120b", "glm", "kimi", "minimax"];
+const CFG      = await helpers.getConfig();
+const ENDPOINT = CFG.url.replace(/\\/+$/, "");
+const KEY    = localStorage.getItem("nvapi") || "";
+
+if (!KEY) {
+  helpers.log("尚未保存 API key。请先前往课程主页，保存 API 入口和密钥。");
+  return;
+}
+const r = await helpers.browserChatFetch()(ENDPOINT + "/models", {
+  headers: { Authorization: "Bearer " + KEY },
+});
+
+if (!r.ok) { helpers.log("模型获取失败：HTTP " + r.status); return; }
+const { data } = await r.json();
+// Optional visibility: uncomment to inspect every model ID before filtering.
+// helpers.log.json("all model IDs", data.map(model => model.id));
+const models = data.map(m => m.id).filter(id => FILTER.some(s => id.toLowerCase().includes(s.toLowerCase())));
+if (!models.length) {
+  helpers.log("没有模型匹配筛选条件：" + FILTER.join(", "));
+  return;
+}
+helpers.log(models.length + " 个待测试模型：\\n  " + models.join("\\n  "));
+state.models = models;
+state.endpoint = ENDPOINT;
+state.key    = KEY;
+return { count: models.length };`,
+    });
+
+    mountRunCell("#bench-measure-models", {
+      label: "测量每个模型的 TTFT",
+      code: `// Stream one prompt through each selected model and measure first-token latency.
+if (!state.models?.length) { helpers.log("请先运行“获取匹配的模型”。"); return; }
+const PROMPT       = "列出五个质数。";
+// Try another prompt (uncomment one) to compare how the models behave on different work:
+// const PROMPT    = "Explain step by step why the sky is blue.";                // a reasoning task
+// const PROMPT    = "Write a haiku about GPUs, then one line on what it means."; // a longer generation
+const MAX_TOKENS   = 256;     // reasoning models think first; too low and they never answer
+const TTFT_TIMEOUT = 30000;   // ms; give up on a model with no first token by now (some are slow to start)
+
+// Time first-token latency and count both reasoning and answer tokens.
+async function bench(model) {
+  const ctrl  = new AbortController();
+  const stop = () => ctrl.abort();
+  if (helpers.signal.aborted) ctrl.abort();
+  else helpers.signal.addEventListener("abort", stop, { once: true });
+  const guard = setTimeout(() => ctrl.abort(), TTFT_TIMEOUT);   // first-token watchdog
+  const t0 = performance.now();
+  let ttft = null, total = null, tokens = 0, reasoning = 0, gapSum = 0, last = t0;
+  let text = "", think = "", finish = null, err = null;
+
+  try {
+    const r = await helpers.browserChatFetch()(state.endpoint + "/chat/completions", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + state.key, "Content-Type": "application/json" },
+      body: JSON.stringify({ model, messages: [{ role: "user", content: PROMPT }], max_tokens: MAX_TOKENS, stream: true }),
+      signal: ctrl.signal,
+    });
+
+    if (!r.ok) { err = "HTTP " + r.status; }
+    else {
+      const reader = r.body.getReader(), dec = new TextDecoder();
+      let buf = "";
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        // Server-sent events: one "data: {json}" line per chunk.
+        let nl;
+        while ((nl = buf.indexOf("\\n")) >= 0) {
+          const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1);
+          if (!line.startsWith("data:")) continue;
+          const body = line.slice(5).trim();
+          if (body === "[DONE]") continue;
+
+          let j; try { j = JSON.parse(body); } catch { continue; }
+          const choice  = j.choices?.[0] || {};
+          const delta   = choice.delta || {};
+          if (choice.finish_reason) finish = choice.finish_reason;
+          const answer  = delta.content || "";
+          const thought = delta.reasoning_content || "";
+          if (!answer && !thought) continue;          // role-only / empty keepalive delta
+          const now = performance.now();
+
+          if (ttft === null) { ttft = Math.round(now - t0); clearTimeout(guard); }  // first token of ANY kind
+          else { gapSum += now - last; }
+          last = now; tokens++;
+          if (thought) { reasoning++; think += thought; }
+          if (answer)  { text += answer; }
+        }
+      }
+      total = Math.round(performance.now() - t0);
+    }
+  } catch (e) {
+    err = e.name === "AbortError" ? ("在以下时长内未收到首个 token：" + (TTFT_TIMEOUT / 1000) + "s") : e.message;
+  } finally {
+    clearTimeout(guard);
+    helpers.signal.removeEventListener("abort", stop);
+  }
+  const avgGap = tokens > 1 ? Math.round(gapSum / (tokens - 1)) : null;   // mean inter-token latency
+  return { model, ttft, total, tokens, reasoning, avgGap, text, think, finish, err };
+}
+
+// Launch every model concurrently, then await them in catalog order, so the log prints in a stable order even though the requests overlap.
+const pending = state.models.map(bench);
+const results = [];
+for (let i = 0; i < pending.length; i++) {
+  const res = await pending[i];
+  results.push(res);
+  if (res.err) {
+    helpers.log("✗ " + res.model + "  " + res.err);
+    continue;
+  }
+
+  helpers.log("✓ " + res.model +
+    "  TTFT " + (res.ttft ?? "不适用") + "毫秒 · 总计 " + res.total + "毫秒 · " +
+    res.tokens + " 个 token" + (res.reasoning ? "（" + res.reasoning + " 用于思考）" : "") + " · " +
+    (res.avgGap != null ? res.avgGap + "毫秒/token" : "不适用") +
+    (res.finish === "长度" ? " · 命中 max_tokens" : ""));
+  // Show the answer; if the model spent its whole budget thinking, show that instead.
+  const raw = res.text
+    ? res.text
+    : (res.think ? "（无答案：模型用完了全部 " + MAX_TOKENS + " token 进行思考；请提高 MAX_TOKENS）\\n\\n" + res.think : "（空响应）");
+  helpers.log.details("原始输出 · " + res.model, raw);
+}
+
+// Rank survivors by TTFT, the metric that matters when streaming to a user.
+// A model that never produced a token (ttft null) sorts last, not first.
+const ok = results.filter(r => !r.err).sort((a, b) => (a.ttft ?? Infinity) - (b.ttft ?? Infinity));
+if (ok.length) {
+  helpers.log("\\n── 按 TTFT 排名 ──────────────────────────");
+  ok.forEach((r, i) => helpers.log(
+    String(i + 1).padStart(2) + ". " + r.model.padEnd(46) +
+    String(r.ttft ?? "不适用").padStart(5) + "毫秒 · " + String(r.avgGap ?? "不适用").padStart(4) + "毫秒/token · " + r.tokens + " 个 token"));
+}
+state.results = results;
+// Optional visibility: uncomment to inspect the complete timing records.
+// helpers.log.json("timing rows", results);
+return { ranked: ok.map(r => r.model), errors: results.filter(r => r.err).length };`,
+    });
+
+
+    // ── Probe OpenClaw runtime ───────────────────────────────────────────────────
+    mountClawProbe("#probe-claw", {
+      label: "探测 OpenClaw（NemoClaw/OpenShell 运行时）",
+      intro: "",
+      defaultUrl: "",
+      defaultToken: "",
+      proxyControls: true,
+      syncCanvas: true,
+      cfAccess: true,
+      unexpectedHtmlHint: "预期收到 JSON，但实际收到了 OpenClaw Control 页面。请求到达了运行时根路径，而不是此 API 路径。请将 Base URL 保持为运行时源地址并重试；此响应不是健康检查结果。",
+      helpHint: "不知道该填什么？请选择相应字段旁的 ?。请先设置 Base URL：粘贴包含 #token=... 的 dashboard URL；对于较旧的 launchable，也可以使用 GET /api/agent。",
+
+      // Older launchables return agent.dashboardUrl with the gateway token from GET /api/agent.
+      autofillToken: gatewayTokenFromAgentMetadata,
+      fieldHelp: {
+        url: `<p><strong>它是什么：</strong>在 OpenShell 边界内运行的 NemoClaw/OpenClaw 运行时所提供的浏览器端根 URL，末尾不带 <code>/v1</code>。</p>
+<p><strong>如何查找：</strong>从 Brev dashboard 复制 App URL。两种受支持的 launchable 均可使用。对于本地 OpenClaw，请使用浏览器端代理 URL，例如 <code>http://localhost:8011</code>，并将 Access session 留空。如果 dashboard 命令输出包含 <code>#token=...</code> 的原始上游 URL，请让此字段继续指向代理，只把 token 粘贴到 Bearer token 中；也可以将 URL 改写为 <code>http://localhost:8011/#token=...</code>。</p>`,
+
+        token: `<p><strong>通常可以留空。</strong>较旧的 launchable 会通过 <strong>GET /api/agent</strong> 返回 <code>agent.dashboardUrl</code>，探测工具会自动填充此字段。当前 OpenClaw 也可能输出包含 <code>#token=...</code> 的 dashboard URL；如果该 URL 与 Base URL 使用同一个浏览器端源，探测工具可以将 token 移到此处。如果 URL 使用原始上游端口，请只将 token 粘贴到这里。对于 Pomerium，打开 launchable 并登录即可。Cloudflare 还需要下方的 Access session。</p>
+<p><strong>手动回退：</strong>如果本地 OpenClaw 代理未触发自动填充，请在启动 OpenClaw 的环境中运行 <code>openclaw dashboard --no-open</code>，或复制启动时输出的、包含 <code>#token=...</code> 的 dashboard URL。对于由 NemoClaw CLI 管理的 launchable，请使用 <code>nemoclaw &lt;name&gt; dashboard-url --quiet</code>。将完整 token 粘贴到此处。不要假定其长度或字符集固定。</p>`,
+
+        accessProvider: `<p><strong>Automatic</strong> 会根据 URL 自动选择。<code>localhost</code> 和 <code>127.0.0.1</code> 等本地 URL 会使用直接/本地路径，通常不需要 Access session。<code>*.brevlab.com</code> launchable 通过托管中继使用 <strong>Cloudflare Access</strong>。<code>*.apps.run.brev.nvidia.com</code> launchable 则通过已登录的浏览器直接使用 <strong>Pomerium</strong>。</p>`,
+        accessSession: `<p>本地代理部署通常将此字段留空。此字段仅用于 <strong>Cloudflare Access</strong>。请打开相应 launchable 并登录，然后从 DevTools → <strong>Application → Storage → Cookies</strong> 中复制完整的 <code>CF_Authorization</code> 值。</p>
+<p>使用 <strong>Pomerium</strong> 时，此字段不可用。请打开 launchable 并登录；其 <code>HttpOnly</code> Cookie 会保留在浏览器中，不会复制到课程代码或存储空间。</p>`,
+        proxy: `<p>本地代理 URL 不使用此中继。跨域的 <strong>Cloudflare Access</strong> launchable 使用 NVIDIA 共享中继。Pomerium 则通过浏览器中已登录的会话直接连接，即使为了兼容 Cloudflare 而保持启用此开关也是如此。</p>`,
+        proxyBase: `<p><strong>共享设置：</strong>默认使用 NVIDIA 托管的中继，并在模块 3a 至 4b 中持续生效。演示者也可以通过 <code>?openclaw_proxy_base=...</code> 预填该设置，并使用 <code>?openclaw_proxy=1</code> 或 <code>0</code> 启用或禁用它。</p>`,
+      },
+
+      actions: [
+        { label: "GET /healthz", path: "/healthz", method: "GET", expectJson: true },
+        { label: "GET config", path: "/__openclaw/control-ui-config.json", method: "GET", expectJson: true },
+        { label: "GET /api/agent", path: "/api/agent", method: "GET", expectJson: true },
+      ],
+    });
+
+    // ── Raw request console: the probe's fetch as editable code ───────────────────
+    mountRunCell("#claw-raw-cell", {
+      label: "可编辑代码：探测请求",
+      openCode: true,
+      intro: "正常情况下请使用上方的探测界面。此单元会公开其请求，以便比较代理和直接传输方式，或检查异常响应。",
+      autorun: false,
+      code: `// The probe saved the runtime URL and selected access provider.
+const connection = helpers.getOpenClawConnection();
+const configured = connection.effectiveUrl; // follows the saved relay toggle
+const url   = connection.rawUrl;             // browser-facing runtime origin, direct
+const token = connection.token;
+const provider = connection.resolvedAccessProvider;
+const session  = connection.accessSession;
+if (!url) return helpers.log('请先运行上方的探测工具。');
+
+const METHOD    = 'GET';
+const PATH      = '/__openclaw/control-ui-config.json'; // current token-authenticated config endpoint
+// const PATH   = '/healthz';     // unauthenticated liveness endpoint
+// const PATH   = '/api/agent';   // older read-only token bootstrap endpoint
+const BODY      = null;           // e.g. { key: 'value' }
+const TRANSPORT = 'configured';   // 'configured': saved relay toggle. 'direct': bypass the relay.
+
+// Pomerium keeps its HttpOnly cookie in the browser. Its authenticated terminal
+// reads this fixed endpoint over launchable loopback, so no cookie enters course code.
+if (provider === 'pomerium') {
+  const result = await helpers.openclawLoopbackProbe(PATH, { baseUrl: url, signal: helpers.signal });
+  helpers.log.kv({ status: result.status + ' ' + result.statusText, transport: result.transport });
+  helpers.log.details('正文', result.body);
+  return result.json ?? result.body;
+}
+
+// Local proxy deployments usually stay direct. Cloudflare Access uses the configured hosted relay.
+const direct  = TRANSPORT === 'direct';
+const target  = direct ? url : (configured || url);
+const viaRelay = !direct && target !== url;
+const headers = { Accept: 'application/json, text/html, */*' };
+if (token)            headers.Authorization = 'Bearer ' + token;
+if (viaRelay && session) {
+  headers['X-OpenClaw-Access-Provider'] = provider;
+  headers['X-OpenClaw-Access-Session'] = session;
+}
+if (BODY)             headers['Content-Type'] = 'application/json';
+
+const res = await helpers.fetch(target + PATH, {
+  method: METHOD,
+  headers,
+  body: BODY ? JSON.stringify(BODY) : null,
+  credentials: direct ? 'include' : 'same-origin',   // direct mode sends the launchable cookie held by this browser
+});
+
+helpers.log.kv({ status: res.status + ' ' + res.statusText, type: res.type });
+helpers.log.details('标头', Object.fromEntries(res.headers));
+helpers.log.details('正文', await res.text());
+`,
+    });
+
+    // Shared chat-turn snippet. Subscribe first or tool events stay invisible.
+    const gwChat = (sk, msg) => {
+      // sk is normally a literal string.
+      // Pass { raw: "<js expr>" } to compute the sessionKey at run time.
+      // A fresh unique-per-run key makes the agent re-run its tools; reuse replays.
+      const skExpr = (sk && typeof sk === "object" && sk.raw) ? sk.raw : JSON.stringify(sk);
+      // msg is normally a literal string.
+      // Pass { raw: "<js>" } for a custom message-assignment block.
+      const msgBlock = (msg && typeof msg === "object" && msg.raw)
+        ? msg.raw
+        : ("let message = " + JSON.stringify(msg) + ";");
+
+      return `if (!state.call) { helpers.log("请先运行 Connect。"); return; }
+
+// ── tune these ──────────────────────────────────────────────────────────────
+${msgBlock}
+const sessionKey      = ${skExpr};   // which agent session to talk to
+const IDLE_TIMEOUT_S  = 90;          // give up if the agent goes silent this long
+const TOTAL_TIMEOUT_S = 240;         // hard ceiling for the whole turn
+const FINAL_EVENT_GRACE_MS = 1500;   // lifecycle end can arrive just before chat.final
+// ──────────────────────────────────────────────────────────────────────────────
+helpers.log("→ " + message);
+
+// chat.send returns prose; subscribed agent frames carry tool steps.
+if (!state._subs) state._subs = {};
+if (!state._subs[sessionKey]) {
+  await state.call("sessions.messages.subscribe", { key: sessionKey });
+  state._subs[sessionKey] = true;
+}
+
+// Uncomment to clear this session and force fresh tool work.
+// await state.call("sessions.reset", { key: sessionKey }); helpers.log("🧹 cleared session memory: " + sessionKey);
+
+const _params = {
+  sessionKey,
+  idempotencyKey: Math.random().toString(36).slice(2) + Date.now().toString(36),
+  message,
+};
+
+// ── stream handler ───────────────────────────────────────────────────────────
+
+// Frames are tagged by pl.stream. The "tool" stream is the trace:
+//   phase "start"  = the tool's args (INPUT)
+//   phase "result" = result + isError (OUTPUT), for every tool
+
+// The "assistant" stream is the answer text; "lifecycle" phase:end ends the run.
+
+// Gateway omits reasoning; tool args/results are the deepest step view here.
+
+// Two timers guard the run: an idle timer (reset only by REAL activity, never by heartbeats) and a global backstop.
+let _text = "", _finalEv, _t0 = performance.now(), _ttft = 0, _myRun = null;
+let _toolStarts = 0, _didResult = false;            // for the degradation check below
+const IDLE_MS = IDLE_TIMEOUT_S * 1000, GLOBAL_MS = TOTAL_TIMEOUT_S * 1000;
+await new Promise((resolve, reject) => {
+  let _idle, _global, _endGrace, _finished = false;
+  function finish(why, stalled) {
+    if (_finished) return; _finished = true;
+    clearTimeout(_idle); clearTimeout(_global); clearTimeout(_endGrace); state._chatCb = null;
+    if (why) helpers.log(why);
+
+    // Abort timed-out runs server-side so they stop consuming work and leaking frames.
+    if (stalled) {
+      helpers.log("⛔ 正在中止运行，停止位置：" + sessionKey + "，以免它继续在后台运行…");
+      state.call("chat.abort", { sessionKey }).catch(() => {});
+    }
+    resolve();
+  }
+
+  function bumpIdle() { clearTimeout(_idle); _idle = setTimeout(() => finish("⏱ no agent activity for " + (IDLE_MS / 1000) + "s; stopping", true), IDLE_MS); }
+  _global = setTimeout(() => finish("⏱ hit the " + (GLOBAL_MS / 1000) + "s global cap", true), GLOBAL_MS);
+  if (helpers.signal) helpers.signal.addEventListener("abort", () => finish("⏹ stopped", true), { once: true });
+  state._chatCb = d => {
+   try {
+    const pl = d.payload || {};
+    // Heartbeats stream the whole time the socket is open, and are NOT activity.
+    // Ignore them; otherwise a stalled run emitting only heartbeats would keep the idle timer alive and never time out.
+    if (pl.isHeartbeat || d.event === "health" || d.event === "tick") return;
+
+    // Keep only this runId before bumpIdle, or stale frames can mask a stall.
+    if (_myRun && pl.runId && pl.runId !== _myRun) return;
+    bumpIdle();   // real activity on OUR run pushes the idle deadline back
+    if (d.event === "chat" && pl.state === "final") {
+      // final chat frame: fallback prose if no agent text deltas arrived
+      _finalEv = d;
+      _text = helpers.openclawMessageText(pl.message) || _text;
+      finish(); return;
+    }
+    if (d.event !== "agent") return;
+
+    const sk = pl.sessionKey || "";
+    if (sk !== sessionKey && !sk.endsWith(":" + sessionKey)) return;   // not our session
+    const data = pl.data || {};
+    const stream = pl.stream || "";
+
+    if (stream === "assistant" || ("delta" in data && "text" in data)) {
+      // the answer, streamed as cumulative text
+      if (!_ttft) _ttft = performance.now() - _t0;
+      _text = data.text || _text;
+    } else if (stream === "tool" && data.phase === "start") {
+      // Show tool input; bad args often explain hangs.
+      _toolStarts++;
+      const inp = data.args ? JSON.stringify(data.args) : (data.meta || "");
+      helpers.log.details("⚙️ " + (data.name || "tool") + (inp ? "  " + inp.replace(/\\n/g, " ").slice(0, 160) : ""), helpers.filterOpenClawRuntimeValue(d));
+
+    } else if (stream === "tool" && data.phase === "result") {
+      // a tool finished, so show its OUTPUT (works for exec, read, edit, browser, …)
+      _didResult = true;
+      const txt = helpers.openclawResultText(data.result);
+      const mark = data.isError ? "✗" : "✓";
+      helpers.log.details(mark + " " + (data.name || "tool") + (txt ? "  " + txt.trim().replace(/\\n/g, " ⏎ ").slice(0, 200) : ""), helpers.filterOpenClawRuntimeValue(d));
+
+    } else if (data.phase === "end" && !data.itemId) {
+      // chat.final is authoritative and can trail lifecycle end by one browser turn.
+      clearTimeout(_endGrace); _endGrace = setTimeout(() => finish(), FINAL_EVENT_GRACE_MS);
+    }
+   } catch (e) {
+    // A throw inside a WS frame handler is otherwise swallowed silently and looks like a hang, so surface it instead of hiding the failure.
+    helpers.log("⚠ 帧处理程序错误：" + (e && e.message ? e.message : e));
+   }
+  };
+
+  bumpIdle();
+  // Lock onto this runId so shared-session chatter is ignored.
+  state.call("chat.send", _params)
+    .then(res => { _myRun = (res && res.runId) || null; })
+    .catch(e => { clearTimeout(_idle); clearTimeout(_global); state._chatCb = null; reject(e); });
+});
+
+// ── response ─────────────────────────────────────────────────────────────────
+helpers.log(_text);
+if (_finalEv) helpers.log.details("← 最终聊天帧", _finalEv);
+const _secs = (performance.now() - _t0) / 1000;
+const _toks = Math.round(_text.length / 4);          // rough estimate: ~4 chars/token
+helpers.log("⏱ " + _secs.toFixed(1) + "秒 · 约" + _toks + " token · " +
+            (_secs ? (_toks / _secs).toFixed(1) : "0") + " tok/s" +
+            (_ttft ? " · 首个 token " + (_ttft / 1000).toFixed(2) + "s" : ""));
+state.out = _text;
+
+// Degradation check: a healthy run returns text and/or a tool result.
+// If tools STARTED but none returned a result, a tool is hung or the model is looping, a runtime problem rather than your code.
+// The ⚙️ rows show which tools ran; the Health check flags toolSearch.
+if (!_text.trim() && !_didResult && _toolStarts > 0) {
+  helpers.log("⚠ 性能下降：已启动 " + _toolStarts + " 次工具调用，但均未返回结果或答案。");
+  helpers.log("   某个工具已卡住，或模型陷入了循环。上方的 ⚙️ 行显示了卡住时的确切工具及其参数。");
+  helpers.log("   请运行 🩺 Health check（它会标记 toolSearch）和 🛠 Recover；如需深入排查，📜 logs 单元会持续显示运行时日志的末尾内容。");
+}
+`;
+    };
+
+    // ── Gateway demo: connect → list → chat ──────────────────────────────────────
+    mountCanvasFlow("#gw-demo", {
+      label: "网关 · WebSocket 协议分步解析",
+      intro: "此处将 Control UI 使用的同一个 /cli/gateway WebSocket 完整展开，依次展示质询/响应握手、一次 JSON-RPC 方法调用，以及一轮流式聊天。",
+      edges: [
+        { from: "gw-connect", to: "gw-list" },
+        { from: "gw-list", to: "gw-chat" },
+      ],
+      nodes: [
+        {
+          id: "gw-connect", icon: "🔌", title: "打开网关连接", x: 0, y: 0,
+          summary: "打开连接到 /cli/gateway 的 WebSocket，使用 operator.admin 凭据响应服务器的挑战帧，然后将 call() 辅助函数存入 state，使后续节点无需重复握手即可发送类型明确的请求。",
+          code: GW_CONNECT,
+        },
+
+        {
+          id: "gw-list", icon: "📋", title: "调用 models.list 和 cron.list", x: 1, y: 0,
+          showCode: false,
+          summary: "通过已打开的连接进行两次 JSON-RPC 调用：models.list 列出运行时提供的所有模型，cron.list 则报告当前的计划任务。",
+          code: `// Use the existing gateway socket to list models and scheduled jobs.
+if (!state.call) { helpers.log("请先运行 Connect 节点。"); return; }
+
+const models = await state.call("models.list");
+helpers.log("模型（" + (models?.models?.length || 0) + "）：");
+(models?.models || []).slice(0, 8).forEach(m =>
+  helpers.log("  " + m.id + (m.provider ? "  [" + m.provider + "]" : ""))
+);
+helpers.log.details("models.list 原始结果", models);
+
+const crons = await state.call("cron.list");
+const jobs  = crons?.jobs || [];
+helpers.log("\\ncron 任务：" + (jobs.length
+  ? jobs.map(j => j.id + " @ " + j.schedule).join(", ")
+  : "（无）"));
+helpers.log.details("cron.list 原始结果", crons);
+return { models: models?.models?.length, cronJobs: jobs.length };
+`,
+        },
+
+        {
+          id: "gw-chat", icon: "💬", title: "发送聊天消息（流式传输）", x: 2, y: 0,
+          showCode: false,
+          summary: "使用新的 sessionKey 调用 chat.send，并持续接收工具帧，直到 run-end。新的后缀让每次演示保持干净，并强制触发新的工具运行。默认提示词会执行一条命令；注释中的备选提示词可用于测试更简单的轮次。",
+          code: gwChat({ raw: `"quick-3a-gw-" + Math.random().toString(36).slice(2, 8)` }, {
+            raw:
+              `// The LAST uncommented line wins; comment the bottom ones to try those above.
+let message = "Can you tell me about yourself?";
+message = "What tools do you have access to?";
+message = "Use your exec tool to run \`whoami\` and \`pwd\` in your sandbox, then tell me in one sentence which user you are and where you are.";` }),
+        },
+      ],
+    });
+
+    // Health / recover / logs flow is shared from _shared.js:
+    mountGwRecover("#gw-recover");
+
+    // ── One session, carried memory: recall the earlier gw-chat turn ─────────────
+    mountCanvasFlow("#session-call", {
+      label: "sessionKey 可在多个轮次之间恢复历史记录",
+      intro: "先写入一项事实，再使用同一个 sessionKey 回忆该事实；随后清除这段历史记录，并删除临时会话。回忆时只发送问题；网关会在服务器端恢复之前的轮次。",
+      edges: [
+        { from: "sk-memory", to: "sk-clear" },
+        { from: "sk-clear", to: "sk-cleanup" },
+      ],
+
+      nodes: [
+        {
+          id: "sk-memory", icon: "🧠", title: "写入一项事实，然后提问以回忆它", x: 0, y: 0,
+          showCode: false,
+          summary: "使用同一个 sessionKey 发送两个轮次。第二轮只发送回忆问题；网关会在模型运行前恢复第一轮。不同的密钥会指向另一份独立的历史记录。",
+          code: GW_CONNECT + `
+helpers.log("第 1 轮 · 植入一条信息");
+{
+${gwChat("quick-3a-memory", "请记住，以后会用到：我的访问代码是 BLUEJAY-7。只需用几个字确认即可。")}
+}
+
+helpers.log("第 2 轮 · 询问此前的信息（仅发送问题）");
+{
+${gwChat("quick-3a-memory", "我之前告诉访问代码是什么？只回复代码。")}
+}
+
+helpers.log(/BLUEJAY-7/i.test(state.out)
+  ? "✓ 成功跨轮次回忆；网关在服务器端恢复了植入的信息"
+  : "✗ 未能回忆；请确认两轮使用了相同的 sessionKey");
+`,
+        },
+
+        {
+          id: "sk-clear", icon: "🧹", title: "清除会话记忆", x: 1, y: 0,
+          showCode: false,
+          summary: "通过一次调用清除服务器端的会话历史记录。请对上方的记忆会话运行此操作，然后重新运行回忆轮次：由于网关保存的对话已被清除，预先写入的代码也会消失。更改 sessionKey 即可清除任意会话。需要重新开始时，可以将此代码直接复制到任何位置使用。",
+          code: GW_CONNECT + `
+// One call wipes the conversation the gateway holds for this key.
+const sessionKey = "quick-3a-memory";
+helpers.log("🧹 正在清除会话记忆：" + sessionKey + " …");
+const res = await state.call("sessions.reset", { key: sessionKey });
+helpers.log(res && res.ok
+  ? "✓ 已清除；该会话现已没有历史记录。"
+  : "✗ sessions.reset 返回了意外的载荷（见下文）。");
+helpers.log.details("sessions.reset 响应", res);
+helpers.log("重新运行上面的回忆轮次，植入的代码已不存在。");
+`,
+        },
+
+        {
+          id: "sk-cleanup", icon: "🗑", title: "清理旧会话", x: 2, y: 0,
+          showCode: false,
+          summary: "每个不同的 sessionKey 都会留下一个会话，并逐渐累积在 Control UI 中。此操作会分页列出所有会话并删除临时会话，仅保留 Main Session。编辑 KEEP 可更改保留项，例如使用 /:(main|quick-3c-skill)$/ 同时保留您需要的会话。",
+          code: GW_CONNECT + `
+// Keep these; delete the rest. The default keeps only the Main Session.
+const KEEP = /:main$/;
+
+// sessions.list is paginated, so walk every page before deleting anything.
+let offset = 0, all = [];
+for (;;) {
+  const page = await state.call("sessions.list", { limit: 100, offset });
+  all = all.concat(page.sessions || []);
+  if (!page.hasMore) break;
+  offset = page.nextOffset;
+}
+const doomed = all.filter(s => !KEEP.test(s.key));
+helpers.log("找到 " + all.length + " 个会话；保留 " + (all.length - doomed.length) + "，删除 " + doomed.length + ".");
+
+let removed = 0;
+for (const s of doomed) {
+  try { await state.call("sessions.delete", { key: s.key }); helpers.log("  🗑  " + s.key); removed++; }
+  catch (e) { helpers.log("  ✗ " + s.key + ": " + (e.message || e)); }
+}
+helpers.log(removed ? ("✓ 已移除 " + removed + " 个过期会话。") : "没有需要移除的内容；已清理完毕。");
+`,
+        },
+      ],
+    });
+  </script>
+</body>
+
+</html>

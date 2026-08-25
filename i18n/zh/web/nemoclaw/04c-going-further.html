@@ -1,0 +1,407 @@
+
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>深入探索 · 安全智能体</title>
+<link rel="stylesheet" href="styles/_style.css"/>
+<script src="vendor/highlight-11.10.0.min.js"></script>
+<link rel="stylesheet" href="vendor/codemirror-5.65.21.css"/>
+<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.css"/>
+<script src="vendor/codemirror-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-xml-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-javascript-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-css-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-htmlmixed-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-python-5.65.21.js"></script>
+<style>
+</style>
+<style>
+  .video-wrap {
+    position: relative; padding-bottom: 56.25%; height: 0;
+    overflow: hidden; border-radius: var(--r);
+    border: 1px solid var(--bd); background: var(--e2); margin: .8em 0 1.4em;
+  }
+  .video-wrap iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
+
+  .section { margin: 2.4em 0 1em; padding-top: .5em; border-top: 1px solid var(--bd); }
+  .section-eyebrow { font-family: var(--mono); font-size: .72rem; text-transform: uppercase; letter-spacing: .12em; color: var(--tf); margin-bottom: .3em; }
+  .section h2 { margin: 0 0 .7em; font-size: 1.25rem; }
+
+  .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 1em 0; }
+  @media (max-width: 720px) { .card-grid { grid-template-columns: 1fr; } }
+  .step-card { background: var(--e1); border: 1px solid var(--bd); border-radius: 6px; padding: 14px 16px; }
+  .step-card h3 { margin: 0 0 .35em; font-size: .98rem; color: var(--gs); }
+  .step-card p { margin: .25em 0; font-size: .86rem; color: var(--td); line-height: 1.55; }
+  .step-card a.btn { display: inline-block; margin-top: .6em; padding: 6px 12px; font-size: .8rem;
+                     font-family: var(--mono); background: var(--e2); color: var(--gs); border: 1px solid var(--bd); border-radius: 4px; text-decoration: none; }
+  .step-card a.btn:hover { background: var(--e3); border-color: var(--g); }
+
+  .action-btn {
+    display: inline-block; padding: 9px 20px; border-radius: 6px;
+    font-weight: 700; font-size: .9rem; text-decoration: none;
+    background: var(--g); color: #000; margin: .4em 0 1em;
+  }
+  .action-btn:hover { background: var(--gs); text-decoration: none; }
+  :root[data-theme="light"] .action-btn { color: #fff; }
+  .action-btn.secondary {
+    background: var(--e2); color: var(--td);
+    border: 1px solid var(--bd); margin-left: 8px;
+  }
+  .action-btn.secondary:hover { border-color: var(--g); color: var(--g); }
+  .small-links { margin: .3em 0 1em; font-size: .82rem; }
+  .small-links a { color: var(--td); margin-right: 14px; }
+  .small-links a:hover { color: var(--g); }
+
+  .pattern { margin: 1.2em 0; padding: 14px 18px; background: rgba(118,185,0,.06); border: 1px solid var(--bd); border-radius: var(--r); }
+  .pattern-list { list-style: none; padding-left: 0; margin: 1.2em 0; }
+  .pattern h3 { margin: 0 0 .4em; font-size: 1rem; color: var(--gs); }
+  .pattern p { margin: .4em 0; font-size: .92rem; color: var(--td); line-height: 1.6; }
+  .pattern p:first-child strong { color: var(--gs); }
+
+  figure.video { margin: 0 0 1.8em; }
+  figure.video figcaption { font-size: .88rem; color: var(--td); line-height: 1.6; margin-top: -.4em; }
+  figure.video figcaption b { color: var(--gs); }
+  .mat-pointer { font-size: .88rem; color: var(--td); margin: 1.4em 0 .2em; }
+
+  .lp-grid { grid-template-columns: 1fr 1fr 1fr; }
+  @media (max-width: 980px) { .lp-grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 720px) { .lp-grid { grid-template-columns: 1fr; } }
+  .lp-helpers { font-size: .88rem; color: var(--td); line-height: 1.7; margin: .4em 0 0; padding-left: 1.2em; }
+  .lp-helpers li { margin: .4em 0; }
+  .lp-helpers a { color: var(--gs); }
+  .lp-helpers a:hover { color: var(--g); }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="logo" href="index.html">NVIDIA · 安全智能体</a>
+  <nav id="nav"></nav>
+  <div class="spacer"></div>
+  <span class="key-pill" id="key-status">…</span>
+</div>
+
+<main>
+  <div id="journey-map"></div>
+
+  <div class="hero">
+    <div class="eyebrow">安全智能体 · 进一步探索</div>
+    <h1>进一步<span>探索</span></h1>
+    <p class="lead">
+      至此，您已经从头构建了智能体循环，将其置于内核级沙箱中，并衡量了策略留下的影响范围。
+    </p>
+    <p class="lead">
+      实际部署会引入自身的数据和用户。现在，您需要选择部署位置、如何接入自己的知识，以及在基础能力稳固后应重点解决哪些开放问题。
+    </p>
+  </div>
+
+  <!-- ── Deploy what you built ─────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-eyebrow">部署您构建的成果</div>
+    <h2>将练习迁移到实际运行时</h2>
+    <p>
+      浏览器内练习的规模以学习为目的，使用代理端点，且会话会在每次运行之间重置。要将相同的工作迁移到持久化部署，就需要选择运行时、推理提供商，以及长时间运行会话的运维模式。托管端点无需学习者自行管理 GPU；本地推理要求取决于所选的提供商和模型。
+    </p>
+    <ul style="font-size:.9rem;color:var(--td);line-height:1.7">
+      <li>
+        <a href="https://docs.nvidia.com/nemoclaw/latest/get-started/prerequisites" target="_blank" rel="noopener">NemoClaw 当前的先决条件</a>列出了通用 Linux、macOS、通过 WSL2 使用 Windows，以及 DGX Spark 的路径。基准配置从 4 个 vCPU 和 8 GB RAM 起步；GPU 为可选项。随着要求和接口不断演进，请查阅最新文档。
+      </li>
+      <li>
+        <a href="https://build.nvidia.com/?ncid=ref-dli-146986" target="_blank" rel="noopener">build.nvidia.com</a>
+        为每个由 NVIDIA 托管的模型提供与 OpenAI 兼容的端点。本课程中的 Python 和 JS 示例可原样粘贴到此处；只需将 <code>baseURL</code> 从可启动环境的代理改为 <code>https://integrate.api.nvidia.com/v1</code>，并提供 NVIDIA API key。账号访问权限和配额遵循当前服务条款。
+      </li>
+      <li>
+        <a href="https://build.nvidia.com/spark/nemoclaw-applications?ncid=ref-dli-146986" target="_blank" rel="noopener">NemoClaw applications</a>
+        是您所运行可启动环境的配套示例库。NVIDIA 的
+        DGX Spark 实战指南会带您端到端构建完整的 NemoClaw 智能体，包括每日新闻摘要、软件开发智能体、演示文稿审阅器和日历协商器；每个示例都采用模块 4 介绍的同一套策略配置。可以选择其中一个，作为模块 3 中所打包常驻智能体的完整参考
+        blueprint。
+      </li>
+      <li>
+        当模型需要在本地或 VPC 中运行时，请<a href="https://docs.nvidia.com/nim/" target="_blank" rel="noopener">使用 NIM 自托管</a>。
+        NVIDIA Inference Microservices 将模型、分词器和与 OpenAI 兼容的 HTTP 服务器封装在同一容器中。模块 1 和模块 2 中的 persona、Tooled 和 ReAct 智能体无需修改，即可对接 NIM API 入口。
+      </li>
+      <li>
+        值得比较的框架包括：
+        <a href="https://www.langchain.com/langgraph" target="_blank" rel="noopener">LangGraph</a>
+        适用于类型化状态机；
+        <code>deepagents</code> npm 软件包可实现 2c 中的 planner、
+        VFS 和子智能体结构；此外还有
+        <a href="https://www.crewai.com/" target="_blank" rel="noopener">CrewAI</a> 和
+        <a href="https://microsoft.github.io/autogen/" target="_blank" rel="noopener">AutoGen</a>，适用于基于角色的智能体群。比较各个框架时，应考察它明确呈现了哪些工作：状态、工具、检索、委派、持久化和运行时策略。
+      </li>
+    </ul>
+  </div>
+
+  <!-- ── Transfer the browser form factor ──────────────────────────── -->
+  <div class="section">
+    <div class="section-eyebrow">延续这一界面</div>
+    <h2>浏览器制品是一种可迁移的智能体交互界面</h2>
+    <p>
+      每个课程页面既是一节课，也是一个小型应用。界面会呈现状态、控件、中间结果和审批点；JavaScript 负责本地编排。当受众可以使用浏览器，却没有预先配置好的开发环境时，这种组合非常适用。它既能以交互方式解释系统、驱动动态工作流，也能为基于已加载数据和获准服务的通用脚本提供聚焦的前端界面。
+    </p>
+    <div class="callout">
+      <strong>迁移界面契约，再适配环境。</strong>
+      HTML、CSS、JavaScript、可见状态和审批控件都易于迁移。身份验证、跨域访问、持久化、文件系统访问范围、后端工具和主机 UI 桥接则不然。请将这些依赖置于精简的适配器之后，使工作流能够迁移，同时避免假定每种主机都授予相同权限。
+    </div>
+    <p>
+      如今，智能体产品已直接提供这种形式。Anthropic 将
+      <a href="https://support.claude.com/en/articles/14729249-use-live-artifacts-in-claude-cowork" target="_blank" rel="noopener">Cowork live artifacts</a>
+      描述为持久化的 HTML 交互页面，可从已连接的应用和本地文件刷新。OpenAI 预览版的
+      <a href="https://help.openai.com/en/articles/12515353-build-with-the-apps-sdk" target="_blank" rel="noopener">Apps SDK</a>
+      允许由 MCP 支持的应用同时定义其聊天行为和交互界面。静态页面、托管制品和聊天内应用采用不同的主机契约，但都能将同一工作流呈现为可检查的状态与受限操作。
+    </p>
+  </div>
+
+  <!-- ── Add new knowledge ──────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-eyebrow">添加新知识</div>
+    <h2>接入数据</h2>
+    <p>
+      模块 2b 中的 Index 智能体使用的是页面内的小型语料库。生产部署需要完成更多工作并考虑更多因素，因此以下参考资料可能对您有所帮助。
+    </p>
+    <ul style="font-size:.9rem;color:var(--td);line-height:1.7">
+      <li>
+        <a href="https://developer.nvidia.com/nemo-retriever" target="_blank" rel="noopener">NeMo Retriever</a>
+        是模块 2b 中余弦相似度检索的生产级后续方案。稀疏关键词搜索和稠密向量搜索会并行运行并合并分数，重排序器会按相关性重新排列候选结果，而可配置的分块原语则让您能够控制文档在建立索引前的拆分方式。将其与由 NIM 提供的嵌入结合，即可构建完全本地部署的检索栈，使数据始终留在 VPC 内。
+      </li>
+      <li>
+        <a href="https://build.nvidia.com/blueprints?ncid=ref-dli-146986" target="_blank" rel="noopener">NVIDIA AI Blueprints</a>
+        为常见的智能体结构提供参考实现：一个 RAG
+        聊天机器人、一个多模态 PDF 提取器，以及一个研究助手。每个 blueprint 都是面向特定领域的 Research 智能体 (2c)
+        配置，并且可以完整部署。它们既可作为起始模板，也可用于对您自己的架构进行合理性检验。
+      </li>
+      <li>
+        <a href="https://github.com/NVIDIA/NeMo-Curator" target="_blank" rel="noopener">NeMo Data Curator</a>
+        将如何干净地接入自有语料库视为一个独立项目。它能处理去重、语言过滤、PII 移除和精确匹配评分，适用于已无法靠手工完成的规模。检索质量会随数据质量不断累积，因此只需清理一次语料库，就能让智能体此后针对该语料库发出的每次查询持续受益。
+      </li>
+      <li>
+        <a href="https://github.com/NVIDIA/NeMo-Guardrails" target="_blank" rel="noopener">NeMo Guardrails</a>
+        可添加运行在模型之上的应用层可编程输入和输出过滤器、主题策略及事实核查。它能补充内核级隔离，但不能取而代之：这两层会捕获不同类别的故障，因此应当同时运行。
+      </li>
+    </ul>
+  </div>
+
+  <!-- ── Where to push next ──────────────────────────────────────────── -->
+
+
+
+  <div class="section">
+    <div class="section-eyebrow">下一步的突破方向</div>
+    <h2>生产实践的分化方向</h2>
+    <p>
+      生产项目通常会在以下某个领域深入发展：
+    </p>
+    <ul>
+      <li><strong>知识层。</strong>生产级检索：结构化分块、页面图像检索，以及在真实异构语料库上开展忠实度评测。NeMo Retriever 和 RAG AI Blueprints 正是这些能力真正落地的地方。</li>
+      <li><strong>基础层。</strong>线格式协议（MCP、Responses API、OTel GenAI 约定和 A2A），用于保持工具能力在不同提供商和框架之间的可移植性。</li>
+      <li><strong>智能体群动态与隔离。</strong>当 N 个智能体并行运行时会发生哪些变化：每个智能体都会重复发现相同的上下文（重复发现成本）；包含过多跳转的拓扑会失去连贯性；负责评判同伴输出的智能体可能会因社交语境而非内容本身改变结论。当提示词规则和防护机制不足以限制影响范围时，如何使用内核级隔离（<a href="https://docs.kernel.org/userspace-api/landlock.html" target="_blank" rel="noopener">Landlock</a>、<a href="https://man7.org/linux/man-pages/man2/seccomp.2.html" target="_blank" rel="noopener">seccomp</a>、网络命名空间）约束智能体群中的任一智能体。</li>
+    </ul>
+    <p>
+      请选择与当前项目反复遇到的问题最匹配的方向。
+      NVIDIA 开发者博客会持续追踪这些领域的最新参考成果。
+    </p>
+    <a class="action-btn" href="https://developer.nvidia.com/blog/category/generative-ai/" target="_blank" rel="noopener">NVIDIA 开发者博客 →</a>
+  </div>
+
+
+
+  <!-- ── Resources by topic ────────────────────────────────────────── -->
+
+
+
+  <div class="section" id="refs">
+    <div class="section-eyebrow">参考资料中心</div>
+    <h2>按模块整理的阅读清单</h2>
+    <p>
+      本中心汇集了各模块末尾“参考资料”所指向的全部来源，每一项都可通过 arxiv、相关组织自己的文档或 GitHub
+      代码库免费获取。
+    </p>
+    <p>主题分组先依照本课程的结构展开，再延伸到智能体群和评测领域。</p>
+
+    <h3 id="refs-m1" style="font-size:.95rem;color:var(--gs);margin:1.2em 0 .4em">模块 1 · 模型与智能体基础</h3>
+    <ul style="font-size:.88rem;color:var(--td);line-height:1.7">
+      <li>Russell &amp; Norvig (2020). <a href="https://aima.cs.berkeley.edu/" target="_blank" rel="noopener"><em>Artificial Intelligence: A Modern Approach</em></a>, 第 4 版。PEAS 框架和智能体分类体系的出处。</li>
+      <li>Bratman (1987). <em>Intention, Plans, and Practical Reason</em>（BDI 元组；<a href="https://en.wikipedia.org/wiki/Belief%E2%80%93desire%E2%80%93intention_software_model" target="_blank" rel="noopener">摘要</a>）。</li>
+      <li>Vaswani et al. (2017). <a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener">Attention Is All You Need.</a> <code>arXiv:1706.03762</code>。transformer。</li>
+      <li>Sennrich et al. (2015). <a href="https://arxiv.org/abs/1508.07909" target="_blank" rel="noopener">Neural Machine Translation of Rare Words with Subword Units.</a> <code>arXiv:1508.07909</code>。BPE 分词。</li>
+      <li>Brown et al. (2020). <a href="https://arxiv.org/abs/2005.14165" target="_blank" rel="noopener">Language Models are Few-Shot Learners.</a> <code>arXiv:2005.14165</code>。提出上下文学习。</li>
+      <li>Wei et al. (2022). <a href="https://arxiv.org/abs/2201.11903" target="_blank" rel="noopener">Chain-of-Thought Prompting Elicits Reasoning in LLMs.</a> <code>arXiv:2201.11903</code>。</li>
+      <li>Park et al. (2023). <a href="https://arxiv.org/abs/2304.03442" target="_blank" rel="noopener">Generative Agents.</a> <code>arXiv:2304.03442</code>（M1c、M4 和 M6 均有引用）。</li>
+    </ul>
+
+    <h3 id="refs-m2" style="font-size:.95rem;color:var(--gs);margin:1.2em 0 .4em">模块 1 · ReAct、工具使用与结构化输出</h3>
+    <ul style="font-size:.88rem;color:var(--td);line-height:1.7">
+      <li>Willard &amp; Louf (2023). <a href="https://arxiv.org/abs/2307.09702" target="_blank" rel="noopener">Efficient Guided Generation for LLMs.</a> <code>arXiv:2307.09702</code>。Outlines 背后的 FSM 理论。</li>
+      <li>Schick et al. (2023). <a href="https://arxiv.org/abs/2302.04761" target="_blank" rel="noopener">Toolformer.</a> <code>arXiv:2302.04761</code>（自监督工具使用）。</li>
+      <li>Yao et al. (2022). <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">ReAct: Synergizing Reasoning and Acting in LLMs.</a> <code>arXiv:2210.03629</code>。模块 1b 中的图依据本文重新绘制。</li>
+      <li>OpenAI <a href="https://platform.openai.com/docs/guides/structured-outputs" target="_blank" rel="noopener">结构化输出</a> · <a href="https://platform.openai.com/docs/guides/function-calling" target="_blank" rel="noopener">函数调用</a>。</li>
+      <li>Anthropic <a href="https://docs.anthropic.com/en/docs/agents-and-tools/tool-use" target="_blank" rel="noopener">工具使用参考资料</a>。</li>
+      <li><a href="https://modelcontextprotocol.io/specification" target="_blank" rel="noopener">Model Context Protocol</a> · <a href="https://github.com/dottxt-ai/outlines" target="_blank" rel="noopener">Outlines</a> · <a href="https://github.com/mlc-ai/xgrammar" target="_blank" rel="noopener">XGrammar</a>。</li>
+      <li>JSON Schema <a href="https://json-schema.org/specification" target="_blank" rel="noopener">draft 2020-12 规范</a>。</li>
+    </ul>
+
+    <h3 id="refs-m3" style="font-size:.95rem;color:var(--gs);margin:1.2em 0 .4em">模块 2 · 工作流、检索与深度研究</h3>
+    <ul style="font-size:.88rem;color:var(--td);line-height:1.7">
+      <li>Xu et al. (2023)。<a href="https://arxiv.org/abs/2305.18323" target="_blank" rel="noopener">ReWOO: Decoupling Reasoning from Observations.</a> <code>arXiv:2305.18323</code>。</li>
+      <li>Wang et al. (2023)。<a href="https://arxiv.org/abs/2305.04091" target="_blank" rel="noopener">Plan-and-Solve Prompting.</a> <code>arXiv:2305.04091</code>。</li>
+      <li>Madaan et al. (2023)。<a href="https://arxiv.org/abs/2303.17651" target="_blank" rel="noopener">Self-Refine.</a> <code>arXiv:2303.17651</code>。</li>
+      <li>Lewis et al. (2020)。<a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Retrieval-Augmented Generation.</a> <code>arXiv:2005.11401</code>。模块 2b 的图据此重绘。</li>
+      <li>Karpukhin et al. (2020)。<a href="https://arxiv.org/abs/2004.04906" target="_blank" rel="noopener">Dense Passage Retrieval.</a> <code>arXiv:2004.04906</code>。</li>
+      <li>Johnson、Douze、Jégou (2017)。<a href="https://arxiv.org/abs/1702.08734" target="_blank" rel="noopener">Billion-scale similarity search with GPUs</a> <code>arXiv:1702.08734</code>（FAISS）。</li>
+      <li>Gao et al. (2022)。<a href="https://arxiv.org/abs/2212.10496" target="_blank" rel="noopener">HyDE.</a> <code>arXiv:2212.10496</code>。</li>
+      <li>Hsieh et al. (2024)。<a href="https://arxiv.org/abs/2404.06654" target="_blank" rel="noopener">RULER.</a> <code>arXiv:2404.06654</code>（长上下文基准测试）。</li>
+      <li>Wang et al. (2023)。<a href="https://arxiv.org/abs/2305.16291" target="_blank" rel="noopener">Voyager.</a> <code>arXiv:2305.16291</code>。</li>
+      <li><a href="https://blog.langchain.com/deep-agents/" target="_blank" rel="noopener">LangChain 深度智能体</a> · <a href="https://github.com/langchain-ai/deepagents" target="_blank" rel="noopener">deepagents</a> · <a href="https://www.langchain.com/langgraph" target="_blank" rel="noopener">LangGraph</a>。</li>
+    </ul>
+
+    <h3 id="refs-m4" style="font-size:.95rem;color:var(--gs);margin:1.2em 0 .4em">模块 3 · 持久化运行时与 CLI 智能体</h3>
+    <ul style="font-size:.88rem;color:var(--td);line-height:1.7">
+      <li>Packer et al. (2023)。<a href="https://arxiv.org/abs/2310.08560" target="_blank" rel="noopener">MemGPT.</a> <code>arXiv:2310.08560</code>。</li>
+      <li>Karpas et al. (2022)。<a href="https://arxiv.org/abs/2205.00445" target="_blank" rel="noopener">MRKL Systems.</a> <code>arXiv:2205.00445</code>。</li>
+      <li>Liu et al. (2023)。<a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Lost in the Middle.</a> <code>arXiv:2307.03172</code>。长上下文性能退化问题，为上下文压缩提供了依据。</li>
+      <li>Park et al. (2023)。<a href="https://arxiv.org/abs/2304.03442" target="_blank" rel="noopener">Generative Agents.</a> <code>arXiv:2304.03442</code>。</li>
+      <li>Wang et al. (2023)。<a href="https://arxiv.org/abs/2305.16291" target="_blank" rel="noopener">Voyager.</a> <code>arXiv:2305.16291</code>（持续运行、配备技能库的智能体）。</li>
+      <li>Anthropic <a href="https://docs.anthropic.com/en/docs/claude-code/overview" target="_blank" rel="noopener">Claude Code</a> · <a href="https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills/overview" target="_blank" rel="noopener">智能体技能</a>。</li>
+      <li>OpenAI <a href="https://platform.openai.com/docs/codex" target="_blank" rel="noopener">Codex CLI</a>。</li>
+      <li><a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes 智能体 (Nous Research)</a>及其<a href="https://hermes-agent.nousresearch.com/docs/user-guide/security" target="_blank" rel="noopener">安全指南</a>。这是另一个智能体应用，具备从经验中学习技能、持久记忆、内置 cron 和消息网关等功能；在对比智能体应用与 OpenShell 安全运行时及 NemoClaw 参考技术栈时很有帮助。</li>
+      <li><a href="https://github.com/NVIDIA/NeMo-Curator" target="_blank" rel="noopener">NeMo Curator</a>（数据质量工作流）。</li>
+    </ul>
+
+    <h3 id="refs-m5" style="font-size:.95rem;color:var(--gs);margin:1.2em 0 .4em">模块 4 · 评测与隔离</h3>
+    <ul style="font-size:.88rem;color:var(--td);line-height:1.7">
+      <li><a href="https://opentelemetry.io/docs/specs/semconv/gen-ai/" target="_blank" rel="noopener">OpenTelemetry GenAI 语义约定</a>。</li>
+      <li>Zheng et al. (2023)。<a href="https://arxiv.org/abs/2306.05685" target="_blank" rel="noopener">Judging LLM-as-a-Judge with MT-Bench.</a> <code>arXiv:2306.05685</code>。</li>
+      <li>Liu et al. (2023)。<a href="https://arxiv.org/abs/2303.16634" target="_blank" rel="noopener">G-Eval.</a> <code>arXiv:2303.16634</code>。</li>
+      <li>Liang et al. (2022)。<a href="https://arxiv.org/abs/2211.09110" target="_blank" rel="noopener">Holistic Evaluation of Language Models (HELM).</a> <code>arXiv:2211.09110</code>。</li>
+      <li>Saad-Falcon et al. (2024)。<a href="https://arxiv.org/abs/2403.02419" target="_blank" rel="noopener">ARES: Automated Eval for RAG.</a> <code>arXiv:2403.02419</code>。</li>
+      <li>Greshake et al. (2023)。<a href="https://arxiv.org/abs/2302.12173" target="_blank" rel="noopener">Not what you've signed up for.</a> <code>arXiv:2302.12173</code>（间接提示词注入）。</li>
+      <li>Inan et al. (2023)。<a href="https://arxiv.org/abs/2312.06674" target="_blank" rel="noopener">Llama Guard.</a> <code>arXiv:2312.06674</code>。</li>
+      <li>Willison (2025)。<a href="https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/" target="_blank" rel="noopener">The lethal trifecta</a>。</li>
+      <li><a href="https://genai.owasp.org/" target="_blank" rel="noopener">OWASP GenAI Top 10</a> · <a href="https://docs.kernel.org/userspace-api/landlock.html" target="_blank" rel="noopener">Landlock</a> · <a href="https://docs.kernel.org/userspace-api/seccomp_filter.html" target="_blank" rel="noopener">seccomp-BPF</a>。</li>
+      <li><a href="https://github.com/NVIDIA/NeMo-Guardrails" target="_blank" rel="noopener">NeMo Guardrails</a> · <a href="https://docs.smith.langchain.com/" target="_blank" rel="noopener">LangSmith</a> · <a href="https://phoenix.arize.com/" target="_blank" rel="noopener">Arize Phoenix</a> · <a href="https://www.jaegertracing.io/" target="_blank" rel="noopener">Jaeger</a>。</li>
+    </ul>
+
+    <p style="font-size:.84rem;color:var(--tf);margin:1.8em 0 .2em;border-top:1px solid var(--bd);padding-top:1em">课程之外：最后一组资源将相同的设计问题扩展到智能体集群和模型适配。</p>
+
+    <h3 id="refs-m6" style="font-size:.95rem;color:var(--gs);margin:1.2em 0 .4em">深入探索 · 多智能体系统与适配</h3>
+    <ul style="font-size:.88rem;color:var(--td);line-height:1.7">
+      <li>Cemri et al. (2025)。<a href="https://arxiv.org/abs/2503.13657" target="_blank" rel="noopener">Why Do Multi-Agent LLM Systems Fail? (MAST).</a> <code>arXiv:2503.13657</code>。</li>
+      <li>Wu et al. (2023)。<a href="https://arxiv.org/abs/2308.08155" target="_blank" rel="noopener">AutoGen.</a> <code>arXiv:2308.08155</code>。</li>
+      <li>Hong et al. (2023)。<a href="https://arxiv.org/abs/2308.00352" target="_blank" rel="noopener">MetaGPT.</a> <code>arXiv:2308.00352</code>。</li>
+      <li>Chen et al. (2024)。<a href="https://arxiv.org/abs/2403.02419" target="_blank" rel="noopener">Are More LLM Calls All You Need? Towards Scaling Laws of Compound Inference Systems</a> <code>arXiv:2403.02419</code>。</li>
+      <li>Xu et al. (2025)。<a href="https://arxiv.org/abs/2502.12110" target="_blank" rel="noopener">A-MEM: Atomic Notes for Agent Memory.</a> <code>arXiv:2502.12110</code>。</li>
+      <li>Christiano et al. (2017)。<a href="https://arxiv.org/abs/1706.03741" target="_blank" rel="noopener">Deep RL from Human Preferences (RLHF).</a> <code>arXiv:1706.03741</code>。</li>
+      <li>Rafailov et al. (2023)。<a href="https://arxiv.org/abs/2305.18290" target="_blank" rel="noopener">Direct Preference Optimization (DPO).</a> <code>arXiv:2305.18290</code>。</li>
+      <li>Bai et al. (2022)。<a href="https://arxiv.org/abs/2212.08073" target="_blank" rel="noopener">Constitutional AI.</a> <code>arXiv:2212.08073</code>。</li>
+      <li><a href="https://build.nvidia.com/nvidia/aiq?ncid=ref-dli-146986" target="_blank" rel="noopener">NVIDIA AI-Q Blueprint</a> · <a href="https://github.com/langchain-ai/deepagents" target="_blank" rel="noopener">deepagents</a>。</li>
+    </ul>
+  </div>
+
+
+
+  <!-- ── The harness around the model ─────────────────────────────── -->
+  <div class="section">
+    <div class="section-eyebrow">您实际构建了什么</div>
+    <h2>本课程围绕可替换模型构建了一套智能体框架</h2>
+    <p>
+      在这些模块中，模型从未改变。模块 1 中承担推理工作的那个冻结、无状态模型，也正是深度研究智能体、OpenClaw 角色和沙箱隔离 claw
+      所使用的模型。
+    </p>
+    <p>
+      您编写的其余所有内容都是<em>智能体框架</em>，也就是封装原始模型，使其能够持续自主工作的系统。每个模块都为它增加了一层能力。
+    </p>
+    <ul style="font-size:.9rem;color:var(--td);line-height:1.7">
+      <li>
+        <strong>循环。</strong>模块 1 将一次<a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank" rel="noopener">聊天调用转化为智能体</a>：在调用外加入循环，让模型调用工具、接收返回结果并继续运行，直至完成任务。这个循环就是执行层。OpenClaw 之类的运行时或
+        LangGraph 之类的框架会为您提供这一层，无需您自行实现。
+      </li>
+      <li>
+        <strong>工作流。</strong>模块 2 限定了每个阶段能够看到的内容，以及结果如何在固定工作流、检索和研究分支之间传递。决定哪些内容应纳入上下文、哪些应排除在外，就是<a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents" target="_blank" rel="noopener">上下文工程</a>；它对输出质量的影响至少不亚于任何单个提示词的措辞（<a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank" rel="noopener">Weng, 2023</a>）。
+      </li>
+      <li>
+        <strong>运行时。</strong>模块 3 将这些工作流迁移到 OpenClaw 中；在那里，网关会话、工作区文件、技能和计划任务都能在一次浏览器调用结束后继续保留。
+      </li>
+      <li>
+        <strong>隔离。</strong>模块 4 增加了一个完全不读取提示词的层。
+        OpenShell 在系统调用边界执行规则，因此即使提示词注入成功，也仍然无法突破策略限制。
+      </li>
+    </ul>
+    <p>
+      工程成果积累在这些层中，而非模型本身。更强的模型只需少量调整便可接入同一套智能体框架，因此升级模型时可以继续沿用这些层。
+    </p>
+    <p>
+      当智能体反复以同一种方式失败时，通常是因为您尚未构建某个层；在更底层强制执行检查，比再次修改提示词更能持久地解决问题。以下模式展示了这类工作在实践中的具体形式。
+    </p>
+  </div>
+
+  <!-- ── Patterns worth carrying ─────────────────────────────────── -->
+  <div class="section">
+    <div class="section-eyebrow">部署经验</div>
+    <h2>部署这类智能体时应牢记的要点</h2>
+
+    <ul class="pattern-list">
+      <li class="pattern">
+        <p>
+          <strong>对智能体生产力的预测往往存在系统性偏差。</strong>
+          <a href="https://metr.org/" target="_blank" rel="noopener">METR</a> 针对资深开源开发者开展的随机试验发现，使用 coding 智能体会导致显著减速，尽管参与者原本预计效率会提高，并且事后也报告称自己的效率有所提高。预测与实测结果之间的差距才是需要牢记的发现。因此，在评估您所部署的任何智能体的价值时，都应将这一点纳入考量。
+        </p>
+      </li>
+      <li class="pattern">
+        <p>
+          <strong>默认选择是使用单个强大的智能体。</strong>当任务复杂度超过某个阈值后，单个强大的智能体会胜过多智能体系统（<a href="https://arxiv.org/abs/2403.02419" target="_blank" rel="noopener">Chen et al., 2024</a>）。继续增加 N，涌现行为造成的危害可能会超过您原本试图修复的故障模式。向拓扑中再添加一个智能体之前，请明确指出它要解决的具体故障模式。如果无法明确说明，增加复杂度就不太可能有所帮助。
+        </p>
+      </li>
+      <li class="pattern">
+        <p>
+          <strong>内核级隔离决定了提示词注入成功后仍有哪些防护有效。</strong>提示词规则和应用防护机制虽有帮助，但它们只能处理模型向其暴露的内容；看似有效的注入指令会直接通过这些防线。
+        </p>
+        <p>
+          因此，任何能够操作真实 shell 或文件系统，或者能够访问网络的智能体，都需要在提示词之下另设一层防护。该层在系统调用边界执行规则，位置低于任何指令能够触及的层级。
+        </p>
+      </li>
+      <li class="pattern">
+        <p>
+          <strong>智能体的管理员 token 位于比沙箱更高的边界。</strong>内核沙箱限制了智能体能够对外部环境执行的操作，却无法约束掌握智能体 operator token 的人。该持有者完全位于这一边界之上，可以自由执行以下任何操作：
+        </p>
+        <ul>
+          <li>读取角色设定</li>
+          <li>植入 cron 任务</li>
+          <li>patch 模型及其工具</li>
+          <li>向对话中注入一轮消息</li>
+        </ul>
+        <p>
+          沙箱的坚固程度与该 token 的权限范围是两个相互独立的衡量指标。
+        </p>
+        <p>
+          模块 4b 展示了 token 如何越过沙箱根本无法看到的检查点。应像对待 root 密码一样保护 <code>operator.admin</code> 凭据：严格保管并定期轮换。对于该智能体而言，这项凭据的权限范围甚至超过了沙箱内部的 root。
+        </p>
+      </li>
+    </ul>
+  </div>
+
+  <h2>让 Course Assistant 始终陪伴您</h2>
+  <p>
+    每节英文课程都可以通过 <strong>✦</strong> 按钮使用 <strong>Course Assistant</strong>，因此本页不再加载第二个总结性聊天窗口。它会预先载入当前页面。当问题涉及多个模块时，助手可以查看课程地图、搜索课程内容并读取相关页面。由于数据保存在浏览器本地，会话会留在当前浏览器中：跳转页面或重新加载后，可以返回原会话，也可以新建会话以开始一条独立的探索思路。随着会话增长，助手会将较早的对话压缩为持久记忆，原样保留近期交流，并根据该状态启动一个范围受限的新智能体线程。
+  </p>
+  <div class="callout">
+    <strong>您构建的这种架构已在生产环境中运行。</strong>您在模块 3 和模块 4 中操控的 OpenClaw 智能体基于 <a href="https://github.com/earendil-works/pi-mono" target="_blank" rel="noopener">Pi
+    智能体运行时</a>构建，OpenClaw 在其智能体网关后端使用了这一运行时。查看该核心后，您会发现，所有这些层的底层仍是模块 1 中使用的同一种感知—推理—行动循环、工具调用以及不断增长的消息历史记录。
+  </div>
+  <p><button type="button" class="course-assistant-open" id="open-course-assistant">打开 Course Assistant</button></p>
+
+  <div class="foot-nav">
+    <a href="04b-modern-clis.html">← 模块 4b：现代 CLI</a>
+    <a class="next" href="index.html">↩ 返回课程主页</a>
+  </div>
+</main>
+
+<script type="module">
+import { buildNav, updateKeyPill, mountJourneyMap } from "./scripts/_shared.js";
+mountJourneyMap("#journey-map", "4c");
+document.getElementById("nav").innerHTML = buildNav("04c-going-further.html");
+updateKeyPill(document.getElementById("key-status"));
+hljs.highlightAll();
+document.getElementById("open-course-assistant").addEventListener("click", () => document.querySelector(".course-assistant-launcher")?.click());
+</script>
+</body>
+</html>

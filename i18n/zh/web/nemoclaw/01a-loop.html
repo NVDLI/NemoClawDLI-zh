@@ -1,0 +1,1509 @@
+
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>智能体 · 安全智能体</title>
+<link rel="stylesheet" href="styles/_style.css"/>
+<script src="vendor/highlight-11.10.0.min.js"></script>
+<link rel="stylesheet" href="vendor/codemirror-5.65.21.css"/>
+<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.css"/>
+<script src="vendor/codemirror-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-xml-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-javascript-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-css-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-htmlmixed-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-python-5.65.21.js"></script>
+<style>
+  .agent-loop-figure { margin: 1.2em auto 1.6em; }
+  .agent-loop-figure .fig-embed { max-width: 900px; margin-left: auto; margin-right: auto; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="logo" href="index.html">NVIDIA · 安全智能体</a>
+  <nav id="nav"></nav>
+  <div class="spacer"></div>
+  <span class="key-pill" id="key-status" onclick="document.getElementById(&#x27;key-panel&#x27;).scrollIntoView({behavior:&#x27;smooth&#x27;})">…</span>
+</div>
+
+<main>
+  <div id="journey-map"></div>
+
+  <div class="hero">
+    <div class="eyebrow">模块 1 · 第 1 部分，共 3 部分</div>
+    <h1><span>智能体</span></h1>
+    <p class="lead">
+      <strong>智能体</strong>是指能够在任何有意义的层面上与环境交互的实体。从这个意义上说，处理日常事务的人是智能体，将房间维持在设定温度的恒温器，以及在车流中行驶的自动驾驶汽车，同样也是智能体。
+    </p>
+    <p>
+      它们都会通过传感器<b>感知</b>环境，并通过执行器对环境采取<b>行动</b>。每次行动都会产生下一次观察，因此感知和行动会连成一个持续运转的周期，即<strong>感知—推理—行动循环</strong>。只要智能体仍在交互，这个循环就会持续。您将构建的所有智能体都采用同一循环，区别仅在于它们能感知多少信息，以及行动能够影响多大范围。
+    </p>
+  </div>
+
+  <h2>循环的三个环节</h2>
+  <p>循环每运行一轮都会经过三个环节，每个环节都有直观的名称和明确的职责。</p>
+
+  <figure class="agent-loop-figure">
+    <div class="fig-embed" data-svg-src="assets/figures/01a-agent-environment.svg" style="aspect-ratio:860 / 270"></div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">只有感知和行动会跨越边界。它们之间的决策步骤可以改变。</figcaption>
+  </figure>
+
+
+
+
+
+
+
+  <ul>
+    <li><strong>感知</strong>为智能体提供它对环境的全部认知。恒温器只读取一个数值：当前温度。自动驾驶汽车则融合摄像头、雷达和地图信息，构建道路模型。感知所捕获的信息就是智能体能够利用的全部信息，因为后续环节都不会直接接触现实世界。感知中的盲区会成为智能体其它部分无法弥补的盲区。</li>
+    <li><strong>推理</strong>将感知结果转化为决策，不同智能体的推理方式可能大不相同。恒温器只需将当前温度与目标温度进行比较，而国际象棋引擎会搜索数百万种走法，自动驾驶汽车则会运行学习得到的策略。您将在此构建的智能体通过调用语言模型进行推理，而本课程后续添加的几乎所有能力（工具、记忆和规划）都依托于这一步。</li>
+    <li><strong>行动</strong>会改变智能体自身及其它参与者所处的环境。行动可以简单到切换继电器，也可以复杂到操控汽车。后续页面会将暴露给模型的代码称为<strong>工具</strong>，因为从模型的角度看，它只是另一种可用的行动。调用工具，就是将执行这段暴露的代码作为行动。行动空间也界定了智能体能力所及的最外边界，因为无论推理能力多强，智能体都只能通过行动空间影响现实世界。</li>
+  </ul>
+
+  <div class="callout">
+    <strong>推理步骤可以替换。</strong>感知和行动并不关心二者之间采用的是哪一种决策函数。简单规则、决策树、搜索程序或神经网络都可以驱动同一个循环。只需构建一次固定的循环框架，就能清楚区分两个问题：推理能力有多强，以及行动能够影响多大范围。
+  </div>
+
+  <p>
+    经典智能体设计的区别在于决策步骤。Russell 和 Norvig 的
+    <a href="https://aima.cs.berkeley.edu/" target="_blank" rel="noopener">Artificial Intelligence: A Modern Approach</a>
+    将这些设计排列成一条谱系：从仅具备反射机制的智能体，到能够改进自身规则的学习型智能体。本课程先从固定逻辑入手，再加入语言模型和经过设计的上下文，逐步构建基于模型、以目标为导向的循环。后续模块会让这一循环在不断变化的状态下持续运行，这正是学习型智能体赖以发展的模式。
+  </p>
+  <figure style="margin:1.4em 0">
+    <div class="fig-embed" data-svg-src="assets/figures/01a-loop-1.svg" style="aspect-ratio:1020 / 400"></div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">四种智能体架构，结构复杂度依次提高：从将输入直接映射为行动的反射式智能体，到能够改写自身规则的学习智能体。改编自 Russell 和 Norvig 的 <a href="https://aima.cs.berkeley.edu/" target="_blank" rel="noopener">Artificial Intelligence: A Modern Approach</a>（第 1 章）。</figcaption>
+  </figure>
+
+
+
+
+
+
+  <h2>不使用语言模型的智能体</h2>
+  <p>最简单的决策函数只需一条 <code>if</code>
+     语句。此处，它驱动智能体在一条一维轨道上移动，轨道两端的墙壁分别位于位置 0
+     和 9，整个智能体已精简到近乎最小形态。点击“全部运行”，随着循环运行，观察位置数值如何在两堵墙之间来回变化。</p>
+
+  <div id="cell-reflex"></div>
+
+  <p>上面的代码有两点值得关注：</p>
+  <ul>
+    <li><strong>环境</strong>（墙壁位置和当前位置）存储在 <code>state.env</code> 中，而智能体的内在状态（移动方向）存储在 <code>state.agent</code> 中。将二者分开后，具有不同内在状态的其它智能体也能在同一环境中正常运行。</li>
+    <li><strong>推理步骤</strong>只有一条 <code>if</code>
+        语句。要将其替换为更强大的机制，无论是决策树、神经网络还是语言模型，只需更改感知与行动之间的部分。循环结构、状态布局和行动步骤都保持不变。</li>
+  </ul>
+
+
+
+  <h2>推理调用 LLM 后会发生什么变化</h2>
+  <p>可以像调用其它函数一样调用聊天补全接口：向它传入消息列表和模型名称，它会返回一条助手消息及元数据。</p>
+
+  <div class="callout">
+    <strong>关于 <code>chat()</code>。</strong>这是课程提供的封装函数，您稍后将在本页下方实时运行它。下面的代码片段会预先展示其调用形式和返回字段，让您在进入运行时单元格时已熟悉这些名称。
+  </div>
+
+<pre><code class="language-js">const reply = await chat({
+  model:    "nvidia/nemotron-3-nano-30b-a3b",
+  messages: [{ role: "user", content: "Hi" }],
+});
+// reply.choices[0].message  → { content, reasoning_content }
+// reply.choices[0].finish_reason → "stop" | "tool_calls" | "length"
+</code></pre>
+
+  <p>该函数的三个特征决定了基于它构建的智能体必须如何运行：</p>
+  <ul>
+    <li><strong>各次调用不共享状态。</strong>两次请求之间，服务器不会替您保留任何内容。如果希望模型记住上一轮对话，您需要再次发送该轮内容。对话的“记忆”就是由代码维护，并在每次调用时重新发送的消息列表。</li>
+    <li><strong>输出包含两个通道。</strong>推理模型会将推理过程记录在
+        <code>reasoning_content</code> 中，并将最终答案放在
+        <code>content</code> 中。开发期间，可以检查这些推理记录；循环的下一阶段则读取 <code>content</code> 中的答案并据此行动。</li>
+    <li><strong>finish_reason 是循环的退出条件。</strong>
+        <code>"stop"</code> 表示模型已生成最终答案。<code>"tool_calls"</code> 表示模型希望代码运行指定函数，并将结果返回给它。
+        <code>"length"</code> 表示模型尚未完成时，token 预算已耗尽。驱动基于 LLM 的智能体时，整个循环都围绕读取这一个字段并决定下一步操作来构建。</li>
+  </ul>
+
+
+
+
+  <p>
+    本课程始终使用
+    <a href="https://platform.openai.com/docs/api-reference/chat" target="_blank" rel="noopener">Chat Completions API</a>：您需要在自己的代码中以 <code>messages[]</code> 数组保存对话，并在每一轮重新发送完整数组。较新的
+    <a href="https://platform.openai.com/docs/api-reference/responses" target="_blank" rel="noopener">Responses API</a>
+    则可以在服务器端保存对话线程，因此您只需发送新输入以及对上一轮的引用。无论采用哪种方式，模型在各次调用之间都保持无状态且不会发生改变。对话存在于模型之外，由代码或服务器维护相应状态。
+  </p>
+
+  <figure style="margin:1.4em 0">
+    <div class="fig-embed" data-svg-src="assets/figures/01a-loop-2.svg" style="aspect-ratio:840 / 222"></div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">两个接口封装的是同一种无状态调用，区别仅在于由谁保存各轮之间的对话。</figcaption>
+  </figure>
+
+
+
+  <h2>在浏览器中进行真实调用</h2>
+  <p>下面的单元格会向模型发送一次聊天补全请求。该请求需要一个
+     <a href="https://build.nvidia.com/?ncid=ref-dli-146986" target="_blank" rel="noopener">NVIDIA API key</a>，不过免费套餐足以完成所有练习。您只需输入一次，课程便会将其保存在浏览器中，并在每个页面重复使用，无需再次粘贴。</p>
+
+  <div id="key-panel"></div>
+
+  <p>点击“运行”发送单次请求。该请求完全独立，外部没有循环，也不会携带先前轮次的任何内容。</p>
+
+  <div id="cell-onecall"></div>
+
+
+
+
+  <h3><code>chat()</code> 实际发送的内容</h3>
+  <p><code>chat()</code> 是一个便捷封装函数，封装了采用 OpenAI 兼容传输格式的普通 HTTP
+     <code>POST</code>。该请求包含三项内容：</p>
+  <ul>
+    <li>请求发送到的入口；</li>
+    <li>一个携带密钥的 <code>Authorization</code> 标头；</li>
+    <li>以及包含 <code>model</code> 和 <code>messages</code> 的 JSON 正文。</li>
+  </ul>
+  <p>下面的单元格会手动发起该调用，并展示请求和响应两端的内容。打开 <em>request</em>，查看隐藏密钥后从浏览器发出的内容；打开 <em>原始响应</em>，查看
+     <code>chat()</code> 返回的完整对象。</p>
+  <p>本课程中的每个入口都采用相同的格式，包括模块 3 中的 OpenClaw 智能体运行时。</p>
+
+  <div id="cell-wire"></div>
+
+  <div class="callout">
+  <strong>这次调用还在悄然完成两件事，以及这样做的原因。</strong>这两件事都不神秘，在您信任它们之前，都值得先了解清楚。
+  <ul>
+    <li><strong>请求可能会经过代理。</strong>如果您在输入 API key 时选择了学习管理系统/iframe 设置，请求就不会直接发往 <code>build.nvidia.com</code>。该入口不会返回<a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS" target="_blank" rel="noopener">跨源 (CORS)</a> 标头，而浏览器 <code>fetch</code> 要求必须提供这些标头，因此调用会经由一个小型直通代理转发，由代理添加这些标头。代理还会添加课程归属标头，以便 DLI 识别来自本资源的流量。课程会随该请求发送
+        API key，但不会存储它，也不会替换为其它密钥。</li>
+    <li><strong>流式处理封装在辅助函数中。</strong>
+        <code>chatStream()</code> 会发送同一个聊天请求并启用流式传输，然后将返回的事件流解析为回答文本、推理文本、用量元数据和最终完成信号。该辅助函数还会把这些内容连接到课程面板和 Stop 按钮，使单元格可以专注于概念，无需处理流式传输的底层细节。可以从单元格菜单中打开辅助函数源代码，查看它具体执行了哪些操作。</li>
+    </ul>
+  </div>
+
+
+
+
+
+
+  <h2>保持循环不变，替换推理步骤</h2>
+  <p>
+    您现在已经具备智能体的两个组成部分；上面的无状态 <code>chat()</code> 函数可以很好地与前一个反射式智能体的感知—推理—行动循环结合。在将模型接入这个循环之前，不妨先观察决策步骤如何使用并非语言模型的例程。
+  </p>
+
+  <p>按顺序运行各节点。每个节点都会将不同的决策规则放入同一个迷宫求解循环：</p>
+  <ul>
+    <li>固定的“始终向东”规则可以在笔直走廊中抵达终点，但会在迷宫的第一堵墙前停滞，因为固定朝向无法转弯。</li>
+    <li><a href="https://en.wikipedia.org/wiki/Depth-first_search" target="_blank" rel="noopener">DFS</a> 会深入探索，并从死路回溯。</li>
+    <li><a href="https://en.wikipedia.org/wiki/Breadth-first_search" target="_blank" rel="noopener">BFS</a> 会逐层向外扩展，然后沿最短路径前进。</li>
+    <li><a href="https://en.wikipedia.org/wiki/A*_search_algorithm" target="_blank" rel="noopener">A*</a> 会让同样的逐层扩展偏向终点。</li>
+  </ul>
+
+  <div id="cell-maze"></div>
+
+  <div class="callout">
+    <strong>只有决策步骤会发生变化。</strong>
+    DFS、BFS 和 A* 都会读取当前迷宫状态并返回一个移动动作。最后一个节点中的一行代码用于选择决策函数；无论选择哪一个，下面的循环都会以相同方式运行。您刚刚运行的
+    <code>chat()</code> 调用也可以承担同一个步骤。它改变了两处衔接：代码将感知结果呈现为文本，模型则返回由代码执行的工具调用。下一节将具体讲解这两处衔接。
+  </div>
+
+  <h2>使用语言模型选择迷宫移动动作</h2>
+  <p>
+    迷宫循环仍会对环境进行采样，并执行一个经过验证的移动动作。只有决策步骤发生变化。模型不再使用 DFS、BFS 或 A*，而是读取呈现出的迷宫，并请求代码调用 <code>choose_direction</code>。
+  </p>
+  <p>按以下顺序运行单元格，然后每次只调整一个控制项：</p>
+  <ol>
+    <li>先运行引擎节点。它会导出迷宫实用工具和一个共享控制器 <code>state.runMaze</code>；该控制器会自动穿过走廊，仅在岔路口调用模型。</li>
+    <li>运行下面可编辑的迷宫智能体节点。<code>DIRECTIVE</code> 是核心系统指令，选项对象则控制模型、迷宫大小、文本地图、图像附件、移动历史、坐标轨迹以及重复提供的工具模式。</li>
+    <li>先使用可正常工作的默认设置。然后开启 <code>includeImage</code> 测试渲染后的迷宫，切换 <code>model</code> 比较不同模型，或者在简单情形运行成功后设置 <code>advanced</code>，扩大迷宫。</li>
+  </ol>
+
+  <div id="cell-llm-maze"></div>
+
+  <div class="callout">
+    <strong>模式将回答转换为类型化动作。</strong>固定规则返回一个字符串，BFS 返回一个列表。<code>choose_direction</code> 为模型提供相同的契约，但通过 JSON Schema 强制执行该契约，使循环读取类型化值，而不是解析自由文本。有了它，语言模型便可接管刚才由
+    BFS 和 A* 承担的决策步骤。
+  </div>
+
+  <h2>在本地绘制循环</h2>
+  <p>
+    将 <code>chat()</code> 调用放入会重新发送历史记录的循环后，本课程中任意 LLM 智能体的单轮运行都会呈现相同的四阶段结构。现在请记住这些阶段的名称，因为后续的每个安全性和可靠性问题都可以追溯到这四个箭头之一。
+  </p>
+  <ul>
+    <li><strong>局部采样。</strong>代码读取环境的一个局部切片，例如迷宫中的当前单元格及其有效移动方向、最新的用户消息，或某个文件的内容。它不会试图一次获取整个世界，因为当前这一轮只需要模型此次行动所需的那一小部分状态。</li>
+    <li><strong>局部感知。</strong>该切片会被呈现为完整的工程化上下文：系统提示词、持续累积的 <code>messages[]</code>
+        历史记录、先前的工具结果，以及您刚刚采样的切片。所有内容都是纯文本。对于 LLM 智能体，感知<em>就是</em>上下文工程。</li>
+    <li><strong>局部行动。</strong>模型将这些文本映射为更多文本：一个<em>意图信号</em>。理想情况下，它是类似
+        <code>{ "move": "east" }</code> 的类型化工具调用，而不是自由文本。该意图只是在请求执行动作，本身从不执行任何操作。代码会读取它，在验证后对环境应用一次范围受限的更新 (<code>doMove(...)</code>)。</li>
+    <li><strong>局部影响。</strong>更新会改变环境。模型内部不会持久保留任何内容。唯一持久的状态是环境，以及代码将重新构建的上下文。下一轮的局部采样会读取已改变的环境，随后循环再次开始。</li>
+  </ul>
+  <p>
+    请仔细观察该列表的中间部分。<strong>从感知到行动的步骤是一次无状态的文本到文本映射</strong>：输入完整的工程化上下文，返回一个意图信号。模型只负责转换文本，因此在这次映射的两端，感知环境以及将意图转化为实际变化仍然是代码需要完成的工作。
+  </p>
+  <p>
+    因此，下面的绿色框是<em>唯一</em>并非由您编写的部分。智能体实际上只有两个选择：您向其上下文中提供什么，以及您如何处理它返回的意图。
+  </p>
+
+  <figure style="margin:1.4em 0">
+<div class="fig-embed" data-svg-src="assets/figures/01a-loop-3.svg" style="aspect-ratio:920 / 450"></div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">采样 → 感知 →（文本 → 文本）→ 行动 → 影响</figcaption>
+  </figure>
+
+  <div class="callout">
+    <strong>循环的每一轮都只在局部行动。</strong>模型读取环境中的一小部分，例如一个迷宫单元格，然后返回一个范围受限的动作；两者之间的无状态文本到文本步骤随即忘记刚才看到的一切。一个能够完成大量工作的智能体，本质上只是多次重复这个简单循环，同时由环境将状态从一轮传递到下一轮。模块 1b 将用代码构建这个循环，让您看到上下文如何随每轮运行而增长。
+  </div>
+
+  <h2>继续学习之前</h2>
+  <p>只需编辑上方 LLM 迷宫单元格中的一个设置并重新运行，即可回答每个问题。</p>
+  <ol>
+    <li><strong>不向多模态模型提供文本。</strong>设置 <code>includeText:false</code> 和 <code>includeImage:true</code>，然后重新运行。此时模型只能看到渲染后的迷宫图像。它仍能抵达终点吗？与同时使用文本和图像的运行相比，它是否需要作出更多次决策？</li>
+    <li><strong>从 DIRECTIVE 中移除策略提示。</strong>删除要求优先选择未访问分支而非已访问单元格的那一行，然后重新运行同一单元格。将决策次数与保留该提示时的运行结果进行比较。模型的能力有多少来自这一句话？</li>
+    <li><strong>更换决策模型。</strong>将 <code>model:"vision"</code> 改为 <code>model:"super"</code>，然后重新运行。循环、迷宫、感知和行动均保持不变，只有负责选择移动动作的模型发生变化。更大的文本模型能否用更少的决策抵达终点？</li>
+  </ol>
+
+
+
+  <h2>动手试试 · 将模型视为纯函数</h2>
+  <p>
+    本课程中最小的构件只是一次 <code>chat()</code> 调用，外围没有工具，也没有记忆。您发送的每条消息都相互独立，运行的是循环稍后将封装的基础无状态函数。在下方输入内容，观察回复以流式方式返回。
+  </p>
+  <div id="loop-cell"></div>
+  <div id="loop-artifact"></div>
+  <script type="module">
+    import { mountRunCell } from "./scripts/_shared.js";
+    mountRunCell("#loop-cell", {
+      label: "“动手试试”练习代码",
+      autorun: true,
+      code: `// memory:true keeps the conversation: ctx.history holds the earlier turns and each call
+// Turn memory off to make respond a pure, stateless function.
+
+helpers.mountChatUI("#loop-artifact", {
+  memory: true,
+  greeting: "记忆已开启，因此我会依据完整对话作答。请先告诉我名字，然后问我它是什么。关闭 🧠 memory 后，我会将每条消息都视为全新的输入来回答，成为无法回忆上一条消息的无状态函数。",
+  models: [
+    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
+    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
+  ],
+  examples: ["我叫 Ada。请记住。", "我叫什么名字？", "法国的首都是哪里？", "用两句话解释智能体循环", "为什么智能体需要循环，而不能只调用一次？"],
+  respond: async (text, ctx) => {
+    // ctx.history holds prior turns when memory is on.
+    const messages = [...(ctx.history || []), { role: "user", content: text }];
+    const s = await helpers.chatStream({ messages, model: ctx.model, max_tokens: 8196, signal: ctx.signal },
+      (t) => ctx.view.token(t), { onReasoning: (r) => ctx.view.reasoning(r) });
+    if (s.usage) ctx.view.usage({ input: s.usage.prompt_tokens, output: s.usage.completion_tokens, model: s.model });
+  },
+});
+helpers.log("结果呈现在下方。编辑配置后，点击“运行”。");
+
+// mountChatUI renders the chat view; this cell supplies respond().
+`,
+    });
+  </script>
+
+  <div class="foot-nav">
+    <a href="index.html">← 设置</a>
+    <a class="next" href="01b-react.html">模块 1b：ReAct 循环 →</a>
+  </div>
+</main>
+
+<script type="module">
+import { buildNav, updateKeyPill, mountKeyPanel, mountJourneyMap, mountCanvasFlow, mountRunCell } from "./scripts/_shared.js";
+document.getElementById("nav").innerHTML = buildNav("01a-loop.html");
+const pill = document.getElementById("key-status");
+updateKeyPill(pill);
+mountJourneyMap("#journey-map", "1a");
+mountKeyPanel(document.getElementById("key-panel"), { onSave: () => updateKeyPill(pill), onClear: () => updateKeyPill(pill) });
+hljs.highlightAll();
+
+// ── Canvas 1: a reflex agent with zero LLMs ──────────────────────────────────
+mountCanvasFlow("#cell-reflex", {
+  label: "一维轨道上的反射式智能体 · 不使用 LLM，只有一条 if 语句",
+  intro: "Setup 构建环境和智能体的内部属性，tick 运行一次感知—推理—行动循环，run 则将该 tick 重复 25 次，让您观察位置数值如何在两堵墙之间来回反弹。",
+  edges: [
+    { from: "setup", to: "tick" },
+    { from: "tick",  to: "run"  },
+  ],
+
+  nodes: [
+    {
+      id: "setup", icon: "🌍", title: "环境 + 智能体内在状态", x: 0, y: 0,
+      summary: "初始化环境（一条位置范围为 0 至 9、两端由墙壁限定的一维轨道）和智能体的内在状态（起始位置与方向）。将环境状态与智能体状态分开，便可在不改动世界模型的情况下替换推理规则。",
+      code: `// Set up the tiny world the loop will inspect.
+state.env = {
+    leftWall:  0,
+    rightWall: 9,
+    position:  3,
+};
+
+state.agent = {
+    direction: +1,  // +1 = right, -1 = left
+};
+return { env: state.env, agent: state.agent };
+`,
+    },
+
+    {
+      id: "tick", icon: "🔁", title: "一次感知—推理—行动循环", x: 0, y: 1,
+      summary: "读取环境、决定移动方向，然后更新环境。整个推理步骤只有一条 if 语句，特意保持最简形式，让模型不会干扰对循环结构的理解。",
+      code: `// PERCEIVE
+const perception = {
+  position:    state.env.position,
+  atLeftWall:  state.env.position <= state.env.leftWall,
+  atRightWall: state.env.position >= state.env.rightWall,
+};
+
+// REASON
+if (perception.atLeftWall)  state.agent.direction = +1;
+if (perception.atRightWall) state.agent.direction = -1;
+const action = { move: state.agent.direction };
+// ACT
+state.env.position += action.move;
+return { perception, action, newPosition: state.env.position };
+`,
+    },
+
+    {
+      id: "run", icon: "▶️", title: "运行循环 25 个 tick", x: 0, y: 2,
+      summary: "依次调用同一个“感知—推理—行动”循环 25 次。输出中的位置轨迹直观呈现来回移动的模式，也说明重复执行循环如何在推理规则非常简单的情况下驱动行为。",
+      code: `// Run the loop and collect a step-by-step trace.
+const trace = [];
+for (let t = 0; t < 25; t++) {
+  const p = {
+    position:    state.env.position,
+    atLeftWall:  state.env.position <= state.env.leftWall,
+    atRightWall: state.env.position >= state.env.rightWall,
+  };
+  if (p.atLeftWall)  state.agent.direction = +1;
+  if (p.atRightWall) state.agent.direction = -1;
+  state.env.position += state.agent.direction;
+  trace.push(state.env.position);
+}
+
+helpers.viz.lineChart(trace, {
+  title: "各时刻的位置",
+  xLabel: "时刻",
+  yLabel: "位置",
+  min: state.env.leftWall,
+  max: state.env.rightWall,
+});
+return { ticks: trace.length, finalPosition: state.env.position, trace };
+`,
+    },
+  ],
+});
+
+// ── Canvas 1.5: maze + search reasoners (2-D version of the swap above) ───
+// ── Module 1a Part 4: maze + search reasoners ───────────────────────────────
+mountCanvasFlow("#cell-maze", {
+  label: "推理步骤可替换的智能体循环",
+  intro: "按顺序运行各节点。Setup 会导出迷宫辅助函数；搜索节点先展示固定推理方法，随后再由语言模型接手。支撑代码默认折叠，因为本课重点是行为；您仍可展开任意决策规则。",
+  edges: [
+    { from: "maze", to: "bfs"   },
+    { from: "maze", to: "dfs"   },
+    { from: "bfs",  to: "astar" },
+  ],
+
+  nodes: [
+    {
+      id: "maze", icon: "🌐", title: "迷宫 + 固定规则推理", x: 0, y: 0,
+      showCode: false,
+      summary: "此节点默认隐藏迷宫支撑代码。展开后请从底部开始阅读：它先把共享辅助函数存入 state，再运行走廊和迷宫动画，以说明固定规则为什么不够用。",
+      code: `// Reading guide: most of this block is support code.
+// Start near the bottom where state.fn is assigned, then read the two animations.
+// The search nodes reuse these maze and movement helpers with different decision rules.
+
+
+// lcg is a tiny seeded random-number generator, so a given seed always builds the same maze (reproducible runs).
+function lcg(seed) {
+  let s = ((seed | 0) >>> 0) || 42;
+  return () => { s = (Math.imul(1664525, s) + 1013904223) >>> 0; return s / 4294967296; };
+}
+
+function generateMaze(columns, rows, seed, loopFactor = 0.15) {
+  const random = lcg(seed);
+  const width = columns * 2 + 1;
+  const height = rows * 2 + 1;
+  const grid = Array.from({ length: height }, () => Array(width).fill('#'));
+
+  function shuffle(values) {
+    for (let index = values.length - 1; index > 0; index--) {
+      const swapIndex = Math.floor(random() * (index + 1));
+      [values[index], values[swapIndex]] = [values[swapIndex], values[index]];
+    }
+    return values;
+  }
+
+  function carve(cellX, cellY) {
+    const directions = [[0, -2], [0, 2], [-2, 0], [2, 0]];
+    for (const [deltaX, deltaY] of shuffle(directions)) {
+      const nextX = cellX + deltaX;
+      const nextY = cellY + deltaY;
+      const inside = nextX >= 1 && nextX < width - 1 && nextY >= 1 && nextY < height - 1;
+      if (inside && grid[nextY][nextX] === '#') {
+        grid[cellY + deltaY / 2][cellX + deltaX / 2] = '.';
+        grid[nextY][nextX] = '.';
+        carve(nextX, nextY);
+      }
+    }
+  }
+
+  grid[1][1] = '.';
+  carve(1, 1);
+  grid[1][1] = 'S';
+  grid[height - 2][width - 2] = 'G';
+
+  // Add a few extra openings so the maze has forks and junctions.
+  const loopRandom = lcg((seed ^ 0x5A5A5A5A) >>> 0);
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      if (grid[y][x] !== '#' || loopRandom() > loopFactor) continue;
+      const horizontalOpening = y % 2 === 0 && x % 2 === 1
+        && grid[y][x - 1] !== '#' && grid[y][x + 1] !== '#';
+      const verticalOpening = x % 2 === 0 && y % 2 === 1
+        && grid[y - 1][x] !== '#' && grid[y + 1][x] !== '#';
+      if (horizontalOpening || verticalOpening) grid[y][x] = '.';
+    }
+  }
+  return grid.map(row => row.join(''));
+}
+
+const DIRS = { north:[0,-1], south:[0,1], east:[1,0], west:[-1,0] };
+
+function findCell(grid, ch) {
+  for (let y=0; y<grid.length; y++)
+    for (let x=0; x<grid[y].length; x++)
+      if (grid[y][x] === ch) return [x, y];
+  return null;
+}
+
+function validMoves(grid, [x, y]) {
+  return Object.entries(DIRS)
+    .filter(([, [dx,dy]]) => {
+      const [nx, ny] = [x+dx, y+dy];
+      return ny>=0 && ny<grid.length && nx>=0 && nx<grid[ny].length && grid[ny][nx]!=='#';
+    })
+    .map(([name]) => name);
+}
+
+function doMove(grid, [x, y], dir) {
+  const [dx, dy] = DIRS[dir] || [0,0], [nx, ny] = [x+dx, y+dy];
+  if (ny<0||ny>=grid.length||nx<0||nx>=grid[ny].length||grid[ny][nx]==='#')
+    return { pos:[x,y], ok:false, done:false };
+  return { pos:[nx,ny], ok:true, done: grid[ny][nx]==='G' };
+}
+
+function bfsPath(grid, start, goal) {
+  const [gx,gy]=goal, queue=[[start,[]]], seen=new Set([\`\${start[0]},\${start[1]}\`]);
+  while (queue.length) {
+    const [pos, path] = queue.shift(), [x,y] = pos;
+    if (x===gx && y===gy) return path;
+    for (const dir of validMoves(grid, pos)) {
+      const [dx,dy]=DIRS[dir], npos=[x+dx,y+dy], k=\`\${npos[0]},\${npos[1]}\`;
+      if (!seen.has(k)) { seen.add(k); queue.push([npos,[...path,dir]]); }
+    }
+  }
+  return [];
+}
+
+function astarPath(grid, start, goal) {
+  const [gx,gy]=goal, h=([x,y])=>Math.abs(x-gx)+Math.abs(y-gy);
+  const heap=[[h(start),0,start,[]]], seen={};
+  while (heap.length) {
+    heap.sort((a,b)=>a[0]-b[0]);
+    const [,g,pos,path]=heap.shift(), k=\`\${pos[0]},\${pos[1]}\`;
+    if (seen[k]) continue; seen[k]=true;
+    if (pos[0]===gx && pos[1]===gy) return path;
+    for (const dir of validMoves(grid,pos)) {
+      const [dx,dy]=DIRS[dir], npos=[pos[0]+dx,pos[1]+dy], nk=\`\${npos[0]},\${npos[1]}\`;
+      if (!seen[nk]) { const ng=g+1; heap.push([ng+h(npos),ng,npos,[...path,dir]]); }
+    }
+  }
+  return [];
+}
+
+function runLoop(grid, start, goal, getMove, maxSteps) {
+  let pos=[...start]; const visited=[[...pos]];
+  for (let i=0; i<maxSteps; i++) {
+    const moves=validMoves(grid,pos), dir=getMove(i,pos,moves);
+    if (!dir) break;
+    const r=doMove(grid,pos,dir); pos=r.pos;
+    if (r.ok) visited.push([...pos]);
+    if (r.done) return {pos, visited, steps:i+1, won:true};
+  }
+  return {pos, visited, steps:maxSteps, won:false};
+}
+
+function renderMaze(grid, pos, goal, visited, title, explored) {
+  const [ax,ay]=pos, [gx,gy]=goal, W=Math.max(...grid.map(r=>r.length));
+  const vis=new Set(visited.map(([x,y])=>\`\${x},\${y}\`));
+  const exp=explored||new Set();
+  let cells='';
+  for (let y=0; y<grid.length; y++) for (let x=0; x<grid[y].length; x++) {
+    let s='',i='';
+    if (x===ax&&y===ay)              {s='background:#76b900;color:#000;font-weight:bold';i='◉';}
+    else if (x===gx&&y===gy)         {s='background:#f0a500;color:#000;font-weight:bold';i='★';}
+    else if (grid[y][x]==='#')       {s='background:#0d1117';}
+    else if (vis.has(\`\${x},\${y}\`))   {s='background:#1e3a5f;color:#53c0f0';i='·';}
+    else if (exp.has(\`\${x},\${y}\`))   {s='background:#0d2030';}
+    else                             {s='background:#161b22';}
+    cells+=\`<div class="mc" style="\${s}">\${i}</div>\`;
+  }
+
+  const hdr=title?\`<div style="font:11px/1.4 ui-monospace,monospace;color:#888;margin-bottom:5px">\${title}</div>\`:'';
+  return \`\${hdr}<style>.mgrid{display:grid;gap:2px;background:#0a0a0f;padding:8px;border-radius:8px;width:fit-content;margin:4px 0}.mc{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:3px;font:13px/1 ui-monospace,monospace}</style><div class="mgrid" style="grid-template-columns:repeat(\${W},26px)">\${cells}</div>\`;
+}
+
+function bfsExplore(grid, start, goal) {
+  const [gx,gy]=goal;
+  const queue=[[start,[]]], seen=new Set([\`\${start[0]},\${start[1]}\`]);
+  const exploreOrder=[start];
+  while (queue.length) {
+    const [pos, path]=queue.shift(), [x,y]=pos;
+    if (x===gx&&y===gy) return {path, exploreOrder};
+    for (const dir of validMoves(grid,pos)) {
+      const [dx,dy]=DIRS[dir], npos=[x+dx,y+dy], k=\`\${npos[0]},\${npos[1]}\`;
+      if (!seen.has(k)) { seen.add(k); exploreOrder.push(npos); queue.push([npos,[...path,dir]]); }
+    }
+  }
+  return {path:[], exploreOrder};
+}
+
+// ── Store shared state ──────────────────────────────────────────────────────
+state.grid  = generateMaze(9, 7, 42);
+state.start = findCell(state.grid, 'S');
+state.goal  = findCell(state.grid, 'G');
+state.fn    = { validMoves, doMove, bfsPath, bfsExplore, astarPath, runLoop, renderMaze, findCell };
+
+// ── Side-by-side animation: corridor and random maze run together ────────────
+const corrId = 'c' + Math.random().toString(36).slice(2, 7);
+const randId = 'r' + Math.random().toString(36).slice(2, 7);
+helpers.log.html(\`<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
+  <div id="\${corrId}" style="flex:0 0 auto"></div>
+  <div id="\${randId}" style="flex:0 0 auto"></div>
+</div>\`);
+
+async function animRun(grid, start, goal, getDir, maxSteps, elId, msPerStep) {
+  let pos = [...start];
+  const visited = [[...pos]];
+  let steps = 0, won = false;
+  for (let i = 0; i < maxSteps; i++) {
+    const el = document.getElementById(elId);
+    if (el) el.innerHTML = renderMaze(grid, pos, goal, visited, \`第 \${i + 1} 步\`);
+    await helpers.delay(msPerStep);
+    const dir = getDir(i, pos, validMoves(grid, pos));
+    const rv = doMove(grid, pos, dir);
+    pos = rv.pos; steps++;
+    if (rv.ok) visited.push([...pos]);
+    if (rv.done) { won = true; break; }
+  }
+
+  const el = document.getElementById(elId);
+  if (el) el.innerHTML = renderMaze(grid, pos, goal, visited, \`\${steps} 步 · 已解决：\${won}\`);
+  return { pos, visited, steps, won };
+}
+
+const CORRIDOR = ["###################","#S...............G#","###################"];
+// A fixed heading is enough on a straight corridor, so 'always east' walks it straight to the goal.
+const corrR = await animRun(CORRIDOR, findCell(CORRIDOR,'S'), findCell(CORRIDOR,'G'), () => 'east', 40, corrId, 55);
+
+// A fixed heading stalls in the maze because it cannot turn after the first wall.
+// The reasoner nodes below swap a real search routine into the same slot.
+async function animStall(grid, start, goal, dir, elId, msPerStep) {
+  let pos = [...start]; const visited = [[...pos]]; let moves = 0;
+  for (;;) {
+    const el = document.getElementById(elId);
+    if (el) el.innerHTML = renderMaze(grid, pos, goal, visited, \`'始终向\${dir}' · 第 \${moves + 1} 步\`);
+    await helpers.delay(msPerStep);
+    const rv = doMove(grid, pos, dir);
+    if (!rv.ok) break;
+    pos = rv.pos; visited.push([...pos]); moves++;
+    if (rv.done) break;
+  }
+  const el = document.getElementById(elId);
+  if (el) el.innerHTML = renderMaze(grid, pos, goal, visited,
+    \`'始终向\${dir}'在移动 \${moves} 步后受阻 · 固定方向无法解开迷宫\`);
+  return { moves };
+}
+const mazeR = await animStall(state.grid, state.start, state.goal, 'east', randId, 120);
+
+return { corridorSolved: corrR.won, mazeStalledAfter: mazeR.moves };
+`,
+    },
+    {
+      id: "dfs", icon: "🌀", title: "DFS 推理器", x: 1, y: 0,
+      showCode: false,
+      summary: "折叠的 dfs(pos) 函数会在进入分支时记录一次前进，并在回溯时记录对应的反向移动。展开节点即可查看这一递归过程。",
+      code: `// DFS is the depth-first version of the same agent loop. It first builds a full
+// move list, including backtracking moves, then replays that list as an animation.
+if (!state.fn) { helpers.log("请先运行“Maze + constant reasoner”节点。"); return; }
+const { fn, grid, start, goal } = state;
+const LDIR = {north:[0,-1],south:[0,1],east:[1,0],west:[-1,0]};
+const REV  = {north:'south',south:'north',east:'west',west:'east'};
+const steps = [];
+const seen  = new Set([\`\${start[0]},\${start[1]}\`]);
+
+function dfs(pos) {
+  const [x, y] = pos;
+  if (x === goal[0] && y === goal[1]) return true;
+
+  for (const dir of fn.validMoves(grid, pos)) {
+    const [dx, dy] = LDIR[dir];
+    const npos = [x+dx, y+dy];
+    const k = \`\${npos[0]},\${npos[1]}\`;
+    if (!seen.has(k)) {
+      seen.add(k);
+      steps.push(dir);
+      if (dfs(npos)) return true;
+      steps.push(REV[dir]);
+    }
+  }
+  return false;
+}
+dfs([...start]);
+
+let pos = [...start], visited = [[...pos]], stepCount = 0;
+const UID = 'd' + Math.random().toString(36).slice(2, 7);
+helpers.log.html(\`<div id="\${UID}" style="margin:6px 0"></div>\`);
+
+for (const dir of steps) {
+  const el = document.getElementById(UID);
+  if (el) el.innerHTML = fn.renderMaze(grid, pos, goal, visited, \`DFS · 第 \${stepCount + 1} 步\`);
+  await helpers.delay(55);
+  const rv = fn.doMove(grid, pos, dir);
+  pos = rv.pos; stepCount++;
+  if (rv.ok) visited.push([...pos]);
+  if (rv.done) break;
+}
+
+const elF = document.getElementById(UID);
+if (elF) elF.innerHTML = fn.renderMaze(grid, pos, goal, visited,
+  \`DFS · 共 \${stepCount} 步（含回溯）\`);
+return { stepsTotal: stepCount };
+`,
+    },
+    {
+      id: "bfs", icon: "🔍", title: "BFS 推理器", x: 0, y: 1,
+      showCode: false,
+      summary: "BFS 代码默认处于折叠状态。展开后，请留意两个阶段：首先标记搜索检查过的每个单元格，然后沿 BFS 找到的最短路径前进。",
+      code: `// BFS is split into two readable phases: show the expanding frontier, then walk
+// the shortest path that came back from fn.bfsExplore(...).
+if (!state.fn) { helpers.log("请先运行“Maze + constant reasoner”节点。"); return; }
+const { fn, grid, start, goal } = state;
+const { path, exploreOrder } = fn.bfsExplore(grid, start, goal);
+
+const UID = 'b' + Math.random().toString(36).slice(2, 7);
+helpers.log.html(\`<div id="\${UID}" style="margin:6px 0"></div>\`);
+
+// Phase 1: animate frontier expanding
+const explored = new Set();
+let pos = [...start];
+for (const cell of exploreOrder) {
+  explored.add(\`\${cell[0]},\${cell[1]}\`);
+  const el = document.getElementById(UID);
+  if (el) el.innerHTML = fn.renderMaze(grid, pos, goal, [],
+    \`BFS 正在搜索 · 已搜索 \${explored.size}/\${exploreOrder.length} 个单元格\`, explored);
+  await helpers.delay(32);
+}
+
+// Phase 2: walk the path
+let visited = [[...pos]], steps = 0;
+for (const dir of path) {
+  const el = document.getElementById(UID);
+  if (el) el.innerHTML = fn.renderMaze(grid, pos, goal, visited,
+    \`BFS 正在行进 · 第 \${steps + 1}/\${path.length} 步\`, explored);
+  await helpers.delay(90);
+  const rv = fn.doMove(grid, pos, dir);
+  pos = rv.pos; steps++;
+  if (rv.ok) visited.push([...pos]);
+  if (rv.done) break;
+}
+
+const elF = document.getElementById(UID);
+if (elF) elF.innerHTML = fn.renderMaze(grid, pos, goal, visited,
+  \`BFS · 路径共 \${steps} 步 · 搜索了 \${exploreOrder.length} 个单元格\`, explored);
+state.bfsSteps = steps;
+return { steps, examined: exploreOrder.length };
+`,
+    },
+    {
+      id: "astar", icon: "⭐", title: "A* 推理器", x: 1, y: 1,
+      showCode: false,
+      summary: "A* 代码默认折叠。展开后可以看到，其动画循环与 BFS 几乎相同，差别在于生成路径的规划器。",
+      code: `// A* reuses the same animation loop shape as BFS. The planner changed, not the
+// surrounding perceive-act loop that displays each move.
+if (!state.fn) { helpers.log("请先运行“Maze + constant reasoner”节点。"); return; }
+const { fn, grid, start, goal } = state;
+const path = fn.astarPath(grid, start, goal);
+let pos = [...start], visited = [[...pos]], steps = 0;
+
+const UID = 'a' + Math.random().toString(36).slice(2, 7);
+helpers.log.html(\`<div id="\${UID}" style="margin:6px 0"></div>\`);
+
+for (const dir of path) {
+  const el = document.getElementById(UID);
+  if (el) el.innerHTML = fn.renderMaze(grid, pos, goal, visited,
+    \`A* · 第 \${steps + 1}/\${path.length} 步\`);
+  await helpers.delay(85);
+  const rv = fn.doMove(grid, pos, dir);
+  pos = rv.pos; steps++;
+  if (rv.ok) visited.push([...pos]);
+  if (rv.done) break;
+}
+
+const elF = document.getElementById(UID);
+if (elF) elF.innerHTML = fn.renderMaze(grid, pos, goal, visited,
+  \`A* · \${steps} 步 · 曼哈顿启发式 · 与 BFS 的路径相同：\${steps === state.bfsSteps}\`);
+return { steps, won: true };
+`,
+    },
+  ],
+});
+
+
+// ── Canvas 1.6: LLM / VLM run · the model chooses moves in the same maze loop ─
+mountCanvasFlow("#cell-llm-maze", {
+  label: "LLM 迷宫运行 · 模型选择移动动作",
+  intro: "先运行引擎，导出迷宫实用工具和 state.runMaze。然后使用可编辑的迷宫智能体节点：从 DIRECTIVE 开始，每次只更改一个选项，包括 model、advanced、text、image、history、coordinates 或 tool schema。",
+  nodes: [
+    {
+      id: "helpers", icon: "⚙️", title: "迷宫引擎",
+      x: 0, y: 0,
+      showCode: false,
+
+      summary: "引擎代码大多是 Web 支撑代码，因此默认折叠。展开后请查看底部导出的名称：state.runMaze 是可编辑运行节点调用的共享控制器。",
+      code: `// Reading guide: this is infrastructure, not a required coding exercise.
+// The run node below is the editing surface; expand this to inspect its supporting plumbing.
+// The same loop that ran DFS, BFS, and A* now drives a language model over this maze.
+
+
+// lcg is a tiny seeded random-number generator, so a given seed always builds the same maze (reproducible runs).
+function lcg(seed) {
+  let s = ((seed | 0) >>> 0) || 42;
+  return () => { s = (Math.imul(1664525, s) + 1013904223) >>> 0; return s / 4294967296; };
+}
+
+function generateMaze(columns, rows, seed, loopFactor = 0.15) {
+  const random = lcg(seed);
+  const width = columns * 2 + 1;
+  const height = rows * 2 + 1;
+  const grid = Array.from({ length: height }, () => Array(width).fill('#'));
+
+  function shuffle(values) {
+    for (let index = values.length - 1; index > 0; index--) {
+      const swapIndex = Math.floor(random() * (index + 1));
+      [values[index], values[swapIndex]] = [values[swapIndex], values[index]];
+    }
+    return values;
+  }
+
+  function carve(cellX, cellY) {
+    const directions = [[0, -2], [0, 2], [-2, 0], [2, 0]];
+    for (const [deltaX, deltaY] of shuffle(directions)) {
+      const nextX = cellX + deltaX;
+      const nextY = cellY + deltaY;
+      const inside = nextX >= 1 && nextX < width - 1 && nextY >= 1 && nextY < height - 1;
+      if (inside && grid[nextY][nextX] === '#') {
+        grid[cellY + deltaY / 2][cellX + deltaX / 2] = '.';
+        grid[nextY][nextX] = '.';
+        carve(nextX, nextY);
+      }
+    }
+  }
+
+  grid[1][1] = '.';
+  carve(1, 1);
+  grid[1][1] = 'S';
+  grid[height - 2][width - 2] = 'G';
+
+  // Add a few extra openings so the maze has forks and junctions.
+  const loopRandom = lcg((seed ^ 0x5A5A5A5A) >>> 0);
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      if (grid[y][x] !== '#' || loopRandom() > loopFactor) continue;
+      const horizontalOpening = y % 2 === 0 && x % 2 === 1
+        && grid[y][x - 1] !== '#' && grid[y][x + 1] !== '#';
+      const verticalOpening = x % 2 === 0 && y % 2 === 1
+        && grid[y - 1][x] !== '#' && grid[y + 1][x] !== '#';
+      if (horizontalOpening || verticalOpening) grid[y][x] = '.';
+    }
+  }
+  return grid.map(row => row.join(''));
+}
+
+const DIRS = { north:[0,-1], south:[0,1], east:[1,0], west:[-1,0] };
+
+function findCell(grid, ch) {
+  for (let y=0; y<grid.length; y++)
+    for (let x=0; x<grid[y].length; x++)
+      if (grid[y][x] === ch) return [x, y];
+  return null;
+}
+
+function doMove(grid, [x, y], dir) {
+  const [dx, dy] = DIRS[dir] || [0,0], [nx, ny] = [x+dx, y+dy];
+  if (ny<0||ny>=grid.length||nx<0||nx>=grid[ny].length||grid[ny][nx]==='#')
+    return { pos:[x,y], ok:false, done:false };
+  return { pos:[nx,ny], ok:true, done: grid[ny][nx]==='G' };
+}
+
+function validMoves(grid, [x, y]) {
+  return Object.entries(DIRS)
+    .filter(([, [dx,dy]]) => {
+      const [nx, ny] = [x+dx, y+dy];
+      return ny>=0 && ny<grid.length && nx>=0 && nx<grid[ny].length && grid[ny][nx]!=='#';
+    })
+    .map(([name]) => name);
+}
+
+// toAscii: marks visited path as ·, unexplored adjacent open cells as -, current as @.
+function toAscii(grid, pos, goal, visited) {
+  const [ax, ay] = pos, [gx, gy] = goal;
+  const vis = new Set(visited.map(([x, y]) => \`\${x},\${y}\`));
+  const fork = new Set();
+  for (const [vx, vy] of visited) {
+    for (const [dx, dy] of Object.values(DIRS)) {
+      const [nx, ny] = [vx+dx, vy+dy];
+      if (!vis.has(\`\${nx},\${ny}\`) && ny>=0 && ny<grid.length &&
+          nx>=0 && nx<grid[ny].length && grid[ny][nx] !== '#')
+        fork.add(\`\${nx},\${ny}\`);
+    }
+  }
+
+  return grid.map((row, y) =>
+    [...row].map((cell, x) =>
+      x===ax && y===ay ? '@' :
+      x===gx && y===gy ? 'G' :
+      vis.has(\`\${x},\${y}\`)  ? '\xb7' :
+      fork.has(\`\${x},\${y}\`) ? '-' : cell
+    ).join('')
+  ).join('\\n');
+}
+
+function renderMaze(grid, pos, goal, visited, title) {
+  const [ax, ay] = pos, [gx, gy] = goal, W = Math.max(...grid.map(r => r.length));
+  const vis  = new Set(visited.map(([x, y]) => \`\${x},\${y}\`));
+  const fork = new Set();
+  for (const [vx, vy] of visited) {
+    for (const [dx, dy] of Object.values(DIRS)) {
+      const [nx, ny] = [vx+dx, vy+dy];
+      if (!vis.has(\`\${nx},\${ny}\`) && ny>=0 && ny<grid.length &&
+          nx>=0 && nx<grid[ny].length && grid[ny][nx] !== '#')
+        fork.add(\`\${nx},\${ny}\`);
+    }
+  }
+
+  let cells = '';
+  for (let y=0; y<grid.length; y++) for (let x=0; x<grid[y].length; x++) {
+    let s='', i='';
+    if      (x===ax && y===ay)           { s='background:#76b900;color:#000;font-weight:bold'; i='&#9689;'; }
+    else if (x===gx && y===gy)           { s='background:#f0a500;color:#000;font-weight:bold'; i='&#9733;'; }
+    else if (grid[y][x]==='#')           { s='background:#0d1117'; }
+    else if (vis.has(\`\${x},\${y}\`))    { s='background:#1e3a5f;color:#53c0f0'; i='\xb7'; }
+    else if (fork.has(\`\${x},\${y}\`))   { s='background:#1e2a1e;color:#4a7a4a'; i='-'; }
+    else                                 { s='background:#161b22'; }
+    cells += \`<div class="mc" style="\${s}">\${i}</div>\`;
+  }
+  const hdr = title ? \`<div style="font:11px/1.4 ui-monospace,monospace;color:#888;margin-bottom:5px">\${title}</div>\` : '';
+  return \`\${hdr}<style>.mgrid{display:grid;gap:2px;background:#0a0a0f;padding:8px;border-radius:8px;width:fit-content;margin:4px 0}.mc{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:3px;font:13px/1 ui-monospace,monospace}</style><div class="mgrid" style="grid-template-columns:repeat(\${W},26px)">\${cells}</div>\`;
+}
+
+// The model sees exactly this tool at every junction, one call per decision point.
+state.DECISION_TOOL = {
+  type: "function",
+  function: {
+    name: "choose_direction",
+    description: "在当前岔路口选择一个可行方向。移动后，系统会自动走过走廊。",
+
+    parameters: {
+      type: "object",
+      properties: {
+        direction: {
+          type: "string",
+          description: "One compass letter: N, S, E, or W.",
+        },
+      },
+      必需参数：["direction"],
+    },
+  },
+};
+
+// SYS_DIRECTIVE is the editable "core" of the system message.
+// The run node surfaces it as a DIRECTIVE constant a student can rewrite.
+// SYS_REFERENCE holds the fixed map key; runMaze sends directive, reference, tool spec.
+state.SYS_DIRECTIVE = [
+  "您正在探索一座迷宫。只有到达岔路口（即前方有两条或更多路径分支的位置）时，系统才会调用您。",
+  "系统会替您自动走过走廊（只有一个前进选项），因此两次调用之间，位置可能会 JUMP 多个单元格。每一轮都会向您提供您已经走过的完整坐标列表。请用它将移动与最终到达的位置对应起来。",
+  "每次调用时：研究迷宫，从允许的移动方向中选择 ONE 个方向，然后调用 choose_direction()。",
+  "从当前岔路口尝试过的方向属于已经走尽的分支，请勿再次选择。",
+  "当所有分支都已走尽时，请使用允许的回溯方向继续搜索。",
+  "策略：优先选择未探索的分支 (-)，而不是已访问的单元格 (·)；看到 G 时，向它前进。",
+].join("\\n");
+
+state.SYS_REFERENCE = [
+  "MAP KEY:",
+  "  #  墙壁   .  通道   @  您   ·  已访问   -  未探索的分支   G  目标",
+  "  列=X 向右递增 →（东）行=Y 向下递增 ↓（南）左上角=(0,0)",
+  "方向：N=上 (-Y)  S=下 (+Y)  E=右 (+X)  W=左 (-X)",
+].join("\\n");
+
+state.SYS = state.SYS_DIRECTIVE + "\\n\\n" + state.SYS_REFERENCE;
+
+// Model choices for this tool-calling maze task; every entry supports tool calls.
+// Image-capable entries are marked below; pass one key to runMaze, e.g. { model: "vision" }.
+state.MAZE_MODELS = {
+
+  omni:       { id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning", maxTok: 16384, temp: 0.6,  // multimodal reasoning model (reads images)
+                extra_body: { reasoning_budget: 4096, chat_template_kwargs: { enable_thinking: true } } },
+  reasoning:  { id: "nvidia/nemotron-3-nano-30b-a3b", maxTok: 16384, temp: 0.6,       // text reasoning model
+                extra_body: { reasoning_budget: 4096, chat_template_kwargs: { enable_thinking: true } } },
+  vision:     { id: "nvidia/nemotron-nano-12b-v2-vl", maxTok: 4096, temp: 0.3 },     // reads images (needs room to reach the tool call)
+  qwenVision: { id: "qwen/qwen3.5-122b-a10b", maxTok: 4096, temp: 0.4 },             // reads images + tools
+  super:      { id: "nvidia/nemotron-3-super-120b-a12b", maxTok: 16384, temp: 0.4 }, // reasoning model. Give it room to think and call tools
+  gptOss:     { id: "openai/gpt-oss-120b", maxTok: 16384, temp: 0.5 }                // reasoning + tools
+
+};
+
+state.generateMaze = generateMaze;
+state.findCell     = findCell;
+state.validMoves   = validMoves;
+state.doMove       = doMove;
+state.toAscii      = toAscii;
+state.renderMaze   = renderMaze;
+state.DIRS         = DIRS;
+
+const { log } = helpers;
+
+// makeReasonStream: returns an onReasoning callback that streams thinking tokens into a live div
+state.makeReasonStream = function(log) {
+  var el = null;
+  var id = 'rsn' + Math.random().toString(36).slice(2, 7);
+
+  return function(chunk) {
+    if (!el) {
+      log.html('<details open style="margin:2px 0">'
+        + '<summary style="cursor:pointer;color:#555;font-size:11px">思考中…</summary>'
+        + '<div id="' + id + '" style="font:11px/1.5 ui-monospace,monospace;color:#5a8;'
+        + 'background:#040d08;padding:8px;border-radius:4px;max-height:180px;overflow:auto;'
+        + 'white-space:pre-wrap"></div></details>');
+      el = document.getElementById(id);
+    }
+    if (el) el.textContent += chunk;
+  };
+};
+
+// ── Shared maze controller (one copy; the run node calls it) ────────────────
+// mazeToDataURL: paint a maze state to a PNG data URL (the "graphic" channel).
+state.mazeToDataURL = function(grid, pos, goal, visited, cell) {
+  cell = cell || 24;
+  var H = grid.length, W = 0, r, i, x, y;
+  for (r = 0; r < H; r++) W = Math.max(W, grid[r].length);
+  var cv = document.createElement('canvas');
+  cv.width = W * cell; cv.height = H * cell;
+  var cx = cv.getContext('2d'), vis = {};
+  for (i = 0; i < visited.length; i++) vis[visited[i][0] + ',' + visited[i][1]] = 1;
+  cx.fillStyle = '#0a0a0f'; cx.fillRect(0, 0, cv.width, cv.height);
+
+  for (y = 0; y < H; y++) for (x = 0; x < grid[y].length; x++) {
+    var fill = '#161b22';
+    if (x === pos[0] && y === pos[1]) fill = '#76b900';
+    else if (x === goal[0] && y === goal[1]) fill = '#f0a500';
+    else if (grid[y][x] === '#') fill = '#0d1117';
+    else if (vis[x + ',' + y]) fill = '#1e3a5f';
+    cx.fillStyle = fill;
+    cx.fillRect(x * cell + 1, y * cell + 1, cell - 2, cell - 2);
+  }
+  return cv.toDataURL('image/png');
+};
+
+
+// runMaze: one corridor-walk + LLM-at-junctions controller, shared by the run node.
+// All knobs are optional. opts.model defaults to the multimodal omni model.
+// opts.advanced swaps in the bigger, loopier maze.
+
+state.runMaze = async function(h, state, opts) {
+  opts = opts || {};
+  var advanced = !!opts.advanced;
+
+  // ── modality / context knobs (all optional) ───────────────────────────────
+  var includeText    = opts.includeText    !== false;                                       // default: send ASCII map
+  var includeImage   = (opts.includeImage  !== undefined) ? !!opts.includeImage : !!opts.sendImage;  // default: from sendImage
+  var includeHistory = opts.includeHistory !== false;                                       // default: keep conversation
+  var toolSpecInSystem = opts.toolSpecInSystem !== false;                                    // default: restate tool format in system
+  var includeCoords  = opts.includeCoords  !== false;                                        // default: list every coordinate travelled
+  if (!includeText && !includeImage) includeText = true;                                     // must send something
+
+  // ── model selection (pick a key from state.MAZE_MODELS, an id string, or an object) ──
+  var MODELS = state.MAZE_MODELS;
+  function resolveModel(m) {
+    if (!m) return MODELS.omni;
+    if (typeof m === 'string') {
+      if (MODELS[m]) return MODELS[m];
+      if (m.indexOf('/') >= 0) return { id: m, maxTok: 2048, temp: 0.6 };
+      return MODELS.omni;
+    }
+    return m;
+  }
+  var MODEL = resolveModel(opts.model);
+
+  var cfg = advanced
+    ? { w: 15, h: 11, seed: 99, loop: 0.55, max: 40 }
+    : { w: 11, h: 9, seed: 42, loop: 0.30, max: 20 };
+
+  var log = h.log;
+  var generateMaze = state.generateMaze, findCell = state.findCell, validMoves = state.validMoves,
+      doMove = state.doMove, toAscii = state.toAscii, renderMaze = state.renderMaze, DIRS = state.DIRS,
+      DECISION_TOOL = state.DECISION_TOOL, makeReasonStream = state.makeReasonStream;
+
+  // Add the tool spec to the prompt so smaller models call it correctly.
+  function toolSpecText(tool) {
+    var f = tool.function, props = (f.parameters && f.parameters.properties) || {}, lines = [];
+    lines.push('OUTPUT FORMAT。请调用此函数回复 ONLY（不要使用说明性文字或纯文本）：');
+    lines.push('  ' + f.name + '(' + Object.keys(props).join(', ') + ')');
+    Object.keys(props).forEach(function(k) {
+      lines.push('    - ' + k + ' (' + (props[k].type || 'any') + '): ' + (props[k].description || ''));
+    });
+    if (f.parameters && f.parameters.required && f.parameters.required.length)
+      lines.push('  必需参数：' + f.parameters.required.join(', '));
+    lines.push('每轮：仅发出一个 ' + f.name + ' 调用，并提供非空参数。');
+    return lines.join('\\n');
+  }
+
+  // opts.directive overrides just the editable core; opts.systemPrompt overrides the whole thing.
+  var directive = opts.directive || state.SYS_DIRECTIVE;
+  var sysText = opts.systemPrompt || (directive + '\\n\\n' + state.SYS_REFERENCE);
+  if (toolSpecInSystem) sysText = sysText + '\\n\\n' + toolSpecText(DECISION_TOOL);
+  var sysMsg = { role: 'system', content: sysText };
+
+  // promptFormat(ctx) describes each maze turn; opts.promptFormat can replace it.
+  var promptFormat = opts.promptFormat || function(ctx) {
+    return '您位于 (' + ctx.pos[0] + ',' + ctx.pos[1] + ').\\n'
+      + (ctx.first ? 'Maze:' : '当前迷宫：') + '\\n' + ctx.ascii
+      + (ctx.trail ? '\\n 已走路径（依次进入每个单元格）：' + ctx.trail : '')
+      + '\\n 已在此处尝试：' + (ctx.tried || 'none')
+      + '\\n 本轮允许的移动方向：' + ctx.avail
+      + '\\n 请选择下一步。';
+  };
+
+  var wrapId = 'sw' + Math.random().toString(36).slice(2, 7);
+  log.html('<div id="' + wrapId + '" style="margin:0 0 10px"><button style="padding:4px 12px;border:1px solid #555;border-radius:4px;background:#1a1a1a;color:#ccc;cursor:pointer">停止</button></div>');
+  var ac = new AbortController(), sig = ac.signal;
+  var wrap = document.getElementById(wrapId);
+  if (wrap) wrap.firstChild.onclick = function() { ac.abort(); };
+  function abortable(p) {
+    if (sig.aborted) return Promise.reject(new DOMException('aborted', 'AbortError'));
+    return Promise.race([p, new Promise(function(_res, rej) {
+      sig.addEventListener('abort', function() { rej(new DOMException('aborted', 'AbortError')); }, { once: true });
+    })]);
+  }
+
+  var grid = generateMaze(cfg.w, cfg.h, cfg.seed, cfg.loop);
+  var start = findCell(grid, 'S'), goal = findCell(grid, 'G');
+  var pos = [start[0], start[1]], prevPos = null, visited = [[pos[0], pos[1]]];
+  var actions = [];   // direction letter taken into visited[i] (actions[i-1]); parallel to visited
+  var L2D = { N: 'north', S: 'south', E: 'east', W: 'west' };
+  var D2L = { north: 'N', south: 'S', east: 'E', west: 'W' };
+  var triedByJunction = Object.create(null), guardrails = 0;
+
+  var UID = 'rm' + Math.random().toString(36).slice(2, 7);
+  log.html('<div id="' + UID + '" style="margin:6px 0"></div>');
+  function show(title) { var el = document.getElementById(UID); if (el) el.innerHTML = renderMaze(grid, pos, goal, visited, title); }
+  function info(html) { log.html('<div style="font:12px/1.6 ui-monospace,monospace;color:#aaa;margin:1px 0">' + html + '</div>'); }
+  function availStr(p) { var m = validMoves(grid, p); return m.length ? m.join(', ') : 'none'; }
+
+  function junctionChoices(p) {
+    var key = p[0] + ',' + p[1];
+    var all = validMoves(grid, p).map(function(dir) { return D2L[dir]; });
+    var tried = triedByJunction[key] || [];
+    var fresh = all.filter(function(letter) { return tried.indexOf(letter) < 0; });
+    if (fresh.length) return { key: key, all: all, tried: tried.slice(), allowed: fresh, backtracking: false };
+
+    // Once every branch at a junction has been explored, expose only the corridor we
+    // arrived through. The model still has to choose that backtrack and continue its search.
+    var back = null;
+    if (prevPos) {
+      var dx = prevPos[0] - p[0], dy = prevPos[1] - p[1];
+      back = dx === 1 ? 'E' : dx === -1 ? 'W' : dy === 1 ? 'S' : dy === -1 ? 'N' : null;
+    }
+    return { key: key, all: all, tried: tried.slice(), allowed: back && all.indexOf(back) >= 0 ? [back] : all, backtracking: true };
+  }
+
+  function rememberChoice(choice, letter) {
+    if (!triedByJunction[choice.key]) triedByJunction[choice.key] = [];
+    if (triedByJunction[choice.key].indexOf(letter) < 0) triedByJunction[choice.key].push(letter);
+  }
+
+  function toolFor(letters) {
+    var tool = JSON.parse(JSON.stringify(DECISION_TOOL));
+    tool.function.parameters.properties.direction.enum = letters;
+    tool.function.parameters.properties.direction.description = '请选择以下选项之一：' + letters.join(', ') + '.';
+    return tool;
+  }
+
+  // normalizeDir: accept letters OR words ('E', 'EEN', 'east', 'east north') and return NSEW letters.
+  function normalizeDir(raw) {
+    return String(raw || '').toUpperCase()
+      .replace(/NORTH/g, 'N').replace(/SOUTH/g, 'S').replace(/EAST/g, 'E').replace(/WEST/g, 'W')
+      .replace(/[^NSEW]/g, '');
+  }
+
+  // Pull inline <think> reasoning out before parsing the answer.
+  function splitThink(c) {
+    c = c || ''; var rsn = '', lc = c.toLowerCase();
+    var o = lc.indexOf('<think>');
+    if (o >= 0) {
+      var e = lc.indexOf('</think>', o);
+      if (e >= 0) { rsn = c.slice(o + 7, e); c = c.slice(0, o) + c.slice(e + 8); }
+      else { rsn = c.slice(o + 7); c = c.slice(0, o); }
+    }
+    return { reasoning: rsn.trim(), content: c.trim() };
+  }
+
+  // Show the exact model request in a collapsible panel before each call.
+  function escH(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function fmtContent(c) {
+    if (typeof c === 'string') return '<div style="white-space:pre-wrap">' + escH(c) + '</div>';
+    if (Array.isArray(c)) return c.map(function(p) {
+      if (p.type === 'text') return '<div style="white-space:pre-wrap">' + escH(p.text) + '</div>';
+      if (p.type === 'image_url') return '<img src="' + p.image_url.url + '" style="max-width:220px;border:1px solid #2a2a2a;border-radius:4px;margin:4px 0;display:block"/>';
+      return '<div>' + escH(JSON.stringify(p)) + '</div>';
+    }).join('');
+    return '';
+  }
+
+  function renderRequest(turn, sent, req) {
+    var rc = { system: '#c89bd6', user: '#7fa8d8', assistant: '#8fd09a', tool: '#d6a86a' };
+    // Explicit "what the model sees this turn" block: text map, accumulated path, image.
+    var ctxBlock = '<div style="color:#76b900;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase">本轮上下文</div>'
+      + '<div style="color:#9ab">位置：(' + turn.pos[0] + ',' + turn.pos[1] + ')</div>'
+      + '<div style="color:#9ab">累计路径：' + escH(turn.trail || '(start)') + '</div>'
+      + (turn.ascii ? '<div style="color:#9ab;margin-top:3px">文本地图：</div><pre style="margin:2px 0;color:#cdd;white-space:pre;font:11px/1.2 ui-monospace,monospace">' + escH(turn.ascii) + '</pre>' : '')
+      + (turn.imageUrl ? '<div style="color:#9ab">渲染图像：</div><img src="' + turn.imageUrl + '" style="max-width:240px;border:1px solid #2a2a2a;border-radius:4px;margin:3px 0;display:block"/>' : '')
+      + '<hr style="border:0;border-top:1px solid #1b2530;margin:8px 0">';
+
+    var rows = sent.map(function(m) {
+      var body = m.content ? fmtContent(m.content) : '';
+      if (m.tool_calls) body += '<div style="color:#7a9">tool_calls: ' + escH(JSON.stringify(m.tool_calls)) + '</div>';
+      return '<div style="margin-top:6px;font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:' + (rc[m.role] || '#aaa') + '">' + m.role + '</div>'
+        + '<div style="color:#ccd;margin-left:2px">' + body + '</div>';
+    }).join('');
+    var meta = 'model: ' + escH(req.model) + '  ·  max_tokens: ' + req.max_tokens + '  ·  temp: ' + req.temperature
+      + (req.extra_body ? '<br>extra_body: ' + escH(JSON.stringify(req.extra_body)) : '')
+      + '<br>tools: ' + escH((req.tools || []).map(function(t) { return t.function.name; }).join(', '));
+    return '<details style="margin:2px 0"><summary style="cursor:pointer;color:#6a9;font-size:11px">→ 发送给模型的完整上下文（' + sent.length + ' 条消息)</summary>'
+      + '<div style="font:11px/1.5 ui-monospace,monospace;margin:4px 0;background:#070b0f;padding:8px;border-radius:4px;max-height:420px;overflow:auto">'
+      + ctxBlock + '<div style="color:#778;margin-bottom:4px">原始消息 · ' + meta + '</div>' + rows + '</div></details>';
+  }
+
+  // Ask the model only at real junctions; auto-walk corridors and dead ends.
+  async function corridorWalk(label) {
+    while (!sig.aborted) {
+      var moves = validMoves(grid, pos);
+      var fwd = moves.filter(function(dir) {
+        if (!prevPos) return true;
+        var d = DIRS[dir];
+        return !(pos[0] + d[0] === prevPos[0] && pos[1] + d[1] === prevPos[1]);
+      });
+
+      var step;
+      if (fwd.length === 1)                      step = fwd[0];     // corridor: follow it
+      else if (fwd.length === 0 && moves.length) step = moves[0];   // dead end: reverse out
+      else break;                                                   // junction (2+) or stuck (0)
+      var mv = doMove(grid, pos, step);
+      if (!mv.ok) break;
+      prevPos = pos; pos = mv.pos; visited.push([pos[0], pos[1]]); actions.push(step[0].toUpperCase());
+      show((label || 'walk') + ' ' + step[0].toUpperCase());
+      await h.delay(60);
+      if (mv.done) return true;
+    }
+    return false;
+  }
+
+  // build one user turn from the current frame, honoring includeText / includeImage.
+  // imageUrl is passed in (and shown in renderRequest) so we render the PNG only once.
+  function buildUser(text, imageUrl) {
+    var parts = [];
+    if (includeText) parts.push({ type: 'text', text: text });
+    if (includeImage && imageUrl) parts.push({ type: 'image_url', image_url: { url: imageUrl } });
+    if (parts.length === 1 && parts[0].type === 'text') return { role: 'user', content: text };
+    return { role: 'user', content: parts };
+  }
+
+  var modelName = MODEL.id.split('/').pop();
+  var modeStr = [includeText ? 'text' : null, includeImage ? 'image' : null].filter(Boolean).join('+') || 'none';
+  show('就绪 · ' + modeStr + (includeHistory ? ' · history' : ' · 无状态'));
+  info('<strong style="color:#76b900">' + modelName + '</strong> · 输入：' + modeStr
+    + ' · ' + (includeHistory ? '包含历史记录' : 'stateless')
+    + ' · ' + (advanced ? 'advanced 15x11' : 'simple 11x9') + ' maze'
+    + ' · 系统中的工具规范：' + (toolSpecInSystem ? 'yes' : 'no'));
+
+  var history = [];  // accumulated turns (used only when includeHistory)
+  var runError = null;
+
+  try {
+    if (await corridorWalk('corridor')) {
+      show('通道中的目标 · ' + visited.length + ' steps');
+      info('<span style="color:#76b900">已在起始通道中到达目标（无需 LLM）</span>');
+      return { decisions: 0, steps: visited.length, won: true };
+    }
+
+    for (var decision = 1; decision <= cfg.max; decision++) {
+      if (sig.aborted) break;
+      var trail = '';
+      if (includeCoords) {
+        trail = '(' + visited[0][0] + ',' + visited[0][1] + ')';
+        for (var ti = 1; ti < visited.length; ti++)
+          trail += ' -' + (actions[ti - 1] || '?') + '-> (' + visited[ti][0] + ',' + visited[ti][1] + ')';
+      }
+      var ascii = toAscii(grid, pos, goal, visited);
+      var imageUrl = includeImage ? state.mazeToDataURL(grid, pos, goal, visited) : null;
+      var choices = junctionChoices(pos);
+      if (choices.backtracking) {
+        info('<span style="color:#fbbf24"><strong>搜索状态：</strong>此岔路口的每条分支均已探索。模型必须选择允许的回溯路径并继续。</span>');
+      }
+      var userText = promptFormat({
+        ascii: ascii,
+        avail: choices.allowed.join(', '),
+        tried: choices.tried.join(', '),
+        pos: pos,
+        goal: goal,
+        trail: trail,
+        decision: decision,
+        first: decision === 1,
+      });
+      var userMsg = buildUser(userText, imageUrl);
+      var sent = includeHistory ? [sysMsg].concat(history, [userMsg]) : [sysMsg, userMsg];
+
+      var turnTool = toolFor(choices.allowed);
+      var req = { model: MODEL.id, messages: sent, tools: [turnTool], max_tokens: MODEL.maxTok, temperature: MODEL.temp };
+      if (MODEL.extra_body) req.extra_body = MODEL.extra_body;
+      info('<strong style="color:#eee">决策 ' + decision + '</strong> · ' + modelName + ' at ' + JSON.stringify(pos) + ' untried: [' + choices.allowed.join(', ') + '] · ' + sent.length + ' msgs');
+      log.html(renderRequest({ pos: pos, trail: trail, ascii: ascii, imageUrl: imageUrl }, sent, req));   // full context BEFORE the model responds
+      show('决策 ' + decision + '：正在询问模型...');
+      var summary;
+      try {
+        summary = await abortable(h.chatStream(req, null, { onReasoning: makeReasonStream(log) }));
+      } catch (e) {
+        if (e.name === 'AbortError' || sig.aborted) { info('<span style="color:#777">已停止</span>'); break; }
+        info('<span style="color:#f87171">错误：' + e.message + '</span>');
+        if (includeImage && /image|vision|multimodal|content/i.test(e.message))
+          info('<span style="color:#fbbf24">提示：本轮中的图像被拒绝。请重试、设置 includeImage:false 以仅发送文本，或选择其它多模态模型（vision / qwenVision）。</span>');
+        runError = e;
+        break;
+      }
+
+      // ── interpret the reply ───────────────────────────────────────────────
+      var split = splitThink(summary.content || '');   // qwen puts reasoning in <think>...</think>
+      var replyText = split.content;
+      if (split.reasoning && !summary.reasoning)
+        info('<details style="margin:2px 0"><summary style="cursor:pointer;color:#555;font-size:11px">推理过程（' + split.reasoning.length + ' 个字符）</summary><div style="font:11px/1.5 ui-monospace,monospace;color:#7a9;background:#040d08;padding:8px;border-radius:4px;max-height:200px;overflow:auto;white-space:pre-wrap">' + escH(split.reasoning) + '</div></details>');
+
+      var tcs = summary.tool_calls || [];
+      var toolId = tcs.length ? tcs[0].id : null;
+      var rawDir = '';
+      if (tcs.length) { try { rawDir = JSON.parse(tcs[0].function.arguments || '{}').direction || ''; } catch (e2) {} }
+
+      // Parse text-form choose_direction(...) calls from models without structured tool calls.
+      var fromText = false;
+      if (!rawDir && replyText) {
+        var ci = replyText.toLowerCase().indexOf('choose_direction');
+        if (ci >= 0) {
+          var lp = replyText.indexOf('(', ci), rp = lp >= 0 ? replyText.indexOf(')', lp) : -1;
+          if (lp >= 0 && rp > lp) {
+            var inner = replyText.slice(lp + 1, rp), q = inner.match(/['"]([^'"]*)['"]/);
+            rawDir = q ? q[1] : inner; fromText = true;
+          }
+        }
+      }
+      var steps = normalizeDir(rawDir);
+
+      if (includeHistory) {
+        history.push({ role: 'user', content: userText });
+        var entry = { role: 'assistant', content: replyText || null };
+        if (tcs.length) entry.tool_calls = tcs;
+        history.push(entry);
+      }
+      // Use tool feedback only after a real tool_call; otherwise use a user message.
+      function reply(content) {
+        if (!includeHistory) return;
+        history.push(toolId
+          ? { role: 'tool', tool_call_id: toolId, content: content }
+          : { role: 'user', content: content });
+      }
+
+      var requested = steps ? steps[0] : '';
+      var selected = requested;
+      var guardrailNote = '';
+      if (!selected || choices.allowed.indexOf(selected) < 0 || steps.length > 1) {
+        guardrails++;
+        guardrailNote = !selected
+          ? '模型未返回可用的方向。'
+          : steps.length > 1
+            ? '模型返回了多个移动方向，而不是一个。'
+            : '模型选择了 ' + requested + '，本轮不允许这样移动。';
+        guardrailNote += '未执行任何移动。请从以下方向中恰好选择一个：' + choices.allowed.join(', ') + '. ';
+        info('<span style="color:#fbbf24">防护机制：' + escH(guardrailNote) + '</span>');
+        reply(guardrailNote);
+        continue;
+      }
+      rememberChoice(choices, selected);
+      steps = selected;
+      if (fromText) info('<span style="color:#9cf">已采用文本形式的调用 → ' + escH(steps) + '</span>');
+
+      var pathStr = '', done = false, walled = null, s;
+      for (s = 0; s < steps.length; s++) {
+        if (sig.aborted) break;
+        var mv2 = doMove(grid, pos, L2D[steps[s]]);
+        if (!mv2.ok) { walled = L2D[steps[s]]; break; }
+        pathStr += steps[s]; prevPos = pos; pos = mv2.pos; visited.push([pos[0], pos[1]]); actions.push(steps[s]);
+        show('决策 ' + decision + ' · ' + pathStr);
+        await h.delay(80);
+        if (mv2.done) { done = true; break; }
+      }
+
+      if (done) {
+        show('已解决 · ' + decision + ' 次决策 · ' + visited.length + ' steps');
+        info('<span style="color:#76b900">到达目标，共 ' + decision + ' 次决策（' + visited.length + ' 步）· 路径：' + pathStr + '</span>');
+        reply('已到达 G。完成。');
+        return { decisions: decision, steps: visited.length, won: true, guardrails: guardrails };
+      }
+      info('已移动：<code style="color:#76b900;background:#0d1f00;padding:1px 4px;border-radius:3px">' + (pathStr || '(none)') + '</code>' + (walled ? '，随后朝此方向撞墙：' + walled : ''));
+
+      // Auto-walk before feedback so the model sees the actual new position.
+      var pw = [pos[0], pos[1]];
+      if (await corridorWalk('walk')) {
+        show('经通道到达目标 · ' + visited.length + ' steps');
+        info('<span style="color:#76b900">自动前行时到达目标</span>');
+        reply('Executed ' + (pathStr || '(none)') + '，随后自动前行至目标。');
+        return { decisions: decision, steps: visited.length, won: true, guardrails: guardrails };
+      }
+
+      var walkedNote = (pos[0] !== pw[0] || pos[1] !== pw[1])
+        ? ' 随后已为您自动走过走廊和死路。' : '';
+      const stepNote = walled
+        ? 'Executed ' + (pathStr || '(none)') + '，随后朝此方向撞墙：' + walled + '.'
+        : 'Executed ' + (pathStr || '(none)') + '.';
+      reply(guardrailNote + stepNote + walkedNote + ' Now at ' + JSON.stringify(pos) + '。可选方向：' + availStr(pos) + '.');
+      await h.delay(200);
+    }
+  } finally {
+    if (wrap) wrap.style.display = 'none';
+  }
+  if (sig.aborted) return { decisions: null, won: false, stopped: true, guardrails: guardrails };
+  if (runError) throw runError;
+  info('<span style="color:#f87171">放弃，已执行 ' + cfg.max + ' 次决策后放弃</span>');
+  show('放弃，已执行 ' + cfg.max + ' decisions');
+  throw new Error('迷宫在经过 ' + cfg.max + ' 次决策后停止，但尚未到达目标。请检查可见的移动历史记录，然后尝试其它模型或指令。');
+};
+
+log("迷宫引擎已就绪。");
+`,
+    },
+    {
+      id: "run", icon: "🧭", title: "迷宫智能体 · 可编辑运行",
+      x: 1, y: 0,
+      showCode: true,
+      summary: "这是可编辑的迷宫运行。先编辑 DIRECTIVE，然后每次只更改一个选项：model、advanced、includeText、includeImage、includeHistory、includeCoords 或 toolSpecInSystem。",
+      code: `if (!state.runMaze) { helpers.log("请先运行“迷宫引擎”节点。"); return; }
+
+// ── Edit this freely: it becomes the CORE of the system message. ──
+const DIRECTIVE = \`您正在探索一个迷宫。仅在岔路口（有 2 个以上可行方向）才会调用您。您会收到一幅 ASCII 地图；如果还需要图片，请在下方启用 includeImage。系统会自动走过走廊，因此两次调用之间，位置可能会跨越多个单元格。从“Allowed moves this turn”中选择 ONE 个方向，然后调用 choose_direction()。不要重复“Already tried here.”下列出的方向。当所有分支都已探索完毕时，请沿允许的回退方向移动并继续探索。优先选择未访问的分支（-），而不是已访问的单元格（·）；看到 G 时，请朝它前进。尽量减少推理，立即移动。\`;
+
+return await state.runMaze(helpers, state, {
+
+  model:           "vision",   // multimodal model; try "super", "omni", or "qwenVision" to compare
+  directive:        DIRECTIVE,  // editable core of the system message (above)
+  advanced:         false,      // false = simple 11x9 maze. true = larger 15x11 maze with more loops
+  includeText:      true,       // send the ASCII map alongside the picture
+  includeImage:     false,      // attach the rendered PNG each turn. Try true on "omni" and "vision"
+  includeHistory:   true,       // include the history of past moves
+  includeCoords:    true,       // list every coordinate travelled
+  toolSpecInSystem: true,       // repeat the tool spec in the system message when the server does not inject it clearly
+
+});
+`,
+    },
+  ],
+
+  edges: [
+    { from: "helpers", to: "run" },
+  ],
+});
+
+
+// ── Canvas 2: one real chat completion ───────────────────────────────────────
+mountRunCell("#cell-onecall", {
+  label: "一次无状态聊天补全 · 对模型的真实调用",
+  intro: "点击“运行”会返回模型为该次调用生成的内容；再次运行可能得到不同的回答，因为各次调用彼此独立，不共享任何状态。",
+  code: `// One call. No loop, no memory.
+const reply = await chat({
+  model: "nvidia/nemotron-3-nano-30b-a3b",
+  messages: [
+    { role: "system", content: "您是一名言简意赅的助手。只用一句话回答。" },
+    { role: "user",   content: "对于 LLM API，“无状态”是什么意思？" },
+  ],
+  max_tokens: 8196,  // reasoning models think first, so give the answer room past the reasoning_content
+});
+
+const m  = reply.choices[0].message;
+const fr = reply.choices[0].finish_reason;
+// Optional visibility: uncomment to inspect the complete provider response.
+// log.details("raw response", reply);
+log("finish_reason：", fr);
+log("");
+if (m.reasoning_content) {
+  log.h("reasoning_content（模型的思考记录）");
+  log(m.reasoning_content);
+}
+log.h("content（实际答案）");
+log(m.content || "（没有内容；模型用完了全部预算进行思考，请增大 max_tokens）");
+return { finish_reason: fr, content: m.content };
+`,
+});
+
+mountRunCell("#cell-wire", {
+  openCode: true,
+  label: "POST /v1/chat/completions · chat() 底层的传输格式",
+  intro: "上面的同一调用在此手动写成原始 HTTP 请求，使每个字段都清晰可见。请求和响应收纳在可展开的详细信息区块中，可以打开它们查看确切的载荷。",
+  code: `// chat() is a wrapper. Underneath, it makes one ordinary HTTP POST in the
+// OpenAI-compatible "wire format", written out by hand here.
+
+// 1) The request: an endpoint, headers, and a JSON body.
+// helpers.getConfig() keeps this web page on the course's browser-safe endpoint.
+const cfg = await helpers.getConfig();
+const url = cfg.url + "/chat/completions";
+const headers = { "Content-Type": "application/json" };
+if (cfg.needsKey) {
+  const KEY = helpers.getKey();
+  if (!KEY) { log("请先在课程主页上保存 nvapi- 密钥。"); return; }
+  headers.Authorization = "Bearer " + KEY;
+}
+const body = {
+  model: cfg.model,
+  messages: [{ role: "user", content: "用一句话回答：谁在运行您？" }],
+  max_tokens: 8196,  // a reasoning model spends tokens thinking first. Leave room for the answer
+};
+// Alternate input: uncomment to compare the same wire request with another prompt.
+// body.messages[0].content = "In one sentence: what is an agent loop?";
+
+// What goes OUT, with the key redacted so a screenshot never leaks it.
+log("→ POST " + url);
+log.details("请求（密钥已隐去）", { headers: { ...headers, Authorization: "Bearer nvapi-...redacted" }, body });
+
+// 2) Send it, then read what comes BACK.
+const r = await helpers.browserChatFetch()(url, { method: "POST", headers, body: JSON.stringify(body) });
+log("← HTTP " + r.status + " " + r.statusText);
+// Check HTTP status before parsing so failures show the real response body.
+if (!r.ok) {
+  const errText = await r.text();
+  log.details("错误正文", errText);
+  throw new Error("HTTP " + r.status + " " + r.statusText + ": " + errText.slice(0, 300));
+}
+const reply = await r.json();
+log.details("原始响应", reply);
+
+// The three fields you actually use: the text, why it stopped, and the token bill.
+const c = reply.choices[0];
+log.h("content");        log(c.message.content);
+log.h("finish_reason");  log(c.finish_reason);   // the same loop-exit signal Module 1b builds on
+log.h("usage");          log(JSON.stringify(reply.usage));
+return { finish_reason: c.finish_reason, content: c.message.content, usage: reply.usage };
+`,
+});
+</script>
+</body>
+</html>

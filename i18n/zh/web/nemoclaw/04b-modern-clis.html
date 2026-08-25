@@ -1,0 +1,470 @@
+
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>现代 CLI · 安全智能体</title>
+<link rel="stylesheet" href="styles/_style.css"/>
+<script src="vendor/highlight-11.10.0.min.js"></script>
+<link rel="stylesheet" href="vendor/codemirror-5.65.21.css"/>
+<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.css"/>
+<script src="vendor/codemirror-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-xml-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-javascript-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-css-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-htmlmixed-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-python-5.65.21.js"></script>
+<style>
+</style>
+<style>
+  .cli-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin: 1em 0; }
+  @media (max-width: 720px) { .cli-grid { grid-template-columns: 1fr; } }
+  .cli-card { background: var(--e1); border: 1px solid var(--bd); border-radius: var(--r); padding: 14px 16px; }
+  .cli-card h3 { font-size: 1rem; color: var(--gs); margin: 0 0 .35em; }
+  .cli-card p  { font-size: .85rem; color: var(--td); margin: .25em 0; line-height: 1.55; }
+  .cli-card code { font-size: .82em; }
+  .dof-table, .map-table { width: 100%; border-collapse: collapse; font-size: .86rem; margin: 1em 0; }
+  .dof-table thead tr, .map-table thead tr { border-bottom: 2px solid var(--bd); }
+  .dof-table th, .map-table th { text-align: left; padding: 8px 12px; color: var(--td); font-size: .76rem; text-transform: uppercase; letter-spacing: .05em; }
+  .dof-table td, .map-table td { padding: 9px 12px; border-bottom: 1px solid var(--e2); vertical-align: top; }
+  .dof-table tr:last-child td, .map-table tr:last-child td { border-bottom: none; }
+  .dof-table td:first-child, .map-table td:first-child { font-family: var(--mono); color: var(--gs); font-weight: 600; }
+  .dof-table code, .map-table code { font-size: .82em; }
+  .da-term { background: var(--code-surface); border: 1px solid var(--bd); border-radius: var(--r); padding: 12px 14px; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; line-height: 1.5; color: var(--tx); margin: 1em 0; }
+  .da-term .da-out { white-space: pre-wrap; word-break: break-word; }
+  .da-term .da-out > div { padding: 1px 0; }
+  .da-term .da-cmd { color: var(--g); }
+  .da-term .da-err { color: var(--err); }
+  .da-term .da-dim { color: var(--tf); }
+  .da-term .da-line { display: flex; align-items: flex-start; gap: 8px; margin-top: 2px; }
+  .da-term .da-ps { color: var(--g, #76b900); flex: none; }
+  .da-term .da-in { flex: 1; background: transparent; border: 0; outline: 0; color: var(--tx); font: inherit; padding: 0; }
+  .da-term .da-in:disabled { opacity: .6; }
+  .da-term .da-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; border-top: 1px solid var(--bd); padding-top: 8px; }
+  .da-term .da-chip { background: var(--e1); border: 1px solid var(--bd); color: var(--g); font: inherit; font-size: .76rem; padding: 2px 9px; border-radius: 999px; cursor: pointer; }
+  .da-term .da-chip:hover { background: var(--e2); border-color: var(--g); }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="logo" href="index.html">NVIDIA · 安全智能体</a>
+  <nav id="nav"></nav>
+  <div class="spacer"></div>
+  <span class="key-pill" id="key-status" onclick="location.href=&#x27;01a-loop.html?openKeyPanel=1&#x27;">…</span>
+  <span class="key-pill" id="claw-status" onclick="location.href=&#x27;03a-kickstart.html#probe-claw&#x27;">…</span>
+</div>
+
+<main>
+  <div id="journey-map"></div>
+
+  <div class="hero">
+    <div class="eyebrow">模块 4 · 第 2/3 部分</div>
+    <h1>现代 <span>CLI 智能体</span></h1>
+    <p class="lead">
+      下文比较的智能体都封装了相同的几项能力：
+    </p>
+    <ul class="lead">
+      <li>一个工作目录</li>
+      <li>一组工具</li>
+      <li>一套记忆</li>
+      <li>可选的无人值守运行方式，例如 cron、长时间任务或队列作业</li>
+      <li>网络访问</li>
+    </ul>
+    <p class="lead">
+      它们的安全特征取决于默认开放哪些能力，以及是否启用无人值守执行。底层运行时还必须能够拦截不当调用。
+    </p>
+    <p class="lead">
+      模块 4a 区分了应用层决策与操作系统层的强制执行。应用封装位于这条边界之上。在构建您自己的浏览器端 CLI 智能体之前，您将先比较这些封装。
+    </p>
+  </div>
+
+  <h2>相同的循环，不同的应用默认设置</h2>
+  <p>每个产品都让模型在循环中使用工具，但默认设置和内置能力各不相同，实现细节也有差异。这些因素带来的成本与便利性共同构成下文所说的<em>框架负担</em>。</p>
+  <ul class="cli-list">
+    <li><a href="https://docs.claude.com/en/docs/claude-code" target="_blank" rel="noopener"><strong>Claude Code</strong></a> (Anthropic)。项目根目录使用 <code>CLAUDE.md</code> 作为指引文件，另有 <code>~/.claude/CLAUDE.md</code> 用于用户级通用规则。它提供丰富的工具集（编辑、bash、Web、子智能体、长时间任务），并可通过钩子拦截工具调用；默认设置较为保守：您需要主动授权，才能扩大文件和网络访问范围。</li>
+    <li><a href="https://github.com/openai/codex" target="_blank" rel="noopener"><strong>Codex CLI</strong></a> (OpenAI)。指引文件为 <code>AGENTS.md</code>。其默认沙箱采用审批模式：每次写入或执行 shell 命令都需等待确认，除非您传入 <code>--full-auto</code>。它的工具集以 shell 为核心，连文件编辑也通过 shell 完成。</li>
+    <li><a href="https://docs.cursor.com" target="_blank" rel="noopener"><strong>Cursor</strong></a>（驻留于 IDE）。指引文件为 <code>.cursor/rules/*.mdc</code>。智能体与编辑器集成，因此工具集围绕编辑器操作设计（“将此差异应用到文件 X”），其沙箱权限取决于编辑器和
+        OS 已授予的权限。</li>
+    <li><a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener"><strong>Hermes</strong></a> (Nous Research)。这是一个可自我改进的终端智能体：它会<em>从经验中创建技能</em>，跨会话保留记忆，运行内置 cron，并可通过网关从 Telegram、Discord 和 Slack 访问。它的应用形态与 OpenClaw 相同，并启用了自我修改和消息交互接口。</li>
+    <li><a href="https://github.com/openclaw/openclaw" target="_blank" rel="noopener"><strong>OpenClaw</strong></a>（位于 NVIDIA NemoClaw 中）。这就是您一直在操作的智能体。它以整个 <code>workspace/</code> 文件夹作为指引（SOUL.md、AGENTS.md、
+        IDENTITY.md 及其它文件）。它支持通过网关管理的触发器进行无人值守运行；在
+        NemoClaw 参考栈中，它运行于 OpenShell 沙箱<em>内部</em>，因此无论模型如何决策，其工具集都受内核策略约束。</li>
+  </ul>
+
+  <p>请注意，Hermes 似乎不同于编辑器 CLI，因为它默认支持“自动学习”，并将其作为旗舰功能。不过，该系统使用的底层组件仍与其它智能体相同（具备写入权限的技能、cron 和记忆更新），因此这种风险并非 Hermes 独有。</p>
+
+  <div class="callout">
+    <strong>OpenShell 可以承载这类智能体应用；NemoClaw 是本课程使用的参考栈。</strong>NVIDIA 还记录了 Codex、Cursor 和 OpenCode 的相同 OpenShell 集成方式。您选择的 CLI 决定初始默认设置，而它外层的 OpenShell 封装则控制这些默认设置获准触达的范围。
+  </div>
+
+  <h2>自由度就是攻击面</h2>
+  <p>所有这些智能体都沿着相同的维度进行配置，每个维度都代表一种可以授予或限制的能力。下表中的 NemoClaw 列直接取自可启动环境正在运行的 OpenShell 策略，也就是您在<a href="04a-safety.html">模块 4a</a> 中实时读取并验证过的策略。</p>
+
+  <table class="dof-table">
+    <thead><tr><th>自由度</th><th>控制项</th><th>NemoClaw 默认设置（实时策略）</th></tr></thead>
+    <tbody>
+      <tr><td>文件系统</td><td>哪些路径可读或可写</td>
+        <td>仅可写入 <code>/tmp</code>、<code>/sandbox/.openclaw</code>、<code>/sandbox/.nemoclaw</code> 和工作目录；系统路径只读。由 Landlock (<code>best_effort</code>) 强制执行。</td></tr>
+      <tr><td>网络出站访问</td><td>按二进制文件分别限定主机、端口及 HTTP 方法/路径</td>
+        <td>默认拒绝；仅设置一个简短的允许列表（NVIDIA 推理、<code>inference.local</code>、clawhub/npm），每一项都限定为一种 HTTP 形式，并绑定到特定二进制文件。</td></tr>
+      <tr><td>进程身份</td><td>智能体以哪个用户身份运行</td>
+        <td>以非 root 用户 <code>sandbox</code> 运行；seccomp 会阻止 <code>ptrace</code>、<code>mount</code> 和 <code>setuid</code>。</td></tr>
+      <tr><td>二进制文件身份</td><td>哪个可执行文件可以使用授权</td>
+        <td>通过可执行文件路径、向上遍历祖先目录以及首次使用时信任的哈希值来解析；<code>argv[0]</code> 可被伪造，因此不受信任。</td></tr>
+      <tr><td>持久化</td><td>cron、技能和 SOUL.md 人设</td>
+        <td>可在工作区内写入。策略架构无法将单个文件设为只读，因此在“shields up”模式下，SOUL.md 依靠 DAC 加 <code>chattr +i</code> 保护，而不是依靠沙箱。</td></tr>
+      <tr><td>推理路由</td><td>API 入口调用通过哪个模型发出</td>
+        <td>通过托管的 <code>inference.local</code> 网关路由；Privacy 路由根据 operator 的策略而非智能体的策略，决定哪些上下文可以传出。</td></tr>
+    </tbody>
+  </table>
+
+
+  <h2>动手试试 · 在不同智能体框架间权衡同一项任务</h2>
+  <p>
+    该页面从以下维度比较不同智能体框架的复杂程度：
+  </p>
+  <ul>
+    <li>智能体框架隐藏的<strong>抽象</strong>：您需要编写的代码更少，但对实际运行过程的了解也更少。</li>
+    <li>其中内置的<strong>假设和默认设置</strong>：它们决定了在您提出要求前，智能体框架会介入到什么程度。</li>
+    <li>开箱即用的<strong>一等功能</strong>：与之对照的是需要您自行实现的同等能力。</li>
+  </ul>
+  <p>
+    描述一项任务，比较每种智能体框架提供了多少现成机制。可编辑单元会公开其系统提示词和响应逻辑，并展示示例。编辑后重新运行该单元即可重新构建交互页面。
+  </p>
+  <div id="clis-cell"></div>
+  <div id="clis-artifact"></div>
+  <script type="module">
+    import { mountRunCell } from "./scripts/_shared.js";
+    mountRunCell("#clis-cell", {
+      label: "“动手试试”练习代码",
+      autorun: true,
+      code: `// "Weigh the harnesses" artifact. Grounds on the vendored framework READMEs
+// Inline CLI extracts seed the prompt; README toggles add full docs for one turn.
+const META = { frameworks: [
+  { id: "claude-code", name: "Claude Code", note: "Anthropic。Beacon CLAUDE.md。", source: "https://raw.githubusercontent.com/anthropics/claude-code/main/README.md", extract: "Claude Code 是一款在终端中运行的 coding agent。它能理解代码库，通过执行常规任务、解释复杂代码和处理 Git 工作流，帮助您更快地编写代码；这一切都可通过自然语言命令完成。可以在终端、IDE 中使用它，也可以在 GitHub 上标记 @claude。" },
+  { id: "codex", name: "Codex CLI", note: "OpenAI。Beacon：AGENTS.md。", source: "https://raw.githubusercontent.com/openai/codex/main/README.md", extract: "Codex CLI 是 OpenAI 推出的一款 coding 智能体，可在计算机上本地运行。如果您希望在代码编辑器（VS Code、Cursor、Windsurf）中使用 Codex，请在 IDE 中安装它。如果您希望使用桌面应用体验，请运行 codex app 或访问 Codex App 页面。" },
+  { id: "cursor", name: "Cursor", note: "闭源编辑器智能体。没有公开代码库；说明由课程提供。", source: "课程编写（无公开代码库）", extract: "Cursor 是一款内置智能体的闭源 AI 代码编辑器。由于它没有公开代码库，此说明代替 README。" },
+  { id: "hermes", name: "Hermes", note: "Nous Research。提供技能、记忆、cron 和多平台网关。", source: "https://raw.githubusercontent.com/NousResearch/hermes-agent/main/README.md", extract: "Hermes 智能体是 Nous Research 推出的开源智能体框架。其公开文档涵盖可复用技能、持久记忆、计划任务和消息网关，而提供商和工具配置则由 operator 完成。" },
+  { id: "openclaw", name: "OpenClaw", note: "开源个人智能体框架；本课程通过 NVIDIA NemoClaw 运行它。", source: "https://raw.githubusercontent.com/openclaw/openclaw/main/README.md", extract: "OpenClaw 是一种个人 AI 助手，在 operator 的设备上运行，并通过已配置的渠道通信。本课程使用的 NemoClaw 参考技术栈在 OpenShell 内运行 OpenClaw，因此可以在模型外部管控文件系统、进程、网络和推理访问。" }
+] };
+const FW = META.frameworks;                       // [{ id, name, note, source, extract }]
+const nameOf = (id) => (FW.find((f) => f.id === id) || {}).name || id;
+const _cache = {};
+async function readme(id) {
+  const fallback = () => (FW.find((f) => f.id === id) || {}).extract || "";
+  if (_cache[id] == null) {
+    try { const r = await helpers.fetch("assets/cli_readme_" + id + ".txt"); _cache[id] = r.ok ? await r.text() : fallback(); }
+    catch (e) { _cache[id] = fallback(); }
+  }
+  return _cache[id];
+}
+
+// A grounded system prompt, assembled from the READMEs instead of guessed.
+const SYS =
+  "这些智能体 CLI 采用同一种结构：模型围绕工具循环运行。以下说明均以其文档为依据：\\n" +
+  FW.map((f) => "- " + f.name + "（" + f.note + "): " + f.extract).join("\\n") +
+  "\\n\\n 它们几乎可以互换用于任何任务；区别在于智能体框架的重量，即各自隐藏的抽象、预设的默认行为，以及哪些能力被作为一等功能提供，哪些需要您自行实现。" +
+  "自我修改并非其中任何一种框架的独有特性：凡是能够编辑文件的框架，都可以重写自己的技能，因此应将其视为侧重点的差异，而非能力差异。" +
+  "每项判断都必须以上述说明及用户附加的 README 为依据。如果其中没有资料支持某项细节，请说明您不确定，不要虚构功能。" +
+  "针对用户的任务，分三部分作答。(1) 用两句话说明所有框架都会运行的、几乎相同的核心循环，明确任何一种框架都能完成该任务。(2) 每个 CLI 一行：说明针对 THIS 任务，哪个功能是开箱即用的一等功能、哪些部分需要您自行实现，以及决定其重量的默认设置，并引用作为依据的文档细节。(3) 用一句话说明：在此没有哪一种能力更强，选择取决于这项任务值得使用多重的智能体框架。不要选出唯一的胜者。";
+
+// One toggle per framework; selection clears after the next question.
+const selected = new Set();
+const stale = document.querySelector("#clis-readme-bar");
+if (stale) stale.remove();
+
+const bar = document.createElement("div");
+bar.id = "clis-readme-bar"; bar.className = "chatui-mods";
+bar.style.cssText = "display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 8px";
+bar.innerHTML = "<label>README</label>";
+
+const btnFor = {};
+FW.forEach((f) => {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "chatui-modchip"; b.textContent = "+ " + f.name; b.title = f.source;
+  b.addEventListener("click", () => { b.classList.toggle("on"); selected.has(f.id) ? selected.delete(f.id) : selected.add(f.id); });
+  btnFor[f.id] = b; bar.appendChild(b);
+});
+document.querySelector("#clis-artifact").before(bar);
+const clearSel = () => { selected.clear(); FW.forEach((f) => btnFor[f.id].classList.remove("on")); };
+
+helpers.mountChatUI("#clis-artifact", {
+  growLog: true,   // flow with the page instead of an internal 480px scroll that traps the wheel
+  greeting: "请告诉我任务内容及其运行环境。我会展示所有这些 CLI 为完成该任务都会执行的同一个核心循环，再根据各自文档权衡其优劣，而不是选出唯一赢家。切换上方的 README，即可在下一个问题中向我提供其全文。",
+  examples: ["夜间无人值守地重构大型代码仓库", "一个可通过手机向其发送消息的个人助理", "全天候分流服务器上的生产环境事件"],
+
+  respond: async (text, ctx) => {
+    let primer = "";
+    const sel = [...selected];
+    if (sel.length) {
+      const parts = await Promise.all(sel.map(async (id) => "## " + nameOf(id) + " README\\n\\n" + (await readme(id))));
+      primer = "\\n\\n 用户附上了这些 README 全文，供本次决策参考。请以其内容为依据作答：\\n\\n" + parts.join("\\n\\n---\\n\\n");
+      ctx.view.tool("已注入的 README：" + sel.map(nameOf).join(", "));
+    }
+    const s = await helpers.chatStream({ messages: [{ role: "system", content: SYS + primer }, { role: "user", content: text }], max_tokens: 8196, signal: ctx.signal },
+      (t) => ctx.view.token(t), { onReasoning: (r) => ctx.view.reasoning(r) });
+    if (s.usage) ctx.view.usage({ input: s.usage.prompt_tokens, output: s.usage.completion_tokens, model: s.model });
+    clearSel();                                   // deselect so the same README never double-injects
+  },
+});
+helpers.log("已在下方呈现。切换一个 README 将其添加为上下文，然后提问。");
+
+/* mountChatUI renders the panel; respond() streams one chat call. */
+`,
+    });
+  </script>
+
+
+
+
+  <h2>构建一个以此浏览器为 shell 的 CLI 智能体</h2>
+  <p>
+    上述 CLI 将智能体 attach 到真实计算机的终端。您也可以用浏览器自身的 JavaScript 运行时作为 shell，构建相同的结构。下方智能体只有一个工具 <code>js</code>，它通过该工具编写 JavaScript，并在当前实时页面中运行。智能体读取返回结果后，再决定下一步运行什么。运行时已加载，因此无需搭建任何额外的智能体框架。它的触达范围仍然很广：智能体可以读取 DOM、调用 <code>fetch</code> 并使用课程辅助函数，所有操作均在您正在阅读的标签页内完成。
+  </p>
+  <p>
+    模块 4c 将回到这种浏览器形态，并将可迁移部分&mdash;具有可见状态和控件的交互式 Web 界面&mdash;与特定宿主提供的身份验证、存储、网络和工具适配器区分开来。
+  </p>
+  <div id="cell-jsagent"></div>
+  <div id="jsagent-artifact"></div>
+  <script type="module">
+    import { mountRunCell } from "./scripts/_shared.js";
+    mountRunCell("#cell-jsagent", {
+      openCode: false,
+      label: "绑定到浏览器运行时的 CLI 智能体代码",
+      intro: "为已挂载的智能体设定一个目标，先观察它的 JavaScript 工具调用。如需更改工具边界、循环上限或最终答案规则，请打开实现代码。",
+      autorun: true,
+      code: `// A CLI agent whose shell is THIS browser's JS runtime. Its one tool, js, runs
+// code in the live page and returns a value, so the agent loops: reason, run, read, repeat.
+// The runtime is already loaded, nothing to install.
+const JS_TOOL = {
+  type: "function",
+  function: {
+    name: "js",
+    description: [
+      "在此浏览器页面中运行 JavaScript 并返回值。",
+      "您可以使用整个 window，包括 document、fetch、location 和课程的 helpers 对象。",
+      "最后使用 return 语句返回结果。",
+    ].join(" "),
+    parameters: {
+      type: "object",
+      properties: { code: { type: "string", description: "要运行的 JavaScript。请使用 return。" } },
+      required: ["code"],
+    },
+  },
+};
+
+// Run agent-written code against the live runtime. helpers is injected; document, window, and fetch are ambient.
+async function runJS(code) {
+  const fn = new Function("helpers", "return (async () => { " + code + " })();");
+  return await fn(helpers);
+}
+
+helpers.mountChatUI("#jsagent-artifact", {
+  growLog: true,   // flow with the page instead of an internal 480px scroll that traps the wheel
+  greeting: "请给我一个目标。我的 shell 是此页面的 JavaScript 运行时，因此我会直接在标签页中运行 JS 来执行操作。",
+  examples: [
+    "此页面上有多少个代码编辑器？",
+    "列出此页面中所有 H2 小节标题。",
+    "获取 assets/rag_index.json，并报告其嵌入模型以及固定了多少篇文档。",
+    "此页面上有多少个链接会在新标签页中打开？",
+    "计算并返回第 12 个斐波那契数。",
+    "localStorage 当前包含哪些键？",
+  ],
+  respond: async (goal, ctx) => {
+    const messages = [
+      {
+        role: "system",
+        content: [
+          "您是一个以此浏览器的 JavaScript 运行时作为 shell 的 CLI 智能体。",
+          "如需了解任何信息，请调用 js 工具，在实时页面中运行代码。",
+          "每段代码都必须以 return 语句结尾。",
+          "绝不要声称获得了您未实际运行得出的结果。",
+          "可编辑代码单元呈现为 .CodeMirror 元素，而不是 .code-editor。",
+          "如果选择器未返回任何内容，请先检查 DOM，再下结论。",
+          "获得足够信息后，请用简短的纯文本作答，不要再进行工具调用。",
+        ].join(" "),
+      },
+      { role: "user", content: goal },
+    ];
+
+    let answered = false;
+    for (let step = 0; step < 8; step++) {
+      const r = await helpers.chat({ messages, tools: [JS_TOOL], max_tokens: 8196 });
+      const m = r.choices[0].message;
+      messages.push(m);
+
+      const calls = m.tool_calls || [];
+      if (!calls.length) {
+        const txt = (m.content || "").trim();
+        if (txt) { ctx.view.token(txt); answered = true; break; }
+        messages.push({ role: "user", content: "运行 js 以收集所需信息，或者直接给出最终的纯文本答案。" });
+        continue;
+      }
+      for (const tc of calls) {
+        let code = "";
+        try { code = JSON.parse(tc.function.arguments || "{}").code || ""; } catch (_) {}
+        if (!code.trim()) {
+          ctx.view.tool("$ js", "(empty)");
+          ctx.view.tool("returned", "未提交代码");
+          messages.push({ role: "tool", tool_call_id: tc.id, content: "错误：未提交代码。请在 code 参数中填入 JavaScript，并以 return 语句结尾。" });
+          continue;
+        }
+        ctx.view.tool("$ js", code);                       // the JS the agent chose to run
+
+        let out;
+        try { out = await runJS(code); } catch (e) { out = "Error: " + ((e && e.message) || e); }
+        const text = out === undefined ? "undefined（代码片段是否以 return 结尾？）" : (typeof out === "object" ? JSON.stringify(out) : String(out));
+        ctx.view.tool("returned", text.slice(0, 700));     // what the runtime handed back
+        messages.push({ role: "tool", tool_call_id: tc.id, content: text.slice(0, 1500) });
+      }
+    }
+    // Always land on a plain-text answer instead of dead-ending at "(no answer)".
+    if (!answered) {
+      const r = await helpers.chat({ messages: messages.concat([{ role: "user", content: "现在请仅根据工具返回的内容，用一两句纯文本给出您能提供的最佳最终答案。" }]), max_tokens: 8196 });
+      ctx.view.token((r.choices[0].message.content || "我无法根据该页面确定答案。").trim());
+    }
+  },
+});
+helpers.log("CLI 智能体已挂载在下方。请为它设定一个目标，并观察它如何驱动运行时。");
+`,
+    });
+  </script>
+
+
+
+
+
+
+  <h2>在 launchable 上打开真实 shell</h2>
+  <p> NemoClaw launchable 通过模块 4a 策略探测所使用的同一条 <code>/ws/terminal</code>
+     连接，为您提供真实的宿主 shell。该宿主提供 <strong>openshell</strong> CLI，即用于管理沙箱化智能体的
+     operator 工具。您在下方输入的每一行都会在 launchable 上运行，输出也由它直接返回。</p>
+  <p>请先在<a href="03a-kickstart.html">模块 3a</a> 中连接 launchable。输入命令、点击快捷项，或按 Tab 键自动补全。在宿主上，<code>openshell sandbox list</code> 会显示智能体，<code>openshell status</code> 会报告网关状态。智能体在沙箱内运行，因此可在命令前加上 <code>agent</code>，让命令在其中运行：<code>agent ls</code> 会通过 <code>openshell sandbox exec</code> 列出智能体的文件。每条命令都在各自的短生命周期 shell 中运行，因此如需与智能体进行交互式对话，请使用下方面板，而不是 <code>openclaw tui</code>。</p>
+  <div id="cell-deepagents"></div>
+  <div id="deepagents-artifact"></div>
+  <script type="module">
+    import { mountRunCell } from "./scripts/_shared.js";
+    mountRunCell("#cell-deepagents", {
+      label: "launchable 上的真实终端，带有智能体沙箱快捷方式",
+      autorun: true,
+      code: `// This is the real launchable shell used by Module 4a through helpers.terminal.
+// The host carries openshell; prefix a command with "agent" to run it in the sandbox.
+// Interactive sessions need a persistent connection, so chatting lives in the panel below.
+
+function launchableUrl() {
+  let u = helpers.getOpenClawConnection().rawUrl;
+  while (u.length && u[u.length - 1] === "/") u = u.slice(0, -1);
+  return u;
+}
+
+const SUGGESTIONS = ["help", "openshell sandbox list", "openshell status", "openshell --help", "智能体 ls", "智能体 ls -a", "智能体 pwd"];
+// Interactive sessions a one-shot terminal cannot drive: steer the student to the chat panel or to exec.
+const INTERACTIVE = ["openshell term", "openshell sandbox connect", "nemoclaw", "openclaw chat", "openclaw tui", "openclaw configure"];
+const HELP = '这是可启动主机 shell。主机提供 openshell CLI；智能体在沙盒中运行。请在主机上尝试：openshell sandbox list、openshell status、openshell --help。要在智能体中运行命令，请在命令前加上“智能体”，例如：智能体 ls。要与智能体对话，请使用此终端下方的面板。输入 clear 可清空屏幕。';
+
+function hintFor(output) {
+  if (/execvp|command not found|No such file or directory/i.test(String(output || ""))) {
+    return "这不是可启动主机上的命令。主机提供 openshell，因此请尝试 openshell --help 或 openshell sandbox list；也可以使用以下格式在智能体中运行该命令：智能体 <command>。";
+  }
+  return "";
+}
+
+async function run(cmd, con, ctx) {
+  const t = cmd.trim();
+  if (t === "/help" || t === "help" || t === "?") return con.write(HELP, "da-dim");
+  if (t === "/clear" || t === "clear") return con.clear();
+  if (t.charAt(0) === "/") return con.write("斜杠命令应在下方的聊天面板或 openclaw tui 中使用，不能在此主机 shell 中使用。请输入不带斜杠的命令，或输入 help。", "da-dim");
+  if (t === "agent" || t.indexOf("智能体 ") === 0) {
+    const inner = t.slice(5).trim();
+    if (!inner) return con.write('用法：智能体 <command>   在智能体沙盒中运行 <command>，例如：智能体 ls', "da-dim");
+    let r;
+    try { r = await helpers.sandboxExec(inner, { signal: ctx.signal }); } catch (e) {
+      con.write(String((e && e.message) || e), "da-err");
+      return { status: "error", message: "命令执行失败。请阅读提示消息，然后重试。" };
+    }
+    con.write((r.output || "").trimEnd() || "（无输出）");
+    const h = hintFor(r.output); if (h) con.write(h, "da-dim");
+    return;
+  }
+  if (INTERACTIVE.some(function (x) { return t.indexOf(x) === 0; })) return con.write('该命令会启动交互式会话，而这个单次执行终端无法保持会话开启。要与智能体对话，请使用下方的面板。要在智能体中执行单次命令，请使用：智能体 <command>。', "da-dim");
+  let got = false, captured = "";
+  try {
+    await helpers.terminal(t, { totalMs: 120000, idleMs: 8000, signal: ctx.signal, onChunk: function (c) { if (c) { got = true; captured += c; con.raw(c); } } });
+  } catch (e) {
+    con.write(String((e && e.message) || e), "da-err");
+    return { status: "error", message: "终端连接失败。请重新进行身份验证，然后重试。" };
+  }
+  if (!got) con.write("（无输出）", "da-dim");
+  const h = hintFor(captured); if (h) con.write(h, "da-dim");
+}
+
+const connected = !!launchableUrl();
+helpers.mountConsole("#deepagents-artifact", {
+  prompt: "$",
+  suggestions: SUGGESTIONS,
+  disabled: !connected,
+  disabledMsg: "未连接可启动环境。请打开模块 3a (Kickstart)，连接可启动环境，然后返回此处。",
+  greeting: connected ? "已连接到可启动主机 shell。该主机提供 openshell CLI；智能体在沙盒中运行。请输入 help、点击命令选项，或按 Tab 键自动补全。" : "",
+  onSubmit: run,
+});
+helpers.log("可启动终端已挂载在下方。如果提示未连接可启动环境，请在模块 3a 中进行连接。");
+`,
+    });
+  </script>
+
+
+
+
+  <h2>与智能体对话</h2>
+  <p><code>openclaw tui</code> 是一种交互式全屏对话界面，单次运行的终端无法让它持续保持打开。下方面板通过 OpenClaw 网关与同一个实时智能体通信，使用的是 <code>/cli/gateway</code> 连接，<a href="03b-openclaw.html">模块 3b</a> 和<a href="03c-always-on.html">模块 3c</a> 也使用这条连接，因此您无需离开当前页面即可与智能体对话。面板会流式显示智能体的回复，并展示智能体运行的每项工具或命令。请先在<a href="03a-kickstart.html">模块 3a</a> 中连接 launchable（及其 URL 和 token）。可以提出任何问题、点击提示词，或按 Tab 键自动补全。</p>
+  <div id="cell-agentchat"></div>
+  <div id="agent-chat"></div>
+  <script type="module">
+    import { mountRunCell } from "./scripts/_shared.js";
+    mountRunCell("#cell-agentchat", {
+      label: "通过 OpenClaw 网关与实时智能体对话",
+      autorun: true,
+      code: `// Mount the live CLI artifact; gateway transport and session plumbing live in one shared helper.
+const cli = helpers.mountOpenClawCli("#agent-chat");
+if (!cli.connected) {
+  helpers.log("请在模块 3a 中连接可启动环境，然后重新运行此单元格。");
+  return { mounted: cli.mounted, connected: false };
+}
+
+// Optional visibility: uncomment to inspect the artifact's current session.
+// helpers.log.json("CLI state", { connected: cli.connected, session: cli.session });
+helpers.log("智能体聊天已挂载在下方");
+return { mounted: cli.mounted, connected: cli.connected, session: cli.session };
+`,
+    });
+  </script>
+
+  <div class="callout">
+    <p><strong>上方终端属于 operator 平面。</strong>在 launchable 的宿主 shell 中，openshell 负责管理沙箱化智能体，因此宿主是位于策略之上的控制平面，也就是<a href="04a-safety.html">模块 4a</a> 指出的边界。您通过 <code>agent &lt;cmd&gt;</code> 推送给智能体的命令会在其默认拒绝策略下运行，而宿主 shell 则受 operator 管理。</p>
+    <ul>
+      <li><strong>搭建成本。</strong> launchable 已为您预配并在运行。在您自己的计算机上，CLI 首次运行前需要完成安装并配置运行时。</li>
+      <li><strong>触达范围。</strong>在智能体内部，内核策略会限制每次调用，也就是您在模块 4a 中了解的默认拒绝规则。在您自己的计算机上，CLI 可以读写文件，并访问整个网络。</li>
+      <li><strong>影响范围。</strong>智能体内部的提示词注入只会影响该沙箱，并留下审计记录。同样的注入若发生在您自己的计算机上，则会作用于真实文件。页面开头关于自由度的论述，现在已成为您手中的实际选择。</li>
+    </ul>
+    <p>只要任务需要持久化和标签页无法承载的实际工作，更重的智能体框架就物有所值。真正值得培养的能力，是准确判断任务需要多重的框架；<a href="04c-going-further.html">模块 4c</a> 将以分层视角总结这一点。</p>
+  </div>
+
+  <div class="foot-nav">
+    <a href="04a-safety.html">← 模块 4a：OpenShell</a>
+    <a class="next" href="04c-going-further.html">模块 4c：深入探索 →</a>
+  </div>
+</main>
+
+<script type="module">
+import { buildNav, updateKeyPill, updateClawPill, mountJourneyMap } from "./scripts/_shared.js";
+document.getElementById("nav").innerHTML = buildNav("04b-modern-clis.html");
+updateKeyPill(document.getElementById("key-status"));
+updateClawPill(document.getElementById("claw-status"));
+mountJourneyMap("#journey-map", "4b");
+hljs.highlightAll();
+
+
+
+</script>
+</body>
+</html>
