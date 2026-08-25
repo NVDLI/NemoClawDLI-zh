@@ -7,16 +7,47 @@
 > content remains in English. For the upstream English source see
 > [`NVDLI/NemoClawDLI`](https://github.com/NVDLI/NemoClawDLI).
 
-This repository contains an NVIDIA Deep Learning Institute course about building agent systems and
-applying practical security boundaries with NemoClaw and OpenShell. The course progresses from a
-model call to tools, workflows, retrieval, deep research, sandbox policy, and deployment choices.
-It is available in English, Brazilian Portuguese, and Spanish.
-
 The planned public home is
 [`NVDLI/NemoClawDLI-zh`](https://github.com/NVDLI/NemoClawDLI-zh). Publication remains pending OSRB
 approval. [`RELEASE_STATUS.json`](RELEASE_STATUS.json) is the machine-readable source for current
 publication state. Passing repository checks does not replace NVIDIA legal, security, or release
 approval.
+
+## About the course
+
+An agent connects a model to tools, memory, and a routing decision that repeats until its task is done. This course builds that loop, then connects it to current frameworks. You'll go from a single API call to agent coordination, grounded retrieval, deep planning, and safe deployment using OpenClaw, NVIDIA NemoClaw™, and OpenShell.
+
+Every lesson is an editable browser exercise. Later modules use NemoClaw and OpenShell to run and inspect an agent locally — no Brev launchable required.
+
+> **Note:** This repository releases the course and validation tools. NemoClaw and its runtime remain external dependencies.
+
+## Course path
+
+### Module 1: build the agent loop
+
+![Observations flow from an environment to an agent, and the agent sends actions back to the environment.](web/nemoclaw/assets/figures/01a-agent-environment.svg)
+
+Start with the observation-action loop. Add model calls, state, tools, and a clear stop condition.
+
+### Module 2: coordinate and ground the work
+
+![A knowledge base is indexed offline, then a live query retrieves context for a grounded model response.](web/nemoclaw/assets/figures/02b-rag-1.svg)
+
+Add explicit routing, parallel work, retrieval over your own sources, and deeper planning.
+
+### Modules 3 and 4: run and constrain the agent
+
+![Three overlapping circles show untrusted input, access to secrets, and an outbound communication channel.](web/nemoclaw/assets/figures/lethal-trifecta.svg)
+
+Connect the design to NemoClaw, keep an agent running locally, then use OpenShell to constrain tools, files, and network access.
+
+## What you will learn
+
+- Build a basic agent loop and identify its core components.
+- Implement reliable tool use and function calling within an agent system.
+- Design and coordinate multi-agent systems using structured routing patterns.
+- Utilize OpenShell to configure agent identities and ensure safe, sandboxed operations.
+- Deploy and manage autonomous agents while building persistent skill libraries.
 
 ## Take the course
 
