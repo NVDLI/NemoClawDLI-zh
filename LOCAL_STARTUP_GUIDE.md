@@ -7,7 +7,6 @@ This guide covers two deployment targets:
 
 Section 0 is **one-time setup** (skip if `nemoclaw --version` already works).
 Section 1 onward is the **every-session startup** after setup is complete.
-For troubleshooting, see `LOCAL_DEPLOYMENT_NOTES.md`.
 
 ---
 

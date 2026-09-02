@@ -1,18 +1,64 @@
 # 使用 OpenShell 和 NemoClaw 构建安全智能体
 
+> 从一次模型调用出发，逐步实现智能体协作、有依据的检索、深度规划与更安全的执行。NemoClaw 提供参考技术栈；OpenShell 提供 sandbox。
+
+| 开始学习 | 准备实验环境 | 使用模型 |
+| --- | --- | --- |
+| **[打开课程](i18n/zh/web/nemoclaw/index.html)** | **[本地环境配置指南](LOCAL_STARTUP_GUIDE.md)** | **[打开 NVIDIA Build](https://build.nvidia.com/?ncid=ref-dli-146986)** |
+| 完成四个模块。 | 在本地（WSL2 或 DGX Spark）安装 NeMoClaw。 | 根据提示创建 API 密钥。 |
+
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-76B900)](LICENSE)
+
+---
+
 > **这是 NeMoClaw DLI 课程的中文版本**，维护地址为
 > [`DLI / expand-the-funnel / NeMoClawDLI-zh`](https://gitlab-master.nvidia.com/dli/expand-the-funnel/nemoclawdli-zh)。
 > 本分支针对 **non-Brev 本地部署（WSL2 + Docker 和 DGX Spark Station）** 进行了适配，并提供简体中文课程内容。
 > 英文上游源码请参阅
 > [`NVDLI/NemoClawDLI`](https://github.com/NVDLI/NemoClawDLI)。
 
-本仓库包含一门 NVIDIA 深度学习培训中心课程，介绍如何构建智能体系统，并使用 NemoClaw 和 OpenShell
-设置实用的安全边界。课程从一次模型调用开始，逐步讲解工具、工作流、检索、深度研究、沙箱策略和部署方案。
-
 计划发布的公共主页为
 [`NVDLI/NemoClawDLI-zh`](https://github.com/NVDLI/NemoClawDLI-zh)。发布仍需获得 OSRB 批准。
 当前发布状态以机器可读文件 [`RELEASE_STATUS.json`](RELEASE_STATUS.json) 为准。仓库检查通过并不能替代
 NVIDIA 的法律、安全或发布审批。
+
+## 课程简介
+
+智能体将模型连接到工具和记忆，再通过路由决策持续运行，直至完成任务。本课程将从零开始构建这样的系统，
+随后把这些理念与当前的智能体框架联系起来。您将从一次 API 调用起步，逐步学习智能体协作、有依据的检索、
+深度规划，以及如何使用 OpenClaw、NVIDIA NemoClaw™ 和 OpenShell 实现安全部署。
+
+每节课都是可编辑的浏览器练习。后续模块使用 NemoClaw 和 OpenShell 在本地运行智能体并观察其行为，无需 Brev launchable。
+
+> **注意：** 本仓库发布课程及其验证工具。NemoClaw 及其运行时仍是外部依赖项。
+
+## 课程路径
+
+### 模块 1：构建智能体循环
+
+![观察结果从环境传给智能体，智能体再将行动发送回环境。](web/nemoclaw/assets/figures/01a-agent-environment.svg)
+
+从观察—行动循环入手，逐步加入模型调用、状态、工具以及明确的停止条件。
+
+### 模块 2：协调任务并提供可靠依据
+
+![知识库先离线建立索引，再根据实时查询检索上下文，为模型生成有依据的回复。](web/nemoclaw/assets/figures/02b-rag-1.svg)
+
+加入显式路由、并行任务、基于自有资料的检索以及更深入的规划。
+
+### 模块 3 和模块 4：运行并约束智能体
+
+![三个相交的圆分别表示不受信任的输入、机密访问权限和对外通信通道。](web/nemoclaw/assets/figures/lethal-trifecta.svg)
+
+将这一设计连接到 NemoClaw，在本地持续运行智能体，再使用 OpenShell 限制其工具、文件和网络访问。
+
+## 学习目标
+
+- 构建基本的智能体循环，并识别其核心组件
+- 在智能体系统中实现可靠的工具使用和函数调用
+- 使用结构化路由模式设计和协调多智能体系统
+- 使用 OpenShell 配置智能体身份，并确保操作安全地在 sandbox 中执行
+- 部署和管理自主智能体，同时构建可持久保留的技能库
 
 ## 学习课程
 
@@ -37,8 +83,7 @@ NVIDIA 的法律、安全或发布审批。
   上的浏览器访问课程页面，也可以通过 SSH 端口转发从 Windows 浏览器访问。
 
 完整的分步操作流程（包括一次性的 NeMoClaw 安装和初始配置）请参阅
-[`LOCAL_STARTUP_GUIDE.md`](LOCAL_STARTUP_GUIDE.md)。架构说明和故障排除方法请参阅
-[`LOCAL_DEPLOYMENT_NOTES.md`](LOCAL_DEPLOYMENT_NOTES.md)。
+[`LOCAL_STARTUP_GUIDE.md`](LOCAL_STARTUP_GUIDE.md)。
 
 **两个平台的前提条件：** 已安装 Docker、NeMoClaw 和 OpenShell（请参阅 `LOCAL_STARTUP_GUIDE.md` 第 0 节），
 并准备一个 NVIDIA API 密钥。
@@ -151,3 +196,5 @@ python3 scripts/validation/release_gate.py --tier fast --no-write
 
 计划公开发布的版本采用 [Apache License 2.0](LICENSE)。贡献内容使用相同的入站许可证并要求 DCO sign-off；
 本项目不要求签署单独的 CLA。
+
+NVIDIA 的名称、徽标和商标不授权一般性重复使用。

@@ -78,3 +78,6 @@ release-evidence/
 .secret
 scripts/.figtools/
 web/nemoclaw/scripts/.figcheck_shared-*.mjs
+LOCAL_DEPLOYMENT_NOTES.md
+openshell_architecture.mermaid
+openshell_component_map.svg

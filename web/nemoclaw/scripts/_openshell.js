@@ -352,7 +352,6 @@ export async function policyGet(agent = null, { idleMs = 8000, totalMs = 30000, 
   // the raw YAML over HTTP, bypassing the sandbox restriction that blocks the operator
   // terminal from reaching the OpenShell control plane from inside the container.
   // Falls back to the standard terminal approach if the proxy is not running.
-  // See LOCAL_DEPLOYMENT_NOTES.md §13.5 and §13.10 for root cause details.
   try {
     const proxyResp = await Promise.race([
       fetch("http://127.0.0.1:8012/policy?agent=" + encodeURIComponent(name)),
