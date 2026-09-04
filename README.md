@@ -83,8 +83,7 @@ This fork is designed to run without a Brev launchable on two supported platform
 - **DGX Spark Station (native Ubuntu Linux)** — same services, native Docker; access course pages directly from the DGX browser or from a Windows browser via SSH port forwarding
 
 The full step-by-step procedure — including one-time NeMoClaw installation and onboarding — is in
-[`LOCAL_STARTUP_GUIDE.md`](LOCAL_STARTUP_GUIDE.md). Architecture notes and troubleshooting are in
-[`LOCAL_DEPLOYMENT_NOTES.md`](LOCAL_DEPLOYMENT_NOTES.md).
+[`LOCAL_STARTUP_GUIDE.md`](LOCAL_STARTUP_GUIDE.md).
 
 **Prerequisites (both platforms):** Docker, NeMoClaw + OpenShell installed (see `LOCAL_STARTUP_GUIDE.md` § 0), an NVIDIA API key.
 
