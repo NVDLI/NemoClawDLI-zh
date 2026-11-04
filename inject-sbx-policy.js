@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // Inject live OpenShell policy into window.__SBX_POLICY for page 04a.
 // Paste this into Chrome DevTools → Sources → Snippets after every page reload.
 window.__SBX_POLICY = {
