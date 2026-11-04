@@ -7,7 +7,7 @@
 | **[打开课程](i18n/zh/web/nemoclaw/index.html)** | **[本地环境配置指南](LOCAL_STARTUP_GUIDE.md)** | **[打开 NVIDIA Build](https://build.nvidia.com/?ncid=ref-dli-146986)** |
 | 完成四个模块。 | 在本地（WSL2 或 DGX Spark）安装 NeMoClaw。 | 根据提示创建 API 密钥。 |
 
-[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-76B900)](LICENSE)
+[![License: CC-BY-4.0 AND Apache-2.0](https://img.shields.io/badge/license-CC--BY--4.0%20AND%20Apache--2.0-76B900)](LICENSE)
 
 ---
 
@@ -194,7 +194,13 @@ python3 scripts/validation/release_gate.py --tier fast --no-write
 [`docs/product-design.md`](docs/product-design.md) 定义发布边界，
 [`docs/security-design.md`](docs/security-design.md) 定义信任边界。
 
-计划公开发布的版本采用 [Apache License 2.0](LICENSE)。贡献内容使用相同的入站许可证并要求 DCO sign-off；
-本项目不要求签署单独的 CLA。
+计划公开发布的版本采用双许可证：NVIDIA 编写的源代码采用
+[Apache License 2.0](LICENSE)，NVIDIA 编写的文档、skills 和素材采用
+[Creative Commons Attribution 4.0 International (CC-BY-4.0)](LICENSE)，
+同时包含文档和代码的文件同时适用这两套条款。第三方素材保留其原有许可证，不会被重新授权；
+详见 [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) 和
+[`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md)。
+贡献内容使用相同的入站许可证并要求 DCO sign-off；本项目不要求签署单独的 CLA。
+签署方式和完整的 DCO 1.1 文本见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
 
 NVIDIA 的名称、徽标和商标不授权一般性重复使用。
