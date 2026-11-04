@@ -126,20 +126,19 @@ is included in the browser bundle by that dependency.
 ## Browser-Python components fetched from upstream at runtime
 
 The repository does not copy the components in this section into its static artifacts. The Pyodide
-documentation page and internal `c-fx-11-v1` branch-staging candidate fetch pinned files from
+documentation page fetches pinned files from
 jsDelivr only after a reader runs Python. [`scripts/pyodide/candidate-components.json`](scripts/pyodide/candidate-components.json)
 records exact artifact filenames, SHA-256 values, runtime profiles, and the review boundary.
 
-The separate documentation demonstration needs only the browser-Python runtime and standard library.
-The internal course candidate additionally loads `pydantic`, `requests`, and their exact recorded
-closure. Other network-profile rows remain candidates and are not loaded. Copying any runtime file
+The documentation demonstration needs only the browser-Python runtime and standard library.
+Other network-profile rows remain candidates and are not loaded. Copying any runtime file
 into the repository or an externally released learner artifact still requires the applicable
 component, security, privacy, and distribution decisions. A version or package change requires
 refreshed evidence.
 
 The runnable documentation page under `scripts/pyodide/` fetches the pinned Core runtime from
 jsDelivr after a reader selects Run. It executes those files in the browser but does not copy them
-into this repository or the learner course artifact. The manifest records both loader entrypoints
+into this repository or the learner course artifact. The manifest records the loader entrypoint
 and every supporting file with a SHA-256; `runtime_smoke.mjs --cdn` verifies the same runtime before
 executing every example.
 

@@ -593,10 +593,6 @@
           "line": 9
         },
         {
-          "source": "web/cfx11/index.html",
-          "line": 9
-        },
-        {
           "source": "web/nemoclaw/01a-loop.html",
           "line": 9
         },
@@ -766,10 +762,6 @@
         {
           "source": "i18n/pt/web/nemoclaw/04c-going-further.html",
           "line": 11
-        },
-        {
-          "source": "web/cfx11/index.html",
-          "line": 190
         },
         {
           "source": "web/nemoclaw/01a-loop.html",
@@ -1456,10 +1448,6 @@
           "line": 16
         },
         {
-          "source": "web/cfx11/index.html",
-          "line": 191
-        },
-        {
           "source": "web/nemoclaw/01a-loop.html",
           "line": 16
         },
@@ -1977,10 +1965,6 @@
           "line": 70
         },
         {
-          "source": "web/cfx11/index.html",
-          "line": 192
-        },
-        {
           "source": "web/nemoclaw/01a-loop.html",
           "line": 8
         },
@@ -2058,10 +2042,6 @@
         {
           "source": "web/_skill_explorer.js",
           "line": 69
-        },
-        {
-          "source": "web/cfx11/index.html",
-          "line": 10
         }
       ]
     },
@@ -2199,10 +2179,6 @@
         {
           "source": "web/_skill_explorer.js",
           "line": 313
-        },
-        {
-          "source": "web/cfx11/course.js",
-          "line": 4
         },
         {
           "source": "web/nemoclaw/scripts/_chat.js",

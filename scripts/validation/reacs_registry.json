@@ -2051,65 +2051,6 @@
       ]
     },
     {
-      "id": "cfx11-course-audit",
-      "tiers": [
-        "fast",
-        "ship"
-      ],
-      "order": {
-        "fast": 57,
-        "ship": 84
-      },
-      "mode": "current-tree",
-      "argv": [
-        "{python}",
-        "scripts/validation/cfx11_course_audit.py"
-      ],
-      "parallel_safe": false
-    },
-    {
-      "id": "cfx11-workflow-lifecycle",
-      "tiers": [
-        "fast",
-        "ship"
-      ],
-      "order": {
-        "fast": 58,
-        "ship": 85
-      },
-      "mode": "mutation",
-      "argv": [
-        "bash",
-        "scripts/runtime/run_node.sh",
-        "tests/runtime/test_cfx11_workflow.mjs"
-      ],
-      "parallel_safe": true,
-      "impacts": [
-        "web/cfx11/runtime/runner.js",
-        "web/cfx11/runtime/operations.js",
-        "tests/runtime/test_cfx11_workflow.mjs"
-      ]
-    },
-    {
-      "id": "cfx11-browser-audit",
-      "tiers": [
-        "ship"
-      ],
-      "order": {
-        "ship": 86
-      },
-      "mode": "current-tree",
-      "argv": [
-        "bash",
-        "scripts/runtime/run_node.sh",
-        "tests/runtime/test_cfx11_browser.mjs"
-      ],
-      "parallel_safe": false,
-      "exclusive_resources": [
-        "browser"
-      ]
-    },
-    {
       "id": "interface-inventory-browser-audit",
       "tiers": [
         "ship"

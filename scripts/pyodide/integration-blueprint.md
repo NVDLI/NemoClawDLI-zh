@@ -35,12 +35,8 @@ helper overrides, background task completion and cancellation, captures stdout, 
 requires an `IndexError` traceback with its source line through the stderr result.
 
 The repository does not copy Pyodide core or CPython WebAssembly. This scripts page fetches its
-pinned 0.27.7 core runtime only when a reader runs a cell. The internal `c-fx-11-v1`
-branch-staging candidate independently uses Pyodide 314.0.2 and ships the exact upstream wheels
-needed by its original LangChain, LangGraph, NVIDIA, OpenAI, Wikipedia, and contractions imports.
-The c-fx runtime index exposes `wheels.lock.json`, which records every copied wheel, source,
-hash, license expression, and direct/transitive relationship. The source course terms and
-external-release decision remain unresolved.
+pinned 0.27.7 core runtime only when a reader runs a cell. No course candidate wheels are
+copied into or distributed from this repository.
 
 ## Integration order
 
@@ -87,7 +83,6 @@ recipe label and the exact upstream license do not agree.
 The course wheel set uses exact PyPI file URLs rather than a resolver at learner runtime:
 
 ```bash
-python3 scripts/pyodide/verify_cfx11_wheels.py
 ```
 
 The verifier rejects missing, extra, renamed, re-versioned, or hash-drifted wheels. Native

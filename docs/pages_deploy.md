@@ -221,8 +221,8 @@ glab ci run -b main \
 CDN publication accepts the same kind of source binding plus explicit course and language lists. `immutable`
 publishes under `/course-static/<full-sha>/`; `stable` publishes under `/course-static/nemoclaw/`
 and accepts only a branch in the devbox publisher's root-owned `stable_refs` allowlist. A branch
-name never becomes an S3 destination. `PUBLISH_COURSES` must include `nemoclaw`; `cfx11` enters an
-operation only when an owner names it explicitly. The comma-separated language list controls which
+name never becomes an S3 destination. `PUBLISH_COURSES` must name `nemoclaw` and no other course.
+The comma-separated language list controls which
 NemoClaw language trees enter the operation; no hidden default adds a course or locale.
 
 ```bash
@@ -248,7 +248,7 @@ delimiter-bound assumed-role rule, and fixed CloudFront distribution. It invento
 malformed or repeated keys fail the operation. Immutable prefixes
 must contain only the exact reviewed manifest. Stable publication removes stale objects only from
 the fixed roots owned by the explicitly selected courses, then requires the remote key/size inventory
-to match. Selecting `nemoclaw` never grants authority over `cfx11/`. It waits for a CloudFront
+to match. It waits for a CloudFront
 invalidation before comparing every served byte. The language list is the complete stable language
 set for NemoClaw, not an additive hint.
 

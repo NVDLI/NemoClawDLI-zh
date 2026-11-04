@@ -29,7 +29,7 @@
 
   // Foyer contract: released courses and explicitly labeled internal previews.
   var RELEASED = ["nemoclaw"];
-  var PREVIEWS = ["cfx11"];
+  var PREVIEWS = [];
 
   // mats now live UNDER web/ (already a crawl root that recurses), so "mats" is no longer a separate top-level crawl root or shared TOPDIR.
   // It is still shared infra, detected by segment.

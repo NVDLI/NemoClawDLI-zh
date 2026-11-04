@@ -23,7 +23,7 @@ course-name allowlist. ``--dir`` remains available for focused diagnosis only.
 
 Usage:
     python3 scripts/runtime/module_check.py                  # web plus every discovered course
-    python3 scripts/runtime/module_check.py --dir web/cfx11  # focused diagnosis
+    python3 scripts/runtime/module_check.py --dir web/nemoclaw  # focused diagnosis
 Exit non-zero on any unresolved import or dangling re-export, so it works as a gate.
 """
 import argparse, re, sys

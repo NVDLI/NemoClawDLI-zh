@@ -42,7 +42,6 @@ except Exception:
 
 # Human-facing one-liner for the web bundle's released course. nemoclaw is what the release foyer surfaces.
 WEB_COURSE_DESC = {
-    "cfx11":         "Building LLM Applications With Prompt Engineering: an internal Markdown-first browser candidate that preserves the reviewed notebook cells, runs Python in Pyodide, and calls NVIDIA models with a learner-owned key.",
     "nemoclaw":      "Securing Agents: a browser-first course that runs against the lab's model gateway "
                      "and OpenClaw runtime. The pages build the agent loop, tools, retrieval, planning, "
                      "and sandbox controls as live artifacts. Learner-selected views collapse explicitly "
@@ -330,8 +329,6 @@ def gen_task():
     # This beacon documents the whole ontology; the foyer ships a subset.
     rel_courses = [c for c in RELEASED if (TASK1 / "web" / c).is_dir()]
     actions = [("Open the release foyer →", "web/index.html", True)]
-    if (TASK1 / "web" / "cfx11" / "index.html").is_file():
-        actions.append(("Prompt Engineering preview", "web/cfx11/index.html", False))
     if (TASK1 / "web" / "nemoclaw" / "01a-loop.html").is_file():
         actions.append(("Securing Agents", "web/nemoclaw/01a-loop.html", False))
 

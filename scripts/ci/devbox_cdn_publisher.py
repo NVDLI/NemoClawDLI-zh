@@ -30,7 +30,6 @@ CONFIG = Path("/etc/dli-course-publisher.json")
 CDN = "https://cdn.dli.learn.nvidia.com"
 COURSE_PREFIXES = {
     "nemoclaw": ("nemoclaw/", "shared/", "es/nemoclaw/", "pt/nemoclaw/"),
-    "cfx11": ("cfx11/",),
 }
 STABLE_ROOT_FILES = {
     "index.html", "languages.json", "branches.json", "LICENSE",

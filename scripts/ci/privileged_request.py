@@ -20,7 +20,7 @@ JOB = re.compile(r"^[1-9][0-9]{0,11}$")
 LANG = re.compile(r"^[a-z]{2}(?:-[a-z0-9]+)?$")
 OPERATIONS = {"live-interface-review", "cdn-publish"}
 CHANNELS = {"immutable", "stable"}
-COURSES = {"nemoclaw", "cfx11"}
+COURSES = {"nemoclaw"}
 PROVIDERS = {"cloudflare", "pomerium"}
 CHILD_KEYS = (
     "COURSE_OP", "CANDIDATE_REF", "CANDIDATE_SHA", "CANDIDATE_TEST_JOB_ID",
@@ -92,7 +92,7 @@ def validate(operation: str, env: dict[str, str], root: Path, context: dict[str,
             not courses or len(courses) != len(set(courses))
             or not set(courses).issubset(COURSES) or "nemoclaw" not in courses
         ):
-            errors.append("PUBLISH_COURSES must explicitly include nemoclaw and may include only cfx11")
+            errors.append("PUBLISH_COURSES must explicitly include nemoclaw and no other course")
         result.update({
             "channel": channel, "courses": courses, "languages": requested,
             "destination": sha if channel == "immutable" else "course-static",

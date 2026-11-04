@@ -27,7 +27,6 @@ EXECUTION_CONTRACT = ROOT / "scripts/pyodide/examples/execution-contract.js"
 NOTEBOOK_SYNTAX = ROOT / "scripts/pyodide/examples/notebook-syntax.js"
 RUNTIME_SMOKE = ROOT / "scripts/pyodide/runtime_smoke.mjs"
 USE_CASES = ROOT / "scripts/pyodide/cookbook-use-cases.json"
-COURSE_WHEEL_LOCK = ROOT / "web/cfx11/runtime/wheels.lock.json"
 SHARED_WORKBENCH = ROOT / "web/shared/runtime-workbench.js"
 SHARED_WORKBENCH_STYLES = ROOT / "web/shared/runtime-workbench.css"
 
@@ -241,35 +240,8 @@ def audit(
         findings.append("Pyodide live demo CDN or pinned version drifted")
     if live_demo.get("profile") != "core" or "not copied into this repository" not in str(live_demo.get("distribution", "")):
         findings.append("Pyodide live demo distribution boundary drifted")
-    course_candidate = data.get("course_candidate") or {}
-    expected_direct = {
-        "contractions", "langchain", "langchain-core", "langchain-nvidia-ai-endpoints",
-        "langgraph", "openai", "pydantic", "requests", "Wikipedia-API",
-    }
-    if course_candidate.get("entrypoint") != "web/cfx11/runtime/worker.js":
-        findings.append("Pyodide course candidate entrypoint drifted")
-    if course_candidate.get("base_url") != "https://cdn.jsdelivr.net/pyodide/v314.0.2/full/":
-        findings.append("Pyodide course candidate CDN or pinned version drifted")
-    if "copied into and shipped" not in str(course_candidate.get("distribution", "")):
-        findings.append("Pyodide course candidate distribution boundary drifted")
-    if course_candidate.get("wheel_lock") != "web/cfx11/runtime/wheels.lock.json":
-        findings.append("Pyodide course candidate wheel lock drifted")
-    if set(course_candidate.get("direct_packages") or []) != expected_direct:
-        findings.append("Pyodide course candidate direct package set drifted")
-    try:
-        course_wheels = read_json(COURSE_WHEEL_LOCK)
-    except (OSError, json.JSONDecodeError) as exc:
-        findings.append(f"Pyodide course wheel lock cannot be read: {exc}")
-        course_wheels = {}
-    if course_wheels.get("runtime") != {
-        "pyodide": "314.0.2", "python": "3.14.2", "abi": "2026_0", "architecture": "wasm32",
-    }:
-        findings.append("Pyodide course wheel ABI tuple drifted")
-    locked_direct = {
-        item.get("name") for item in course_wheels.get("packages", []) if item.get("relationship") == "direct"
-    } | {"pydantic", "requests"}
-    if locked_direct != expected_direct:
-        findings.append("Pyodide course wheel lock and direct package set disagree")
+    if "course_candidate" in data:
+        findings.append("Pyodide candidate manifest still declares a course_candidate binding")
 
     # Validate every serialized component uniformly.
     # The digest catches changes without a second package list in code.
@@ -486,16 +458,13 @@ def audit(
         if marker not in playground_source:
             findings.append(f"Pyodide reset/output state lost its explicit contract: {marker}")
 
-    # Path scans reject copied runtime binaries except the exact course wheel lock.
+    # Path scans reject copied browser Python runtime binaries anywhere in the tree.
     paths = source_paths() if paths is None else paths
-    allowed_course_wheels = {
-        f"web/cfx11/runtime/{item.get('path')}" for item in course_wheels.get("packages", [])
-    }
     for path in paths:
         if path.startswith("scripts/pyodide/"):
             continue
         lowered = path.lower()
-        if lowered.endswith(".whl") and path not in allowed_course_wheels:
+        if lowered.endswith(".whl"):
             findings.append(f"unlocked browser Python wheel appeared: {path}")
         elif "pyodide" in lowered and lowered.endswith((".wasm", ".zip", "pyodide.mjs")):
             findings.append(f"Pyodide runtime artifact appeared outside the planned integration area: {path}")
@@ -509,18 +478,9 @@ def audit(
                 runtime_texts[path] = (ROOT / path).read_text(encoding="utf-8", errors="replace")
             except OSError:
                 continue
-    declared_entrypoint = str(course_candidate.get("entrypoint") or "")
     for path, text in runtime_texts.items():
         if any(marker in text for marker in RUNTIME_MARKERS):
-            if path != declared_entrypoint:
-                findings.append(f"course source loads Pyodide outside the declared entrypoint: {path}")
-            else:
-                for marker in (
-                    'PYODIDE_VERSION = "314.0.2"', "LOCAL_WHEELS", "BUILTIN_PACKAGES",
-                    "await micropip.install(__course_local_wheels.to_py(), deps=False",
-                ):
-                    if marker not in text:
-                        findings.append(f"declared Pyodide course entrypoint lost its reviewed runtime contract: {marker}")
+            findings.append(f"course source loads Pyodide outside the review surface: {path}")
     return findings
 
 

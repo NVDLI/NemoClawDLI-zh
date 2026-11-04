@@ -273,7 +273,6 @@ def _model(
 def review(request: dict[str, object], retain: Path | None = None) -> list[dict[str, object]]:
     api_keys = {
         "nemoclaw": _secret("LIVE_NVIDIA_API_KEY_FILE"),
-        "cfx11": _secret("LIVE_BUILD_API_KEY_FILE"),
     }
     secrets = list(api_keys.values())
     project_pages_origin = pages_origin()
@@ -282,7 +281,7 @@ def review(request: dict[str, object], retain: Path | None = None) -> list[dict[
         _preflight("model-relay-pages-cors", MODEL_ENDPOINTS["relay"], project_pages_origin),
     ]
     for course, key in api_keys.items():
-        attribution = "dli-nemoclaw-web" if course == "nemoclaw" else "dli-cfx11-web"
+        attribution = "dli-nemoclaw-web"
         for route, endpoint in MODEL_ENDPOINTS.items():
             browser_origin = CDN_ORIGIN if route == "direct" else project_pages_origin
             for stream in (False, True):

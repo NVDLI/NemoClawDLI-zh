@@ -130,13 +130,13 @@ class LiveReviewBoundaryTests(unittest.TestCase):
         )
         result = live_interface_review._model(
             "model", "https://integrate.api.nvidia.com/v1/chat/completions", "key",
-            "https://cdn.dli.learn.nvidia.com", "dli-cfx11-web", False,
+            "https://cdn.dli.learn.nvidia.com", "dli-nemoclaw-web", False,
         )
         request = model_open.call_args.args[0]
         headers = {name.lower(): value for name, value in request.header_items()}
         self.assertTrue(result["ok"])
         self.assertEqual("https://cdn.dli.learn.nvidia.com", headers["origin"])
-        self.assertEqual("dli-cfx11-web", headers["x-billing-invoke-origin"])
+        self.assertEqual("dli-nemoclaw-web", headers["x-billing-invoke-origin"])
 
     @patch("scripts.ci.live_interface_review.MODEL_OPENER.open")
     def test_model_probe_rejects_a_response_without_browser_cors(self, model_open) -> None:
