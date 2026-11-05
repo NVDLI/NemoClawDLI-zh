@@ -11,9 +11,8 @@
 
 ---
 
-> **这是 NeMoClaw DLI 课程的中文版本**，维护地址为
-> [`DLI / expand-the-funnel / NeMoClawDLI-zh`](https://gitlab-master.nvidia.com/dli/expand-the-funnel/nemoclawdli-zh)。
-> 本分支针对 **non-Brev 本地部署（WSL2 + Docker 和 DGX Spark Station）** 进行了适配，并提供简体中文课程内容。
+> **这是 NeMoClaw DLI 课程的中文版本**。
+> 本仓库针对 **non-Brev 本地部署（WSL2 + Docker 和 DGX Spark Station）** 进行了适配，并提供简体中文课程内容。
 > 英文上游源码请参阅
 > [`NVDLI/NemoClawDLI`](https://github.com/NVDLI/NemoClawDLI)。
 
