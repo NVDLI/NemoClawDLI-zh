@@ -113,7 +113,7 @@ export NVAPI_KEY="nvapi-..."
 
 ### 原始的基于构建的本地运行方式
 
-上游仓库支持基于构建的本地运行（无需 Docker），可以使用静态构建方式在本地运行（无需 Docker），适用于不需要 Brev Launchable 的页面。
+上游仓库支持基于构建的本地运行（无需 Docker），适用于不需要 Brev Launchable 的页面。
 请安装 Python 3.11+、Node.js 20+、pnpm 和 Chromium，然后运行：
 
 ```bash
