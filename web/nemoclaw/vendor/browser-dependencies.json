@@ -593,6 +593,58 @@
           "line": 9
         },
         {
+          "source": "i18n/zh/web/nemoclaw/01a-loop.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/01b-react.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/01c-tools.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02a-routing.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02b-rag.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02c-deep.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03a-kickstart.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03b-openclaw.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03c-always-on.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04a-safety.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04b-modern-clis.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04c-going-further.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/glossary.html",
+          "line": 9
+        },
+        {
           "source": "web/nemoclaw/01a-loop.html",
           "line": 9
         },
@@ -761,6 +813,58 @@
         },
         {
           "source": "i18n/pt/web/nemoclaw/04c-going-further.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/01a-loop.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/01b-react.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/01c-tools.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02a-routing.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02b-rag.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02c-deep.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03a-kickstart.html",
+          "line": 12
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03b-openclaw.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03c-always-on.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04a-safety.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04b-modern-clis.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04c-going-further.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/glossary.html",
           "line": 11
         },
         {
@@ -935,6 +1039,58 @@
           "line": 14
         },
         {
+          "source": "i18n/zh/web/nemoclaw/01a-loop.html",
+          "line": 14
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/01b-react.html",
+          "line": 14
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/01c-tools.html",
+          "line": 14
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02a-routing.html",
+          "line": 14
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02b-rag.html",
+          "line": 14
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02c-deep.html",
+          "line": 14
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03a-kickstart.html",
+          "line": 15
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03b-openclaw.html",
+          "line": 14
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03c-always-on.html",
+          "line": 14
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04a-safety.html",
+          "line": 14
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04b-modern-clis.html",
+          "line": 14
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04c-going-further.html",
+          "line": 14
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/glossary.html",
+          "line": 14
+        },
+        {
           "source": "web/nemoclaw/01a-loop.html",
           "line": 14
         },
@@ -1103,6 +1259,58 @@
         },
         {
           "source": "i18n/pt/web/nemoclaw/04c-going-further.html",
+          "line": 15
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/01a-loop.html",
+          "line": 15
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/01b-react.html",
+          "line": 15
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/01c-tools.html",
+          "line": 15
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02a-routing.html",
+          "line": 15
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02b-rag.html",
+          "line": 15
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02c-deep.html",
+          "line": 15
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03a-kickstart.html",
+          "line": 16
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03b-openclaw.html",
+          "line": 15
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03c-always-on.html",
+          "line": 15
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04a-safety.html",
+          "line": 15
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04b-modern-clis.html",
+          "line": 15
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04c-going-further.html",
+          "line": 15
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/glossary.html",
           "line": 15
         },
         {
@@ -1277,6 +1485,58 @@
           "line": 13
         },
         {
+          "source": "i18n/zh/web/nemoclaw/01a-loop.html",
+          "line": 13
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/01b-react.html",
+          "line": 13
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/01c-tools.html",
+          "line": 13
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02a-routing.html",
+          "line": 13
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02b-rag.html",
+          "line": 13
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02c-deep.html",
+          "line": 13
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03a-kickstart.html",
+          "line": 14
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03b-openclaw.html",
+          "line": 13
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03c-always-on.html",
+          "line": 13
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04a-safety.html",
+          "line": 13
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04b-modern-clis.html",
+          "line": 13
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04c-going-further.html",
+          "line": 13
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/glossary.html",
+          "line": 13
+        },
+        {
           "source": "web/nemoclaw/01a-loop.html",
           "line": 13
         },
@@ -1445,6 +1705,58 @@
         },
         {
           "source": "i18n/pt/web/nemoclaw/04c-going-further.html",
+          "line": 16
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/01a-loop.html",
+          "line": 16
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/01b-react.html",
+          "line": 16
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/01c-tools.html",
+          "line": 16
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02a-routing.html",
+          "line": 16
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02b-rag.html",
+          "line": 16
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02c-deep.html",
+          "line": 16
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03a-kickstart.html",
+          "line": 17
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03b-openclaw.html",
+          "line": 16
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03c-always-on.html",
+          "line": 16
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04a-safety.html",
+          "line": 16
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04b-modern-clis.html",
+          "line": 16
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04c-going-further.html",
+          "line": 16
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/glossary.html",
           "line": 16
         },
         {
@@ -1619,6 +1931,58 @@
           "line": 12
         },
         {
+          "source": "i18n/zh/web/nemoclaw/01a-loop.html",
+          "line": 12
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/01b-react.html",
+          "line": 12
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/01c-tools.html",
+          "line": 12
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02a-routing.html",
+          "line": 12
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02b-rag.html",
+          "line": 12
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02c-deep.html",
+          "line": 12
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03a-kickstart.html",
+          "line": 13
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03b-openclaw.html",
+          "line": 12
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03c-always-on.html",
+          "line": 12
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04a-safety.html",
+          "line": 12
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04b-modern-clis.html",
+          "line": 12
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04c-going-further.html",
+          "line": 12
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/glossary.html",
+          "line": 12
+        },
+        {
           "source": "web/nemoclaw/01a-loop.html",
           "line": 12
         },
@@ -1790,6 +2154,58 @@
           "line": 10
         },
         {
+          "source": "i18n/zh/web/nemoclaw/01a-loop.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/01b-react.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/01c-tools.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02a-routing.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02b-rag.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02c-deep.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03a-kickstart.html",
+          "line": 11
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03b-openclaw.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03c-always-on.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04a-safety.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04b-modern-clis.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04c-going-further.html",
+          "line": 10
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/glossary.html",
+          "line": 10
+        },
+        {
           "source": "web/nemoclaw/01a-loop.html",
           "line": 10
         },
@@ -1958,6 +2374,58 @@
         },
         {
           "source": "i18n/pt/web/nemoclaw/04c-going-further.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/01a-loop.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/01b-react.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/01c-tools.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02a-routing.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02b-rag.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02c-deep.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03a-kickstart.html",
+          "line": 9
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03b-openclaw.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/03c-always-on.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04a-safety.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04b-modern-clis.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/04c-going-further.html",
+          "line": 8
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/glossary.html",
           "line": 8
         },
         {
@@ -2136,6 +2604,22 @@
         {
           "source": "i18n/pt/web/nemoclaw/02c-deep.html",
           "line": 568
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/01b-react.html",
+          "line": 380
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02c-deep.html",
+          "line": 413
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02c-deep.html",
+          "line": 467
+        },
+        {
+          "source": "i18n/zh/web/nemoclaw/02c-deep.html",
+          "line": 566
         },
         {
           "source": "web/nemoclaw/01b-react.html",
