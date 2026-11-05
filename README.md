@@ -111,9 +111,9 @@ export NVAPI_KEY="nvapi-..."
 并通过健康检查确认整条链路正常。然后前往 `http://localhost:8081/zh/nemoclaw/01a-loop.html`，
 按以下顺序完成各页面：01a、01b、01c、02a……03a、03b、03c、04a、04b、04c。
 
-### 本仓库的静态构建方式
+### 原始的基于构建的本地运行方式
 
-对于不需要 launchable 的页面，也可以使用静态构建方式在本地运行（无需 Docker）。
+上游仓库支持基于构建的本地运行（无需 Docker），可以使用静态构建方式在本地运行（无需 Docker），适用于不需要 Brev Launchable 的页面。
 请安装 Python 3.11+、Node.js 20+、pnpm 和 Chromium，然后运行：
 
 ```bash
