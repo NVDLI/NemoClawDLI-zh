@@ -1,6 +1,6 @@
 {
   "schema": "pyodide-candidate-components/1.0",
-  "status": "mixed-runtime-fetch-and-course-wheel-distribution",
+  "status": "runtime-fetch-only",
   "review_state": "human-approval-required",
   "reviewed_snapshot_sha256": "1638e8cb22b67c8c62a2052864de8e91e87c0487fe47a0c69fb64d28b7694944",
   "purpose": "Exact inventory for the repository's browser-Python demonstration. The cookbook page fetches its pinned runtime at read time; no Python wheels are copied into or shipped from this repository.",
@@ -33,93 +33,36 @@
   "profiles": {
     "acquisition": {
       "description": "Download helper considered for a future asset-preparation tool. It would run only while preparing browser files and would not be included in the learner course.",
-      "components": [
-        "ws"
-      ]
+      "components": ["ws"]
     },
     "core": {
       "description": "Python runtime and standard library used by the separate repository demonstration. The browser fetches them from a pinned CDN only after a reader selects Run; they are not included in the learner course.",
-      "components": [
-        "pyodide",
-        "cpython-standard-library"
-      ]
+      "components": ["pyodide", "cpython-standard-library"]
     },
     "network": {
       "description": "Exact packages reviewed for the standalone cookbook's possible browser-Python HTTPS and OpenAI-compatible API activities.",
-      "root_packages": [
-        "requests",
-        "pyodide-http",
-        "openai"
-      ],
+      "root_packages": ["requests", "pyodide-http", "openai"],
       "components": [
-        "annotated-types",
-        "anyio",
-        "certifi",
-        "charset-normalizer",
-        "distro",
-        "httpx",
-        "idna",
-        "jiter",
-        "openai",
-        "openssl",
-        "pydantic",
-        "pydantic-core",
-        "pyodide-http",
-        "requests",
-        "sniffio",
-        "ssl",
-        "typing-extensions",
-        "urllib3"
+        "annotated-types", "anyio", "certifi", "charset-normalizer", "distro", "httpx", "idna",
+        "jiter", "openai", "openssl", "pydantic", "pydantic-core", "pyodide-http", "requests",
+        "sniffio", "ssl", "typing-extensions", "urllib3"
       ]
     }
   },
   "core_assets": [
-    {
-      "file": "pyodide.mjs",
-      "sha256": "0fa23651a5b10f3df1afe43fefba3c4edcfd21128ad69bd29fd3702a9a8f441a"
-    },
-    {
-      "file": "pyodide.asm.js",
-      "sha256": "6b4c90de5b7172873f04f21884d0e9d2274e305fe32116558fe3e4fbe3618d51"
-    },
-    {
-      "file": "pyodide.asm.wasm",
-      "sha256": "a50dd1843f805a0b7c45b61037ee0d7b26dfe85efe0e18ef95a34ad24e401f5f"
-    },
-    {
-      "file": "python_stdlib.zip",
-      "sha256": "16611534726e5d8ac2bd8f926410b2dcb8d6f49aa24913463533b457a2115c16"
-    },
-    {
-      "file": "pyodide-lock.json",
-      "sha256": "9c45b916001a750f4102fc287494f3eab215909c7535c626a20db80fd6333e2c"
-    }
+    {"file": "pyodide.mjs", "sha256": "0fa23651a5b10f3df1afe43fefba3c4edcfd21128ad69bd29fd3702a9a8f441a"},
+    {"file": "pyodide.asm.js", "sha256": "6b4c90de5b7172873f04f21884d0e9d2274e305fe32116558fe3e4fbe3618d51"},
+    {"file": "pyodide.asm.wasm", "sha256": "a50dd1843f805a0b7c45b61037ee0d7b26dfe85efe0e18ef95a34ad24e401f5f"},
+    {"file": "python_stdlib.zip", "sha256": "16611534726e5d8ac2bd8f926410b2dcb8d6f49aa24913463533b457a2115c16"},
+    {"file": "pyodide-lock.json", "sha256": "9c45b916001a750f4102fc287494f3eab215909c7535c626a20db80fd6333e2c"}
   ],
   "live_core_assets": [
-    {
-      "file": "pyodide.js",
-      "sha256": "b4cb23a53aba19c221659b9fb40a2f18281d685691dc06647fb0afd0681baf98"
-    },
-    {
-      "file": "pyodide.mjs",
-      "sha256": "04c052c815abb0bf2981fa38c2dfa58e3120ee5288c956df2b2a15e301782c5f"
-    },
-    {
-      "file": "pyodide.asm.js",
-      "sha256": "6b4c90de5b7172873f04f21884d0e9d2274e305fe32116558fe3e4fbe3618d51"
-    },
-    {
-      "file": "pyodide.asm.wasm",
-      "sha256": "a50dd1843f805a0b7c45b61037ee0d7b26dfe85efe0e18ef95a34ad24e401f5f"
-    },
-    {
-      "file": "python_stdlib.zip",
-      "sha256": "16611534726e5d8ac2bd8f926410b2dcb8d6f49aa24913463533b457a2115c16"
-    },
-    {
-      "file": "pyodide-lock.json",
-      "sha256": "9c45b916001a750f4102fc287494f3eab215909c7535c626a20db80fd6333e2c"
-    }
+    {"file": "pyodide.js", "sha256": "b4cb23a53aba19c221659b9fb40a2f18281d685691dc06647fb0afd0681baf98"},
+    {"file": "pyodide.mjs", "sha256": "04c052c815abb0bf2981fa38c2dfa58e3120ee5288c956df2b2a15e301782c5f"},
+    {"file": "pyodide.asm.js", "sha256": "6b4c90de5b7172873f04f21884d0e9d2274e305fe32116558fe3e4fbe3618d51"},
+    {"file": "pyodide.asm.wasm", "sha256": "a50dd1843f805a0b7c45b61037ee0d7b26dfe85efe0e18ef95a34ad24e401f5f"},
+    {"file": "python_stdlib.zip", "sha256": "16611534726e5d8ac2bd8f926410b2dcb8d6f49aa24913463533b457a2115c16"},
+    {"file": "pyodide-lock.json", "sha256": "9c45b916001a750f4102fc287494f3eab215909c7535c626a20db80fd6333e2c"}
   ],
   "components": [
     {

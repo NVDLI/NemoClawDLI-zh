@@ -197,8 +197,8 @@ def audit(
     # The status fields prevent design evidence from being mistaken for approval.
     if data.get("schema") != "pyodide-candidate-components/1.0":
         findings.append("Pyodide candidate inventory schema is missing or unsupported")
-    if data.get("status") != "mixed-runtime-fetch-and-course-wheel-distribution":
-        findings.append("Pyodide inventory no longer states its runtime-fetch and repository-copy boundary")
+    if data.get("status") != "runtime-fetch-only":
+        findings.append("Pyodide inventory no longer states its runtime-fetch-only boundary")
     if data.get("review_state") != "human-approval-required":
         findings.append("Pyodide candidate inventory overstates or omits human review ownership")
 
@@ -523,8 +523,8 @@ def self_test() -> list[str]:
     cases.append(("runtime artifact", base, blueprint, skill, ["web/nemoclaw/pyodide.asm.wasm"], {}, implementation, use_cases))
     cases.append(("runtime loader", base, blueprint, skill, [], {"web/nemoclaw/example.js": "loadPyodide({})"}, implementation, use_cases))
     changed = copy.deepcopy(base)
-    changed["course_candidate"]["direct_packages"].append("unreviewed-package")
-    cases.append(("undeclared direct course package", changed, blueprint, skill, [], {}, implementation, use_cases))
+    changed["course_candidate"] = {"entrypoint": "web/example/runtime/worker.js"}
+    cases.append(("reappearing course candidate", changed, blueprint, skill, [], {}, implementation, use_cases))
     changed = copy.deepcopy(base)
     changed["review_state"] = "approved"
     cases.append(("approval overclaim", changed, blueprint, skill, [], {}, implementation, use_cases))
