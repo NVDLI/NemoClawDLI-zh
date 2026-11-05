@@ -1317,8 +1317,8 @@
         "ship"
       ],
       "order": {
-        "fast": 59,
-        "ship": 88
+        "fast": 57,
+        "ship": 85
       },
       "mode": "current-tree",
       "argv": [
@@ -1333,7 +1333,7 @@
         "fast"
       ],
       "order": {
-        "fast": 61
+        "fast": 59
       },
       "mode": "current-tree",
       "argv": [
@@ -2033,7 +2033,7 @@
         "ship"
       ],
       "order": {
-        "ship": 90
+        "ship": 87
       },
       "mode": "current-tree",
       "argv": [
@@ -2056,7 +2056,7 @@
         "ship"
       ],
       "order": {
-        "ship": 87
+        "ship": 84
       },
       "mode": "current-tree",
       "argv": [
@@ -2077,8 +2077,8 @@
         "ship"
       ],
       "order": {
-        "fast": 60,
-        "ship": 89
+        "fast": 58,
+        "ship": 86
       },
       "mode": "mutation",
       "argv": [
