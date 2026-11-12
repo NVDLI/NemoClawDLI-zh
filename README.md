@@ -16,11 +16,6 @@
 > 英文上游源码请参阅
 > [`NVDLI/NemoClawDLI`](https://github.com/NVDLI/NemoClawDLI)。
 
-计划发布的公共主页为
-[`NVDLI/NemoClawDLI-zh`](https://github.com/NVDLI/NemoClawDLI-zh)。发布仍需获得 OSRB 批准。
-当前发布状态以机器可读文件 [`RELEASE_STATUS.json`](RELEASE_STATUS.json) 为准。仓库检查通过并不能替代
-NVIDIA 的法律、安全或发布审批。
-
 ## 课程简介
 
 智能体将模型连接到工具和记忆，再通过路由决策持续运行，直至完成任务。本课程将从零开始构建这样的系统，
