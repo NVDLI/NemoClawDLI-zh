@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>NVIDIA DLI · 使用 OpenShell 和 NemoClaw 构建安全智能体</title>
+<link rel="stylesheet" href="styles/_style.css"/>
+<style>
+  :root {
+    --g:#76b900; --gd:#4a7a00; --gs:#aee23a;
+    --bg:#0d0d0d; --e1:#161616; --e2:#1e1e1e; --e3:#2a2a2a;
+    --tx:#f2f2f2; --td:#b0b0b0; --tf:#8a8a8a;
+    --mono:ui-monospace,"SF Mono",Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  }
+  /* Light theme: <html data-theme="light"> flips the palette (mirrors _lite_overlay.css). The
+     bundler injects the pre-paint init that sets data-theme; _shared.js mounts the toggle. */
+  :root[data-theme="light"] {
+    --g:#3f6900; --gd:#2f5500; --gs:#3f6900;
+    --bg:#ffffff; --e1:#f6f8fa; --e2:#eef1f4; --e3:#e1e6eb;
+    --tx:#1a1a1a; --td:#3b3b3b; --tf:#4b5563;
+  }
+  :root[data-theme="light"] body { background: var(--bg); color: var(--tx); }
+  :root[data-theme="light"] .howto .n,:root[data-theme="light"] .start-row a.primary{color:#fff}
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--tx);
+               font-family: var(--sans); font-size: 15px; line-height: 1.55; }
+  a { color: var(--g); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code { font-family: var(--mono); font-size: .9em; background: var(--e2);
+         padding: 1px 6px; border-radius: 4px; color: var(--gs); }
+
+  /* Topbar (.topbar / .navpill / .key-pill / theme toggle) and <main> come from _style.css now,
+     matching the course pages exactly; only the landing-specific blocks below stay local. */
+
+  .hero { margin: .8em 0 1.8em; }
+  .hero .eyebrow { font-family: var(--mono); font-size: .72rem; color: var(--gs);
+                   text-transform: uppercase; letter-spacing: .12em; margin-bottom: .6em; }
+  .hero h1 { font-size: 2.5rem; font-weight: 700; line-height: 1.1; margin: 0 0 .4em; letter-spacing: -0.01em; }
+  .hero h1 .accent { color: var(--g); }
+  .hero p.lead { font-size: 1.06rem; color: var(--td); }
+
+  .howto { display:flex; flex-wrap:wrap; gap:10px 26px; margin:0 0 1.8em;
+           padding:14px 18px; background:var(--e1); border:1px solid var(--e3);
+           border-radius:10px; font-size:.9rem; color:var(--td); }
+  .howto .step { display:flex; align-items:baseline; gap:9px; flex:1; min-width:240px; }
+  .howto .n { font-family:var(--mono); color:#000; background:var(--g);
+              border-radius:999px; width:20px; height:20px; display:inline-flex;
+              align-items:center; justify-content:center; font-size:.72rem;
+              font-weight:700; flex:none; transform:translateY(3px); }
+  .howto b { color:var(--tx); font-weight:600; }
+
+  .section { margin: 2.4em 0 1em; }
+  .section > h2 { font-size: 1.2rem; color: var(--tx); border-bottom: 1px solid var(--e3);
+                  padding-bottom: .35em; margin-bottom: .4em; }
+  .section .help { font-size: .92rem; color: var(--td); margin: .5em 0 1.1em; }
+
+  /* Key panel is rendered by mountKeyPanel and styled by _style.css (.key-panel / .btn / .status). */
+
+  /* ── Module map ────────────────────────────────────────────────────── */
+  .module-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 1.2em 0; }
+  @media (max-width: 760px) { .module-grid { grid-template-columns: 1fr; } }
+  /* The card body (.mc-main) is one real link to the module's first page; the
+     per-page links are a SIBLING row below it. There is no nested <a> (which splits
+     in HTML) and no stretched-link guesswork. The whole body click target is a
+     genuine <a>. */
+  .module-card { background: var(--e1); border: 1px solid var(--e3); border-radius: 10px;
+                 overflow: hidden; transition: border-color .15s, transform .15s; }
+  .module-card:hover { border-color: var(--g); transform: translateY(-2px); }
+  .module-card .mc-main { display: block; padding: 18px 20px 12px; text-decoration: none; }
+  .module-card:hover .mc-main { background: rgba(118,185,0,.04); }
+  .module-card .num { font-family: var(--mono); font-size: .72rem; color: var(--tf);
+                      letter-spacing: .06em; text-transform: uppercase; }
+  .module-card h3 { font-size: 1.05rem; color: var(--gs); margin: .25em 0 .35em; }
+  .module-card:hover h3 { text-decoration: underline; }
+  .module-card p { font-size: .88rem; color: var(--td); margin: 0; line-height: 1.55; }
+  .module-card .pages { padding: 0 20px 15px; font-family: var(--mono);
+                        font-size: .72rem; color: var(--tf); }
+  .module-card .pages a { color: var(--td); }
+  .module-card .pages a:hover { color: var(--gs); }
+
+  .start-row { display: flex; gap: 12px; flex-wrap: wrap; margin: .4em 0 0; }
+  .start-row a { display: inline-flex; align-items: center; gap: 7px;
+                 padding: 11px 22px; border-radius: 8px; font-weight: 700; font-size: .92rem; }
+  .start-row a.primary { background: var(--g); color: #000; }
+  .start-row a.primary:hover { background: var(--gs); text-decoration: none; }
+  .start-row a.ghost { background: var(--e2); border: 1px solid var(--e3); color: var(--td); }
+  .start-row a.ghost:hover { border-color: var(--g); color: var(--gs); text-decoration: none; }
+
+  /* ── What this runs on ─────────────────────────────────────────────── */
+  .sys-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 1.1em 0; }
+  @media (max-width: 780px) { .sys-grid { grid-template-columns: 1fr; } }
+  .sys-card { background: var(--e1); border: 1px solid var(--e3); border-radius: 8px;
+              padding: 15px 17px; text-decoration: none; display: block;
+              transition: border-color .12s, background .12s; }
+  .sys-card:hover { border-color: var(--g); background: rgba(118,185,0,.04); text-decoration: none; }
+  .sys-card .sys-label { font-family: var(--mono); font-size: .7rem; text-transform: uppercase;
+                         letter-spacing: .1em; color: var(--tf); margin-bottom: .35em; }
+  .sys-card .sys-name { font-weight: 700; font-size: .95rem; color: var(--gs); margin: 0 0 .35em; }
+  .sys-card .sys-desc { font-size: .85rem; color: var(--td); line-height: 1.5; }
+
+  .callout { border: 1px solid var(--e3); background: rgba(118,185,0,.07);
+             padding: 12px 18px; border-radius: 8px; margin: 1.4em 0;
+             font-size: .92rem; color: var(--td); }
+  .callout strong { color: var(--gs); }
+
+  footer { margin-top: 4em; padding-top: 1.6em; border-top: 1px solid var(--e3);
+           color: var(--tf); font-size: .82rem; }
+  footer a { color: var(--td); }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="logo" href="index.html">NVIDIA · 安全智能体</a>
+  <nav id="nav"></nav>
+  <div class="spacer"></div>
+  <span class="key-pill" id="key-status" onclick="document.getElementById('setup').scrollIntoView({behavior:'smooth'})">…</span>
+</div>
+
+<main>
+  <div class="hero">
+    <div class="eyebrow">课程主页</div>
+    <h1 id="course-title">使用 <span class="accent">OpenShell</span> 和 <span class="accent">NemoClaw</span> 构建安全智能体</h1>
+    <h2>摘要</h2>
+    <p class="lead" id="course-abstract">
+      现代智能体无处不在，其概念并不复杂：将模型连接到工具和记忆，再通过路由决策持续运行，直至完成任务。本课程将从零开始构建这样的系统，随后把这些理念与软件工程师和非技术用户都在使用的现代框架联系起来。您将从一次 API 调用起步，逐步学习智能体协作、有依据的检索、深度规划，以及如何使用 NVIDIA OpenClaw 和 NemoClaw™ 进行安全部署。
+    </p>
+  </div>
+
+  <div class="howto">
+    <div class="step"><span class="n">1</span><span>在下方<b>确认模型路由</b>。聊天和嵌入路由默认使用 <a href="https://build.nvidia.com/?ncid=ref-dli-146986" target="_blank" rel="noopener"><code>build.nvidia.com</code></a>。当服务容量受限时，请使用演示者提供的 Brev 聊天 API 入口完成一次设置；独立的嵌入路由保持不变。只有使用默认聊天 API 入口时才启用 iframe 模式。</span></div>
+    <div class="step"><span class="n">2</span><span>按照默认路径依次<b>学习各模块</b>，也可以直接跳转到您需要完成的任务。每个页面最后都会提供一个可直接运行的交互页面，其 JavaScript 代码也可供查看和修改。</span></div>
+    <div class="step"><span class="n">3</span><span>对于模块 3 至 4 中的<b>智能体技术栈</b>，请在课程提示时创建 NemoClaw launchable。它按照 <a href="https://github.com/NVIDIA/NemoClaw" target="_blank" rel="noopener">NemoClaw Blueprint</a> 的定义，在 <a href="https://github.com/NVIDIA/OpenShell" target="_blank" rel="noopener">OpenShell</a> 中托管 <a href="https://github.com/openclaw/openclaw" target="_blank" rel="noopener">OpenClaw</a> 技术栈。课程服务栈在 CPU 上运行并使用托管模型 API 入口，因此这些练习不要求学习者自行管理 GPU。</span></div>
+  </div>
+
+  <div class="section" id="learning-objectives">
+    <h2>学习目标</h2>
+    <p class="help" id="learning-objectives-intro">完成本课程后，学员将能够：</p>
+    <ul>
+      <li id="learning-objective-1">构建基本的智能体循环，并识别其核心组件。</li>
+      <li id="learning-objective-2">在智能体系统中实现可靠的工具使用和函数调用。</li>
+      <li id="learning-objective-3">使用结构化路由模式设计和协调多智能体系统。</li>
+      <li id="learning-objective-4">开发自动化评估工作流，以衡量智能体的性能和可靠性。</li>
+      <li id="learning-objective-5">使用 OpenShell 配置智能体身份，并确保智能体在沙箱中安全运行。</li>
+      <li id="learning-objective-6">部署和管理自主智能体，同时构建持久化技能库。</li>
+    </ul>
+  </div>
+
+  <!-- ── Key setup ─────────────────────────────────────────────────────── -->
+  <div class="section" id="setup">
+    <h2>输入 API Key</h2>
+    <p class="help">
+      浏览器会将聊天和嵌入路由保存在 <code>localStorage</code> 中，因此一次设置即可应用于所有课程页面和标签页。浏览器只会将保存的密钥发送到其对应的 API 入口。只有演示者提供自定义聊天 API 入口时，才应在此处进行设置。Brev 聊天路由需要通过公共 HTTPS 隧道开放 <code>5000</code> 端口；私有隧道无法接收来自课程页面的跨源请求。课程页面既无法访问 Jupyter <code>/lab</code> URL，也无法访问 <code>localhost:5000</code>。托管 CORS 中继仅用于默认 API 入口下的 LMS/静态 iframe 模式。
+    </p>
+    <div id="key-panel"></div>
+  </div>
+
+  <!-- ── Module map ────────────────────────────────────────────────────── -->
+  <div class="section">
+    <h2>探索课程内容</h2>
+    <p class="help">
+      可以按照模块顺序逐步学习；每个页面也可以独立使用。学习完整路径时，每个模块都能复用前一模块的成果&mdash;浏览器托管的循环会演变为范围明确的工作流，该工作流随后迁移到持久化智能体运行时中，而运行时不断扩大的权限范围则促使您采用操作系统边界对其进行约束。您也可以直接从所需任务开始。每个页面最后都会提供一个可直接运行的交互页面，相关代码也始终可供查看。可以在浏览器中修改示例、自行托管，或将此代码库作为上下文交给 coding agent，以便在本地部署或应用。
+    </p>
+
+    <div class="module-grid">
+      <div class="module-card">
+        <a class="mc-main" href="./01a-loop.html">
+          <div class="num">模块 1 · 约 1 小时 · 3 个页面</div>
+          <h3>智能体基础 · 循环 · ReAct · 工具</h3>
+          <p>构建最精简的智能体循环，加入 ReAct 推理，并将普通函数转换为模型可请求的工具调用。</p>
+        </a>
+        <div class="pages">
+          <a href="./01a-loop.html">1a 循环</a> ·
+          <a href="./01b-react.html">1b ReAct</a> ·
+          <a href="./01c-tools.html">1c 工具</a>
+        </div>
+      </div>
+      <div class="module-card">
+        <a class="mc-main" href="./02a-routing.html">
+          <div class="num">模块 2 · 约 1 小时 · 3 个页面</div>
+          <h3>高级模式 · 工作流 · RAG · 深度智能体</h3>
+          <p>跨调用路由任务，将课程资料作为工具进行检索，并使用可创建子智能体的规划器。</p>
+        </a>
+        <div class="pages">
+          <a href="./02a-routing.html">2a 工作流</a> ·
+          <a href="./02b-rag.html">2b RAG</a> ·
+          <a href="./02c-deep.html">2c 深度智能体</a>
+        </div>
+      </div>
+      <div class="module-card live">
+        <a class="mc-main" href="./03a-kickstart.html">
+          <div class="num">模块 3 · 约 1 小时 · 3 个页面</div>
+          <h3>NemoClaw 设置 · OpenClaw · 持续运行</h3>
+          <p>连接可启动的 NemoClaw 实例。探索 OpenShell 内部的 OpenClaw 网关、工作区、技能和定时运行功能。</p>
+        </a>
+        <div class="pages">
+          <a href="./03a-kickstart.html">3a 快速入门</a> ·
+          <a href="./03b-openclaw.html">3b OpenClaw</a> ·
+          <a href="./03c-always-on.html">3c 持续运行</a>
+        </div>
+      </div>
+      <div class="module-card live">
+        <a class="mc-main" href="./04a-safety.html">
+          <div class="num">模块 4 · 约 1 小时 · 3 页</div>
+          <h3>OpenShell 安全 · 现代 CLI · 深入探索</h3>
+          <p>从 OpenClaw 行为转向 NemoClaw 在其外围构建的 OpenShell 策略边界，然后比较现代 CLI 智能体和当前的安全模式。</p>
+        </a>
+        <div class="pages">
+          <a href="./04a-safety.html">4a OpenShell</a> ·
+          <a href="./04b-modern-clis.html">4b 现代 CLI</a> ·
+          <a href="./04c-going-further.html">4c 进阶探索</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── What this runs on ─────────────────────────────────────────────── -->
+  <div class="section">
+    <h2>本课程的运行基础</h2>
+    <p class="help">
+      每个练习都会从浏览器访问三个自包含系统之一。单个标签页就是完整环境，因此无需配置 DLI 实验环境和常规的本地工具链。
+    </p>
+    <div class="sys-grid">
+      <a class="sys-card models" href="https://build.nvidia.com/?ncid=ref-dli-146986" target="_blank" rel="noopener">
+        <div class="sys-label">模型</div>
+        <div class="sys-name">build.nvidia.com</div>
+        <div class="sys-desc">NVIDIA 托管、兼容 OpenAI 的 Nemotron 模型，通过托管的 Cloudflare 代理访问。您只需提供 <code>nvapi-</code> 密钥，代理会将其保留在服务器端。</div>
+      </a>
+      <a class="sys-card search" href="./glossary.html">
+        <div class="sys-label">搜索</div>
+        <div class="sys-name">资料目录</div>
+        <div class="sys-desc">webSearch 会对课程随附的所有内容进行排序，其中包括缓存的 NVIDIA 术语表，以及按需获取的论文和文章。当查询中包含某个术语名称时，instantAnswer 会返回对应的术语定义。打开浏览器即可查看所有资料、资料层级、实时 API，以及智能体执行的搜索。</div>
+      </a>
+      <a class="sys-card runtime" href="https://brev.nvidia.com/launchable/deploy?launchableID=env-3Azt0aYgVNFEuz7opyx3gscmowS&amp;ncid=ref-dli-759990" target="_blank" rel="noopener">
+        <div class="sys-label">智能体技术栈</div>
+        <div class="sys-name">Brev 上的 NemoClaw launchable</div>
+        <div class="sys-desc">
+          这是本次研讨会使用的沙箱化智能体技术栈。OpenClaw 用作智能体运行框架，OpenShell 提供 sandbox，NemoClaw 则是将二者组织成参考部署的 Blueprint。默认情况下，此技术栈部署在 Brev launchable 上；您也可以在本地部署，并相应修改代码。
+        </div>
+      </a>
+    </div>
+  </div>
+
+
+  <div class="callout">
+    <strong>本课程自包含</strong>，并且完全在 GitHub Pages 中运行。准备一个 <code>nvapi-</code> 密钥，按顺序完成四个模块，然后进入最后一页<a href="./04c-going-further.html">深入探索</a>。
+  </div>
+
+  <footer>
+    <p>
+      在<a href="dependencies.html">浏览器依赖项清单</a>中查看随课程发布的所有浏览器软件包、许可证和制品哈希值。
+    </p>
+  </footer>
+</main>
+
+<script type="module">
+import { buildNav, updateKeyPill, mountKeyPanel } from "./scripts/_shared.js";
+const nav = document.getElementById("nav");
+if (nav) nav.innerHTML = buildNav("index.html");
+const pill = document.getElementById("key-status");
+updateKeyPill(pill);
+// Reuse the course key panel so landing-page state stays consistent.
+mountKeyPanel(document.getElementById("key-panel"), { onSave: () => updateKeyPill(pill), onClear: () => updateKeyPill(pill) });
+</script>
+</body>
+</html>

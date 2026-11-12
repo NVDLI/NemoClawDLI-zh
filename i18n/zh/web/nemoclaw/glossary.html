@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>web_search 背后的资料目录 · 安全智能体</title>
+<link rel="stylesheet" href="styles/_style.css"/>
+<script src="vendor/highlight-11.10.0.min.js"></script>
+<link rel="stylesheet" href="vendor/codemirror-5.65.21.css"/>
+<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.css"/>
+<script src="vendor/codemirror-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-xml-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-javascript-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-css-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-htmlmixed-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-python-5.65.21.js"></script>
+<style>
+  /* Page-specific bits only. The canvas flow, diagram, callouts, and code all come from
+     _style.css and theme with the dark/light toggle; these few rules use theme vars too. */
+  main { max-width: min(74rem, 100%); margin: 0 auto; padding: clamp(1.5rem,4vw,2.5rem) clamp(1rem,4vw,2rem) 90px; }
+  .gx-eyebrow { font-family: var(--mono); font-size: .72rem; color: var(--gs); text-transform: uppercase; letter-spacing: .12em; margin-bottom: .6em; }
+  .gx-hero h1 { font-size: 2.1rem; line-height: 1.12; margin: 0 0 .35em; }
+  .gx-hero h1 code { font-size: .78em; background: var(--e2); padding: 2px 10px; border-radius: 6px; color: var(--gs); }
+  .gx-lead { font-size: 1.05rem; color: var(--td); line-height: 1.65; }
+  section { margin: 2.6em 0; }
+  .gx-stat { font-family: var(--mono); color: var(--gs); }
+  .gx-filter { width: 100%; padding: 11px 14px; font-size: .95rem; background: var(--e2); border: 1px solid var(--bd); border-radius: 8px; color: var(--tx); font-family: var(--mono); outline: none; margin: 4px 0 12px; }
+  .gx-filter:focus { border-color: var(--g); }
+  .gx-tiers { display: flex; flex-wrap: wrap; gap: 14px; margin: 1.2em 0; }
+  .gx-tier { flex: 1 1 280px; background: var(--e1); border: 1px solid var(--bd); border-radius: 10px; padding: 14px 16px; }
+  .gx-tier h3 { margin: 0 0 .3em; font-size: .98rem; }
+  .gx-tier p { margin: .2em 0 0; font-size: .86rem; color: var(--td); line-height: 1.55; }
+  table.gx-data { width: 100%; border-collapse: collapse; font-size: .84rem; }
+  table.gx-data th { text-align: left; color: var(--tf); font-family: var(--mono); font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; padding: 6px 10px; border-bottom: 1px solid var(--e3); position: sticky; top: 0; background: var(--bg); }
+  table.gx-data td { padding: 8px 10px; border-bottom: 1px solid var(--e3); color: var(--td); vertical-align: top; }
+  table.gx-data td.term { color: var(--tx); font-weight: 600; }
+  table.gx-data td.term a { color: var(--tx); }
+  .gx-tag { font-family: var(--mono); font-size: .72rem; background: var(--e3); color: var(--td); padding: 1px 7px; border-radius: 999px; }
+  .gx-badge { font-family: var(--mono); font-size: .64rem; border-radius: 999px; padding: 1px 7px; white-space: nowrap; }
+  .gx-badge.cached { color: var(--gs); border: 1px solid var(--gd); }
+  .gx-badge.on_demand { color: var(--tf); border: 1px solid var(--e3); }
+  .gx-deep { font-family: var(--mono); font-size: .62rem; color: var(--gs); margin-left: 6px; }
+  .gx-table-wrap { max-height: 460px; overflow: auto; border: 1px solid var(--e3); border-radius: 10px; }
+  .gx-back { color: var(--td); font-size: .85rem; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="logo" href="index.html">NVIDIA · 安全智能体</a>
+  <div class="spacer"></div>
+  <a class="gx-back" href="index.html">课程主页 →</a>
+</div>
+
+<main>
+  <div class="gx-hero">
+    <div class="gx-eyebrow">NVIDIA · 安全智能体 · 参考资料</div>
+    <h1><code>web_search</code> 背后的资料目录</h1>
+    <p class="gx-lead">
+      当本课程中的智能体调用 <code>web_search</code> 工具（您会在<a href="01c-tools.html">模块 1c</a> 中手动接入该工具）时，任何内容都不会离开浏览器。该工具会对课程自带的<strong>资料目录</strong>进行排序；这是随页面一同发布、内容固定且完全可检查的语料库。目录分为两个层级。以下各节将完整介绍这条流水线：加载目录、运行智能体实际使用的排序逻辑、了解语料库如何保持最新，以及逐行查看排序函数。
+    </p>
+  </div>
+
+  <section>
+    <h2>目录如何划分与提供</h2>
+    <p class="gx-lead">
+      整个后端就是一个静态文件 <code>assets/materials_index.json</code>，其中包含
+      <span class="gx-stat" id="gx-count">…</span> 个条目，总大小为 <span class="gx-stat" id="gx-size">…</span>，分为 <span class="gx-stat" id="gx-cached">…</span> 个缓存条目和 <span class="gx-stat" id="gx-od">…</span> 个按需条目。该文件与页面位于同一个课程包中，因此浏览器可同源加载，无须密钥，也没有 CORS 问题。<code>webSearch</code>
+      会统一对两个层级排序，使一次查询可以通过同一入口同时检索术语定义和论文摘要。
+    </p>
+    <div class="gx-tiers">
+      <div class="gx-tier cached">
+        <h3>缓存层 · NVIDIA 术语表</h3>
+        <p>79 个术语的索引会完整打包，其中 7 个术语还随附完整的本地文章及其定义。所有这些文本都会随页面一同加载，因此智能体可以直接引用课程包中的原文，无须通过网络访问实时来源。该索引很少变化，而智能体几乎每次搜索都会用到它，因此将其缓存到课程包中很划算。</p>
+      </div>
+      <div class="gx-tier ondemand">
+        <h3>按需层 · 论文与文章</h3>
+        <p>arXiv 摘要和 NVIDIA 开发者博客文章等较大的来源只以目录卡片形式发布，卡片包含标题、简短介绍和来源 URL，不包含全文。需要的信息超出简介范围时，智能体会显示该卡片并通过链接访问原始来源。此类条目体积较大，而且复用频率远低于术语定义，因此不适合缓存，智能体会在需要时重新获取。</p>
+      </div>
+    </div>
+    <figure style="margin:1.4em 0">
+      <div id="gx-delivery"></div>
+      <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">本地收录的来源先形成静态目录，再进入内存缓存，最后在不发起实时网络请求的情况下生成排序结果。</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>如何保持目录最新（以及如何修复问题）</h2>
+    <p class="gx-lead">
+      如果没有主动维护，本地收录的语料库会随时间逐渐偏离原始来源。这项工作由脚本
+      <code>scripts/materials/pull_materials.py</code> 统一完成；它会向所有人显示发现的偏差，并使用完全一致的措辞说明问题。
+    </p>
+    <figure style="margin:1.4em 0">
+      <div id="gx-pipeline-doc"></div>
+      <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">拉取脚本会为每个来源生成指纹，同一份偏差结果会同时显示在 CLI、CI 和验证页面中。</figcaption>
+    </figure>
+    <p class="gx-lead" style="margin-top:1em">
+      流程如下：贡献者（或部署构建）运行拉取操作，每个来源的指纹都会写入 <code>_materials.json</code>。传入 <code>--check</code> 后，脚本会重新获取各来源，并标记内容偏差或访问故障。同一状态也会显示在验证页面中；您可以从网站首页进入该页面，也可以在本地运行 <code>python3 scripts/validation/validate_bundle.py</code> 重现检查。页面会给出发生问题的具体来源和修复命令，因此语料库的当前状态始终可以自行验证。
+    </p>
+  </section>
+
+  <section>
+    <h2>运行智能体实际使用的搜索</h2>
+    <p class="gx-lead">
+      下方代码单元以每个步骤一个节点的形式展示一次真实 <code>web_search</code> 调用背后的流水线。编辑第一个节点中的查询，然后点击<strong>全部运行</strong>。目录会从缓存加载，两个层级中的每个条目会统一评分。排名靠前的结果随后会格式化为模型实际读取的文本块，并在每个匹配项旁标出所属层级。评分节点运行的算法与 <code>helpers.webSearch</code> 完全相同。修改权重即可观察排名变化。
+    </p>
+    <div id="gx-pipeline"></div>
+  </section>
+
+  <section>
+    <h2>调用函数、编辑并运行</h2>
+    <p class="gx-lead">
+      两个函数共同支撑一个工具约定。<code>webSearch</code> 会对整个目录执行广泛的排序检索，为智能体的回答提供依据；
+      <code>instantAnswer</code> 的范围更窄，只有当查询明确提到某个术语时才返回一条术语定义。二者均无须密钥，直接使用缓存目录运行。编辑下方查询并点击“运行”，然后打开辅助函数选项卡查看各函数从 <code>_shared.js</code> 实时加载的源代码，确保展示内容与实际运行代码保持一致。
+    </p>
+    <div id="gx-src-cell"></div>
+  </section>
+
+  <section>
+    <h2>可检索的全部资料 · <span class="gx-stat" id="gx-tcount">…</span></h2>
+    <p class="gx-lead">
+      下方列表是排序搜索覆盖的完整目录。带有 <span class="gx-badge cached">cached</span> 标记的条目会在课程包中保存完整文本；标记为 <span class="gx-deep">deep</span> 的术语还会在 <code>mats/glossary_raw/</code> 下随附本地文章。
+      <span class="gx-badge on_demand">on_demand</span> 条目仅显示为链接到原始来源的卡片。您可以筛选列表，了解智能体能够使用哪些资料作为回答依据。
+    </p>
+    <input class="gx-filter" id="gx-filter" placeholder="按名称、标签、简介、层级或类型筛选…" spellcheck="false" autocomplete="off"/>
+    <div class="gx-table-wrap">
+      <table class="gx-data">
+        <thead><tr><th>资料</th><th>层级</th><th>类型</th><th>标签</th><th>简介</th></tr></thead>
+        <tbody id="gx-rows"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script type="module">
+import { webSearch, instantAnswer, loadMaterialsCatalog, mountDiagram, mountCanvasFlow, mountRunCell } from "./scripts/_shared.js";
+
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const $ = (id) => document.getElementById(id);
+
+// ── The materials pipeline: web sources -> pull -> catalog -> cache -> search ──
+mountDiagram("#gx-delivery", {
+  title: "目录如何进入搜索流程",
+  maxWidth: 1040,
+  boxW: 268,
+  boxH: 104,
+  gapX: 96,
+  rowGap: 76,
+  nodes: [
+    { id: "web",    label: "网络来源",          kind: "env",     x: 0, y: 0, lines: ["术语表、arXiv、博客"] },
+    { id: "pull",   label: "pull_materials.py",    kind: "tool",    x: 1, y: 0, lines: ["拉取并生成指纹", "构建时 / 按需"] },
+    { id: "file",   label: "materials_index.json", kind: "data",    x: 1, y: 1, lines: ["缓存 + 按需", "随课程包发布"] },
+    { id: "cache",  label: "内存缓存",      kind: "neutral", x: 2, y: 1, lines: ["仅拉取一次"] },
+    { id: "search", label: "webSearch",            kind: "model",   x: 2, y: 2, lines: ["对两个层级排序", "无须密钥或联网"] },
+  ],
+
+  edges: [
+    { from: "web",   to: "pull",   label: "本地收录" },
+    { from: "pull",  to: "file",   label: "写入" },
+    { from: "file",  to: "cache",  label: "拉取一次" },
+    { from: "cache", to: "search", label: "每次查询" },
+  ],
+});
+
+// ── The control loop: pull -> fingerprint -> drift check -> validator screen ──
+mountDiagram("#gx-pipeline-doc", {
+  title: "确保语料库真实可靠",
+  maxWidth: 980,
+  boxW: 268,
+  boxH: 104,
+  gapX: 96,
+  rowGap: 76,
+  nodes: [
+    { id: "pull",  label: "拉取",             kind: "tool",  x: 0, y: 0, lines: ["pull_materials.py", "同步到 Web"] },
+    { id: "prov",  label: "_materials.json",  kind: "data",  x: 1, y: 0, lines: ["URL + SHA-256", "逐个来源"] },
+    { id: "check", label: "--check",          kind: "tool",  x: 1, y: 1, lines: ["重新获取并比较", "正常 / 有偏差 / 无法访问"] },
+    { id: "screen",label: "验证页面", kind: "model", x: 2, y: 1, lines: ["指出具体来源", "+ 修复命令"] },
+  ],
+
+  edges: [
+    { from: "pull",  to: "prov",   label: "生成指纹" },
+    { from: "prov",  to: "check",  label: "比较" },
+    { from: "check", to: "screen", label: "报告" },
+  ],
+});
+
+// ── The search pipeline, as an editable canvas flow (key-less; no model calls) ──
+mountCanvasFlow("#gx-pipeline", {
+  label: "资料搜索 · 输入查询，输出排序后的条目",
+  intro: "每个节点都是 web_search 在统一目录上实际执行的一个步骤。编辑查询，" +
+         "然后点击“全部运行”。无需 API 密钥：此工作流只加载文件并进行排序。",
+  edges: [
+    { from: "query", to: "load" },
+    { from: "load",  to: "rank" },
+    { from: "rank",  to: "format" },
+  ],
+  nodes: [
+    {
+      id: "query", icon: "🔎", title: "查询", x: 0, y: 0,
+      summary: "智能体传给 web_search 的文本。编辑后重新运行，观察排名如何变化。 " +
+               "简短的主题短语比完整问题效果更好，因为目录按名称和标签建立索引。",
+      code: `state.query = "retrieval augmented generation";
+helpers.log("查询：", state.query);
+return state.query;`,
+    },
+
+    {
+      id: "load", icon: "📚", title: "加载缓存目录", x: 0, y: 1,
+      summary: "获取课程随附的目录：缓存的术语表条目与按需加载的资料都在同一个列表中。 " +
+               "浏览器访问同源静态文件，不需要密钥。首次运行后会缓存目录，" +
+               "因此后续查询几乎没有额外开销。",
+      code: `const r = await helpers.fetch("assets/materials_index.json");
+state.entries = (await r.json()).entries;
+const cached = state.entries.filter(e => e.tier === "已缓存").length;
+helpers.log(state.entries.length, "个条目（" + cached + " 个缓存，" + (state.entries.length - cached) + " 个按需）");
+return { entries: state.entries.length };`,
+    },
+
+    {
+      id: "rank", icon: "📊", title: "对所有条目评分并排序", x: 0, y: 2,
+      summary: "helpers.webSearch 使用的确切评分方式：名称完全匹配或子字符串匹配的排名最高，" +
+               "其次是标签匹配，再其次是简介匹配。缓存条目和按需加载条目会在同一排名中竞争。 " +
+               "调整某个权重，观察排序如何变化。",
+      code: `// Same scoring as helpers.webSearch (see "The functions, in full" below).
+function score(t, q) {
+  q = q.trim().toLowerCase();
+  if (!q) return 0;
+  const name  = (t.term  || "").toLowerCase();
+  const blurb = (t.blurb || "").toLowerCase();
+  const tags  = (t.tags  || []).map(x => String(x).toLowerCase());
+
+  let s = 0;
+  if (name === q) s += 100;
+  else if (name.includes(q) || q.includes(name)) s += 40;
+  for (const tok of q.split(/[^a-z0-9]+/).filter(Boolean)) {
+    if (name.includes(tok))              s += 12;
+    if (tags.some(g => g.includes(tok))) s += 6;
+    if (blurb.includes(tok))             s += 3;
+  }
+  return s;
+}
+
+state.ranked = state.entries
+  .map(t => ({ t, s: score(t, state.query) }))
+  .filter(x => x.s > 0)
+  .sort((a, b) => b.s - a.s)
+  .slice(0, 5);
+for (const { t, s } of state.ranked) helpers.log(String(s).padStart(4), "[" + t.tier + "]", t.term);
+return { hits: state.ranked.length };`,
+    },
+
+    {
+      id: "format", icon: "📤", title: "格式化为模型输入", x: 0, y: 3,
+      summary: "将排序后的条目转换为模型收到的带编号文本块。" +
+               "每一行都会标注为“已缓存”或“按需加载”，让模型知道它拥有完整文本，" +
+               "还是应依赖链接指向的来源。如果文本块为空，则会指示智能体说明" +
+               "未找到任何内容，而不是根据记忆作答。",
+      code: `state.out = helpers.formatSearchResults({
+  source: "资料", query: state.query, unreachable: false,
+  count: state.ranked.length,
+  results: state.ranked.map(({ t }) => ({ title: t.term, body: t.blurb, href: t.url, tier: t.tier, kind: t.kind })),
+});
+helpers.log(state.out);
+return { chars: state.out.length };`,
+    },
+  ],
+});
+
+// Editable keyless cell: helpers expose webSearch and instantAnswer source.
+mountRunCell("#gx-src-cell", {
+  code: `// webSearch ranks the whole catalog; instantAnswer returns one term's definition.
+// Edit the queries and Run. Open the helpers tab above to read each one's real source.
+const hits = await helpers.webSearch("retrieval augmented generation");
+helpers.log("webSearch 找到 " + hits.count + ":");
+helpers.log(helpers.formatSearchResults(hits));
+
+const card = await helpers.instantAnswer("deep agents");
+helpers.log("instantAnswer：", card);`,
+});
+
+// ── The catalog table ──────────────────────────────────────────────────────────
+let CATALOG = [];
+function renderTable(filter) {
+  const f = (filter || "").trim().toLowerCase();
+  const rows = CATALOG.filter((t) => !f
+    || (t.term || "").toLowerCase().includes(f)
+    || (t.blurb || "").toLowerCase().includes(f)
+    || (t.tier || "").toLowerCase().includes(f)
+    || (t.kind || "").toLowerCase().includes(f)
+    || (t.tags || []).some((g) => g.toLowerCase().includes(f)));
+  $("gx-rows").innerHTML = rows.map((t) => `
+    <tr>
+      <td class="term"><a href="${esc(t.url)}" target="_blank" rel="noopener">${esc(t.term)}</a>${t.deep ? '<span class="gx-deep">deep</span>' : ""}</td>
+      <td><span class="gx-badge ${esc(t.tier)}">${esc(t.tier)}</span></td>
+      <td>${esc(t.kind)}</td>
+      <td>${(t.tags || []).map((g) => `<span class="gx-tag">${esc(g)}</span>`).join(" ")}</td>
+      <td>${esc(t.blurb)}</td>
+    </tr>`).join("") || `<tr><td colspan="5" style="color:var(--tf);font-style:italic;padding:12px">No material matches that filter.</td></tr>`;
+}
+const debounce = (fn, ms) => { let h; return (...a) => { clearTimeout(h); h = setTimeout(() => fn(...a), ms); }; };
+
+(async function init() {
+  try {
+    const raw = await fetch("assets/materials_index.json");
+    const kb = Math.round((Number(raw.headers.get("content-length")) || (await raw.clone().text()).length) / 1024);
+    $("gx-size").textContent = kb + " KB";
+  } catch (_) { $("gx-size").textContent = "一个静态文件"; }
+  CATALOG = await loadMaterialsCatalog();
+  const cached = CATALOG.filter((e) => e.tier === "cached").length;
+  $("gx-count").textContent = CATALOG.length;
+  $("gx-cached").textContent = cached;
+  $("gx-od").textContent = CATALOG.length - cached;
+  $("gx-tcount").textContent = CATALOG.length + " 个条目";
+  renderTable("");
+  $("gx-filter").addEventListener("input", debounce(() => renderTable($("gx-filter").value), 120));
+})();
+</script>
+</body>
+</html>

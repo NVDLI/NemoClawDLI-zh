@@ -1,7 +1,7 @@
 {
   "schema": "source-inventory/1.0",
-  "default_license": "Apache-2.0",
-  "contribution_terms": "Inbound contributions are Apache-2.0 unless explicitly marked Not a Contribution.",
+  "default_license": "CC-BY-4.0 AND Apache-2.0",
+  "contribution_terms": "Inbound contributions follow the project split: Apache-2.0 for source code, CC-BY-4.0 for documentation, skills, and assets, and both for a mixed file, unless explicitly marked Not a Contribution.",
   "policy_docs": [
     "scripts/compliance/docs/open_source_readiness.md",
     "scripts/compliance/docs/vendor_policy.md"
@@ -29,8 +29,8 @@
     {
       "path": "LICENSE",
       "kind": "license",
-      "license": "Apache-2.0",
-      "disposition": "required root license"
+      "license": "CC-BY-4.0 AND Apache-2.0",
+      "disposition": "required root license; full unmodified CC-BY-4.0 text followed by the full unmodified Apache-2.0 text, with the code and documentation split stated"
     },
     {
       "path": "DCO.md",
@@ -53,8 +53,8 @@
     {
       "path": "CONTRIBUTING.md",
       "kind": "contribution_terms",
-      "license": "Apache-2.0",
-      "disposition": "inbound terms"
+      "license": "CC-BY-4.0 AND Apache-2.0",
+      "disposition": "inbound terms for the dual license, with the signing section and the full verbatim DCO 1.1 text"
     },
     {
       "path": "scripts/compliance/docs",
@@ -265,12 +265,6 @@
       "kind": "shared-course-asset",
       "license": "external-terms",
       "disposition": "unmodified NVIDIA corporate favicon; NVIDIA Logo and Brand Guidelines and trademark rights apply"
-    },
-    {
-      "path": "web/cfx11",
-      "kind": "internal-source-course-projection",
-      "license": "unresolved-source-course-terms",
-      "disposition": "internal branch-staging candidate only; imported notebook cells and support data are archive-digest bound and excluded from external release until owner and OSRB confirmation"
     }
   ],
   "forbidden_private_link_regexes": [
@@ -290,5 +284,11 @@
       "name": "private service host",
       "pattern": "https?://[^\\s)\"<>]*\\.nvidia\\.(?:net|internal)/[^\\s)\"<>]*"
     }
-  ]
+  ],
+  "license_split": {
+    "source_code": "Apache-2.0",
+    "documentation_skills_assets": "CC-BY-4.0",
+    "mixed_documentation_and_code": "CC-BY-4.0 AND Apache-2.0",
+    "third_party": "unchanged; recorded in THIRD-PARTY-NOTICES.md and THIRD_PARTY_LICENSES.md"
+  }
 }

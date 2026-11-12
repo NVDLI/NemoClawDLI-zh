@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 # scripts/dev/push — safe push for the devbox.
 # Absorbs CI-report commits from the DGX Spark before pushing so you never
 # see a "non-fast-forward" rejection.  Run instead of `git push`.

@@ -108,15 +108,6 @@ class ThemeRuntimeContractTests(unittest.TestCase):
         self.assertIn('BROWSER_TOOLS_REQUIRED: "1"', test_job)
         self.assertIn('cd scripts/runtime && pnpm install --frozen-lockfile --ignore-scripts', core)
 
-    def test_cfx11_browser_audit_resolves_the_pinned_repository_runtime(self) -> None:
-        source = (ROOT / "tests/runtime/test_cfx11_browser.mjs").read_text(encoding="utf-8")
-        self.assertIn('"../../scripts/runtime/node_modules/playwright-core"', source)
-        self.assertIn("require(repositoryPlaywright)", source)
-        self.assertNotIn('require("playwright-core")', source)
-        self.assertIn('viewport: { width: 1280, height: 720 }', source)
-        self.assertIn("the visible API-key action was not usable", source)
-        self.assertIn("key test fallback was not bounded to one non-streaming output token per candidate", source)
-
     def test_declared_course_previews_are_projected_with_their_runtime_assets(self) -> None:
         build = (ROOT / "scripts/build/build_pages.sh").read_text(encoding="utf-8")
         for token in (

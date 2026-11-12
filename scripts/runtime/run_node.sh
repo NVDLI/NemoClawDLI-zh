@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 # Run a repo node script headless against the REAL host tree (CI + python shims).
 # Resolution, each running the script against THIS repo's files:
 #   1. explicit NODE_BIN, including a Windows node.exe reached from WSL.

@@ -1,0 +1,497 @@
+
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ReAct 循环 · 安全智能体</title>
+<link rel="stylesheet" href="styles/_style.css"/>
+<script src="vendor/highlight-11.10.0.min.js"></script>
+<link rel="stylesheet" href="vendor/codemirror-5.65.21.css"/>
+<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.css"/>
+<script src="vendor/codemirror-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-xml-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-javascript-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-css-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-htmlmixed-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-python-5.65.21.js"></script>
+<style>
+  figure.lp-video { margin: 1.4em 0; }
+  figure.lp-video .video-wrap { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 8px; border: 1px solid var(--bd); background: var(--e1); }
+  figure.lp-video .video-wrap iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
+  figure.lp-video figcaption { font-size: .88rem; color: var(--td,#b0b0b0); line-height: 1.6; margin-top: .55em; }
+  figure.lp-video figcaption b { color: var(--gs,#aee23a); }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="logo" href="index.html">NVIDIA · 安全智能体</a>
+  <nav id="nav"></nav>
+  <div class="spacer"></div>
+  <span class="key-pill" id="key-status" onclick="location.href=&#x27;01a-loop.html?openKeyPanel=1&#x27;">…</span>
+</div>
+
+<main>
+  <div id="journey-map"></div>
+
+  <div class="hero">
+    <div class="eyebrow">模块 1 · 第 2 部分（共 3 部分）</div>
+    <h1><span>ReAct</span> 循环</h1>
+    <p class="lead">
+      基于语言模型构建的智能体与其它系统一样，运行“感知—推理—行动”循环。但其中有一个细节赋予了这一模式名称：模型会在每次行动之间用文字进行推理。
+      <a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">Yao et al. (2022)</a>
+      将这种结合推理与行动的模式称为 <strong>ReAct</strong>。他们发现，将简短的推理轨迹与工具使用交替进行，在许多任务上比预先规划全部步骤或不经推理直接行动更可靠。
+    </p>
+    <p>
+      <strong>工具</strong>是运行框架可代模型执行的代码：一个具有名称、描述、输入模式和返回值的函数。<strong>工具调用</strong>是模型发出的结构化代码执行请求。运行框架解析该请求、执行函数、追加结果，然后再次调用模型。
+    </p>
+    <p>
+      大多数通用智能体框架都以这一循环为基础，LangChain 的 <a href="https://docs.langchain.com/oss/javascript/langchain/agents" target="_blank" rel="noopener"><code>createReactAgent</code></a>
+      也是如此。本模块的后续内容将逐步构建这一循环。
+    </p>
+  </div>
+
+  <figure style="margin:1.4em 0">
+    <div class="fig-embed" data-svg-src="assets/figures/01b-react-1.svg" style="aspect-ratio:1122 / 440"></div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">循环本身没有变化。以语言模型执行推理步骤时，智能体读取工具结果，并通过调用工具采取行动。</figcaption>
+  </figure>
+
+  <h2>决定循环下一步操作的唯一字段</h2>
+
+  <p>
+    每个聊天补全响应都包含一个 <code>finish_reason</code>
+    字段，用于说明模型停止生成的原因。在智能体循环中，您只需依据这一信号决定下一步操作：运行工具、向用户返回答案或处理错误。在了解各个字段值的含义之前，请先发起两次调用并观察该字段的变化。
+  </p>
+
+  <div id="cell-finish-reason"></div>
+
+  <p>
+    第一次调用由模型自行作答，返回了 <code>"stop"</code>。第二次调用向模型提供了工具，并要求获取训练数据无法提供的信息，因此它没有停止，而是返回 <code>"tool_calls"</code>，将需要运行的函数名称交给代码。这两个值涵盖了常见的分支情况。其余值表示发生了问题，循环会转入后备运行框架；智能体可以在其中重试调用，或将对话转交给人工处理。
+  </p>
+  <ul>
+    <li><code>"stop"</code> 表示模型已生成最终答案，循环可以将 <code>content</code> 返回给用户。</li>
+    <li><code>"tool_calls"</code> 表示模型要求代码运行指定函数，追加结果后再回调模型。</li>
+    <li><code>"length"</code> 表示答案尚未生成完毕，token 预算就已耗尽。</li>
+    <li><code>"content_filter"</code> 表示安全分类器停止了输出。</li>
+  </ul>
+
+  <p>
+    在现代 ReAct 中，一个简短的路由逻辑会读取该字段。如果模型请求使用工具，路由逻辑就会运行函数、追加结果并再次调用模型。如果模型已经停止，路由逻辑就会返回答案。
+  </p>
+  <p>
+    这种设计的优势在于，模型从不受最初计划的束缚。每当工具返回意料之外的结果时，该结果都会进入下一轮推理，模型可以重新评估当前状况，再决定下一步操作。
+  </p>
+
+
+
+
+  <h2>LLM 智能体的组成部分</h2>
+  <p>
+    仔细观察智能体，您会看到
+    <a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank" rel="noopener">Lilian Weng 在
+    2023 年提出的</a>组成结构。语言模型位于中心，周围是<strong>记忆</strong>、<strong>规划</strong>、<strong>工具</strong>以及触达外部世界的<strong>行动</strong>。
+  </p>
+  <p>
+    本课程的最小智能体使用能满足需求的最简单方式实现每个部分：
+  </p>
+  <ul>
+    <li><strong>记忆</strong>是 <code>messages[]</code> 数组。</li>
+    <li><strong>规划</strong>是 <code>finish_reason</code> 路由逻辑。</li>
+    <li><strong>工具</strong>是运行框架公开的函数。</li>
+    <li><strong>行动</strong>是运行框架执行的工具调用。</li>
+  </ul>
+  <p>
+    这些都不在模型内部，而是您围绕一次文本输入、文本输出调用构建的运行框架。
+  </p>
+  <figure style="margin:1.4em 0">
+    <div class="fig-embed" data-svg-src="assets/figures/01b-react-2.svg" style="aspect-ratio:940 / 320"></div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">改编自 <a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank" rel="noopener">Lilian Weng (2023)</a>：模型是智能体的核心控制器，记忆、规划、工具和行动围绕它连接起来。</figcaption>
+  </figure>
+  <div class="callout">
+    <strong>这些模块彼此独立。</strong>可以单独替换模型、工具或路由；只要各模块仍遵守其它模块所依赖的契约，循环的其余部分就能继续运行。
+  </div>
+  <p>
+    阅读并非由您编写的智能体代码时，这种独立性同样重要。无论外层采用什么框架，任何基于 LLM 的智能体都必须包含以下四个部分；一旦出现故障，原因通常就在其中之一：
+  </p>
+  <ul>
+    <li>模型返回了错误的 <code>finish_reason</code>；</li>
+    <li>messages 数组中缺少一轮消息；</li>
+    <li>工具执行器返回了意外的值；</li>
+    <li>或者路由误读了信号。</li>
+  </ul>
+  <p>
+    无论外围代码采用何种组织方式，这个四部分框架都能为您提供一份通用检查清单。
+  </p>
+
+
+
+  <h2>使用一个工具从头构建循环</h2>
+  <p>
+    接下来尝试从头创建一个简单循环。只需要一个名为 <code>get_current_time</code> 的工具、一条系统提示词和一个 <code>while</code> 循环。先用“What time is it in UTC?”运行它，再看看您还能提出哪些问题：
+  </p>
+  <p>
+    整个流程很短：模型请求使用工具，执行器将时间戳追加为一条 <code>tool</code> 角色消息，模型读取该时间戳；当 <code>finish_reason</code> 的值为 <code>"stop"</code> 时，循环退出。
+  </p>
+
+  <figure style="margin:1.4em 0">
+    <div class="fig-embed" data-svg-src="assets/figures/01b-react-3.svg" style="aspect-ratio:820 / 234"></div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">思考、行动、观察、重复。一旦 finish_reason 为 "stop"，当前轮次立即结束。</figcaption>
+  </figure>
+
+  <div id="cell-m2c-p3"></div>
+
+  <div class="callout">
+    <strong>刚才 messages 数组内部发生了什么。</strong><br>
+    循环向 <code>state.messages</code> 中加入了四项：<ul><li>系统提示词（第 0 轮），</li><li>用户的问题（第 1 轮），</li><li>一条带有 <code>tool_calls</code> 字段的 assistant 消息（第 2 轮，即请求），</li><li>以及一条保存函数返回值的 <code>tool</code> 角色消息（第 3 轮）。</li></ul>第二次 LLM 调用读取了这四项，包括新增的工具结果，然后生成最终答案。这个不断增长的数组就是该智能体拥有的全部“记忆”。如果您将该数组保存到磁盘，并在下周重新加载，模型会继续对话，甚至不会察觉中间曾中断过。
+  </div>
+
+
+
+
+  <h2>上下文退化：循环越长，为何理解效果越差</h2>
+  <p>
+    随着上下文增长，这个问题更容易出现。<strong>上下文退化</strong>是指矛盾、过时的观察结果和不良约定不断积累在提示词历史中，最终导致模型下一次决策质量下降的趋势。这种影响还与信息所在的位置有关：<a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Liu et al. (2023)</a>的研究表明，模型可能无法充分利用埋藏在长上下文中部的信息。重要信号距离当前轮次越远，循环就越容易忽略它或产生与之矛盾的结果。
+  </p>
+
+  <figure style="margin:1.4em 0">
+    <div class="fig-embed" data-svg-src="assets/figures/01b-react-4.svg" style="aspect-ratio:760 / 305"></div>
+    <figcaption style="text-align:center;font-size:.95rem;color:var(--gfx-sub,#8a8a8a);margin-top:.6em">根据 <a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Liu et al. (2023)</a>的研究重绘。随着循环不断追加轮次，您所需的答案会逐渐移入模型表现较弱的上下文中部。</figcaption>
+  </figure>
+  <p>常见的缓解方法会让每次决策尽量靠近其所需的证据：</p>
+  <ul>
+    <li>在循环积累观察结果之前先制定计划；</li>
+    <li>委派子任务，让每个子智能体在较短的上下文中工作；</li>
+    <li>或者在早期轮次成为负担之前对其进行总结。</li>
+  </ul>
+  <p>
+    每种方法都会在延迟、保真度或复杂度方面付出代价，因此都需要结合当前任务权衡取舍。
+  </p>
+
+
+
+  <h2>使用预构建的相同循环读取本课程</h2>
+  <p>
+    上面的循环硬编码了一个很小的工具。LangChain 的 <a href="https://docs.langchain.com/oss/javascript/langchain/agents" target="_blank" rel="noopener"><code>createReactAgent</code></a>
+    对相同机制进行了泛化，可支持更多工具、标准接口和可观测性集成。下方的课程实例只接入了一个工具 <code>read_course_page</code>，它可以将本课程任意页面以 markdown 格式提供给智能体。模型会根据问题决定读取哪些页面，请亲自试一试。
+  </p>
+
+  <div class="callout">
+    <strong>该单元格会生成一个制品。</strong>运行后，您得到的不是满屏日志，而是由智能体自身代码渲染、可与之对话的聊天面板。“制品”一词早在当前用法出现前就已存在，因为构建工作流和机器学习训练运行多年来一直会生成“制品”和“模型制品”。Anthropic 最近推出的 <a href="https://support.claude.com/en/articles/14729249-use-live-artifacts-in-claude-cowork" target="_blank" rel="noopener">live artifacts</a>
+    进一步明确了这一概念在智能体领域中的含义：制品是由智能体构建、可持久使用的 HTML 交互界面；即使生成它的回复早已结束，您仍可继续使用。下方面板以较小规模构建了一个这样的制品。智能体不仅能返回纯文本，还能交付完整界面；这一主题将贯穿本课程的后续内容。
+  </div>
+
+  <p>
+    运行单元格构建面板，然后与它对话。可以使用 <b>Pages</b> 标签固定一个或多个页面，使每个答案都以这些页面为依据；也可以不固定任何页面，让智能体自行选择要读取的内容。回复会渲染为 markdown，并为智能体读取的每个来源显示一个标签；展开标签即可查看它检索到的文本。除答案外，您还会看到推理轨迹和 token 使用情况。它会分别记住每个聊天中的对话。编辑单元格并重新运行即可重建制品。
+  </p>
+  <div id="cell-react-lab"></div>
+  <div id="react-artifact" style="margin:1em 0"></div>
+
+  <h2>继续学习之前</h2>
+  <p>编辑上方画布中的输入并重新运行，即可回答以下每个问题。</p>
+  <ol>
+    <li><strong>即使模型不需要使用工具，也强制它进行工具调用。</strong>尝试提出一个工具确实无法回答的问题（“法国的首都是哪里？”），并观察第 1 步中的 <code>finish_reason</code>。它的值是 <code>"stop"</code> 还是 <code>"tool_calls"</code>？现在编辑系统提示词，<em>要求</em>模型必须先进行工具调用再回答（“您必须始终调用 get_current_time 一次，然后再回答。”）。模型是否遵从了要求？如果模型根据训练数据对另一个答案方向很有信心，这一现象说明系统提示词对模型的引导作用有多强？</li>
+    <li><strong>针对一个确实需要工具的问题统计执行步数。</strong>
+        “距离 UTC 17:00 还有多少分钟？”需要进行多次工具调用。多运行几次。模型调用了 <code>get_current_time</code> 一次、两次还是三次？为什么模型会再次调用已经取得输出的工具？您会如何在系统提示词中抑制这种行为？</li>
+  </ol>
+
+  <div class="references">
+
+
+    <h3>参考资料</h3>
+    <ul>
+      <li><a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">Yao et al., <em>ReAct: Synergizing Reasoning and Acting in Language Models</em> (2022)</a>。提出了最初的思考、行动与观察交替模式；上图根据该论文重绘。</li>
+      <li><a href="https://arxiv.org/abs/2201.11903" target="_blank" rel="noopener">Wei et al., <em>Chain-of-Thought Prompting</em> (2022)</a>。这是 ReAct 中的“推理”部分，即模型在行动前进行斟酌时，在 <code>reasoning_content</code> 内部执行的过程。</li>
+      <li><a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank" rel="noopener">Lilian Weng，<em>LLM Powered Autonomous Agents</em> (2023)</a>。上图采用了该文的分解方式：语言模型充当智能体的核心控制器，外围是记忆、规划和工具使用能力。</li>
+      <li><a href="https://arxiv.org/abs/2305.18323" target="_blank" rel="noopener">Xu et al., <em>ReWOO: Decoupling Reasoning from Observations</em> (2023)</a>。该方法有意与 ReAct 形成对比：模型预先写出完整计划，再由独立的执行器运行；各步骤之间无需再次查询模型。对比二者可以看出响应式重新规划与预先确定执行方案之间的权衡。</li>
+      <li><a href="https://arxiv.org/abs/2302.04761" target="_blank" rel="noopener">Schick et al., <em>Toolformer</em> (2023)</a>。1c 的参考资料中还会再次介绍；此处可通过该论文回顾 ReAct 循环所利用的底层机制。</li>
+    </ul>
+    <p class="references-note">完整列表请参阅<a href="04c-going-further.html#refs">深入探索 · 参考资料</a>。</p>
+
+  </div>
+
+  <div class="foot-nav">
+    <a href="01a-loop.html">← 模块 1a：智能体</a>
+    <a class="next" href="01c-tools.html">模块 1c：规模化工具使用 →</a>
+  </div>
+</main>
+
+<script type="module">
+import { buildNav, updateKeyPill, mountJourneyMap, mountCanvasFlow, mountRunCell } from "./scripts/_shared.js";
+document.getElementById("nav").innerHTML = buildNav("01b-react.html");
+const pill = document.getElementById("key-status");
+updateKeyPill(pill);
+mountJourneyMap("#journey-map", "1b");
+hljs.highlightAll();
+
+// ── finish_reason, introduced by two real calls before the prose explains the values ─────────
+mountRunCell("#cell-finish-reason", {
+  openCode: true,
+  label: "finish_reason · 循环读取该字段来决定下一步操作",
+  intro: "比较对同一模型的两次调用。第一次直接回答；第二次请求一个必须由代码运行的工具。观察两次调用中 finish_reason 的变化。此工具是下方完整循环的预览。",
+  code: `// MODEL is the swappable brain. Change it and rerun to see whether a stronger model
+// stops or asks for the tool on these same two questions.
+const MODEL = "nvidia/nemotron-3-nano-30b-a3b";   // or "nvidia/nemotron-3-super-120b-a12b" for a stronger brain
+
+// Call 1 · no tools offered. The model can answer, so it stops on its own.
+const r1 = await chat({
+  model: MODEL,
+  messages: [{ role: "user", content: "请用一句话说明智能体的 ReAct 循环是什么。" }],
+  max_tokens: 8196,  // reasoning models think first; leave room past reasoning_content
+});
+// Optional visibility: uncomment to inspect the complete first response.
+// log.details("call 1 raw response", r1);
+log.h("调用 1 · 未提供工具");
+log("finish_reason：", r1.choices[0].finish_reason);   // "stop" means the answer is ready and the loop can exit
+log(r1.choices[0].message.content || "（思考耗尽了全部预算；请提高 max_tokens）");
+
+// Call 2 · offer one tool and ask for something the model cannot know from training data.
+// The model cannot run the tool itself; this preview asks your code to run it.
+const TOOLS = [{
+  type: "function",
+  function: {
+    name: "get_current_time",
+    description: "返回当前的 UTC 时间。",
+    parameters: { type: "object", properties: {}, required: [] },
+  },
+}];
+const r2 = await chat({
+  model: MODEL,
+  messages: [{ role: "user", content: "UTC 现在几点？" }],
+  tools: TOOLS,
+  max_tokens: 8196,
+});
+const m2 = r2.choices[0].message;
+log.h("调用 2 · 针对训练数据无法回答的问题提供一个工具");
+log("finish_reason：", r2.choices[0].finish_reason);   // "tool_calls" means the model is asking you to run a function
+log("它要求您运行：", (m2.tool_calls || []).map(t => t.function.name).join(", ") || "（无）");
+
+return { call1: r1.choices[0].finish_reason, call2: r2.choices[0].finish_reason };
+`,
+});
+
+// ── The complete ReAct loop, built from scratch ──────────────────────────────
+mountCanvasFlow("#cell-m2c-p3", {
+  label: "从头构建完整的 ReAct 循环",
+  intro: "用户节点设置提示词和系统指令；工具节点注册函数。 " +
+         "循环调用模型、运行模型请求的工具、追加观察结果，并不断重复，" +
+         "直到 finish_reason 为 'stop'。每一步都会记录日志，方便查看模型做出的决策。",
+  edges: [
+    { from: "user", to: "loop" },
+    { from: "tool", to: "loop" },
+  ],
+  nodes: [
+    {
+      id: "user", icon: "👤", title: "用户输入", x: 0, y: 0,
+      summary: "设置系统提示词和用户问题。将问题替换为 'What is the capital of France?'，" +
+               "模型便会根据训练数据作答，因此不会触发工具调用，步骤 1 的 finish_reason " +
+               "为 'stop'，而不是 'tool_calls'。",
+      code: `// Save the system prompt that frames the agent loop.
+state.systemPrompt = "您是一位乐于助人的助手。请使用可用工具，"
+  + "处理用户提出的、仅凭训练数据无法回答的问题。";
+// state.userPrompt   = "What time is it in UTC?";
+// state.userPrompt   = "What is the capital of France?";
+state.userPrompt   = "我明天上午 10 点在法国有一个会议。我还有多少小时可以准备？";
+return state.userPrompt;
+`,
+    },
+    {
+      id: "tool", icon: "🛠", title: "工具规范", x: 2, y: 0,
+      summary: "将 get_current_time 注册为唯一工具，并连接一个 JavaScript 执行器来运行它。 " +
+               "模型只负责指定调用，实际工作由代码完成。",
+      code: `// Define the tool schema the model can choose from next.
+state.TOOLS = [{
+  type: "function",
+  function: {
+    name: "get_current_time",
+    description: "以“YYYY-MM-DD HH:MM:SS UTC”格式返回当前 UTC 时间。",
+    parameters: { type: "object", properties: {}, required: [] },
+  },
+}];
+state.execTool = (name) =>
+  name === "get_current_time"
+    ? new Date().toISOString().slice(0, 19).replace("T", " ") + " UTC"
+    : \`（未找到工具“\${name}”）\`;
+
+return state.execTool("get_current_time");
+`,
+    },
+    {
+      id: "loop", icon: "🔄", title: "ReAct 循环", x: 1, y: 1,
+      summary: "运行 ReAct 循环：调用模型、检查 finish_reason、运行模型请求的工具、追加 " +
+               "结果作为观察信息，然后继续循环。当 finish_reason 为 'stop' 时退出。 " +
+               "编辑顶部的 MODEL 以更换模型。",
+      code: `// MODEL is the swappable brain in the reasoning slot. Change it and rerun to drive the
+// same loop with a different model.
+const MODEL = "nvidia/nemotron-3-nano-30b-a3b";   // or "nvidia/nemotron-3-super-120b-a12b" for a stronger brain
+// Backstop for runaway tool loops during the demo.
+const max_steps = 12;
+
+state.messages = [
+  { role: "system", content: state.systemPrompt },
+  { role: "user",   content: state.userPrompt   },
+];
+
+let step = 0, answered = false;
+while (step++ < max_steps) {
+  helpers.log(\`── 第 \${step} 步 ──────────────────────\`);
+  // Suppress raw tokens so only the curated trace appears.
+  const s = await helpers.chatStream({
+    messages: state.messages, tools: state.TOOLS, model: MODEL, max_tokens: 8196,
+  }, null);
+  helpers.log("finish_reason：", s.finish_reason, "· tool_calls：", s.tool_calls.length);
+  state.messages.push({
+    role: "assistant",
+    content: s.content || null,
+    tool_calls: s.tool_calls.length ? s.tool_calls : undefined,
+  });
+  if (s.finish_reason === "stop" && !s.tool_calls.length) {
+    state.finalContent = s.content;
+    answered = true;
+    helpers.log("✓ 最终答案：", s.content);
+    break;
+  }
+  for (const tc of s.tool_calls) {
+    const result = state.execTool(tc.function.name);
+    helpers.log("已运行工具：", tc.function.name, "→", result);
+    state.messages.push({ role: "tool", tool_call_id: tc.id, content: result });
+  }
+}
+if (!answered) helpers.log("⚠ 已达到步骤上限");
+return { model: MODEL, steps_taken: step, messages: state.messages };
+`,
+    },
+  ],
+});
+
+// ── Part 5: running this cell BUILDS a live chat artifact (createReactAgent) ──
+mountRunCell("#cell-react-lab", {
+  label: "构建制品 · createReactAgent → 实时聊天面板",
+  intro: "此单元使用 LangChain 现成的 createReactAgent 循环渲染一个可用的聊天面板，" +
+         "而不是只打印日志。它只有一个工具 read_course_page，记忆组件是 MemorySaver。 " +
+         "编辑智能体、工具或提示词，然后重新运行以重建面板。",
+  code: `// Running this cell renders a live chat panel into #react-artifact below.
+const cfg = await helpers.getConfig();
+if (cfg.needsKey && !helpers.getKey()) {
+  helpers.log("尚无 API key。请在课程主页添加 nvapi- 密钥，然后重新运行。");
+  return "请在课程主页添加 nvapi- 密钥，然后重新运行。";
+}
+
+helpers.log("正在加载 LangChain ...");
+const { ChatOpenAI, tool, createReactAgent, MemorySaver, z } =
+  await import(new URL("./vendor/langchain-1.4.7.esm.js", location.href).href);
+
+const PAGES   = helpers.coursePages();             // includes "overview" (the course home)
+const baseURL = cfg.url.startsWith("http") ? cfg.url : (window.location.origin + cfg.url);
+const WINDOW  = helpers.contextWindow;             // advertised context window per model
+const INDEX   = PAGES.map(p => "  " + p.id + " - " + p.title).join("\\n");
+const SYSTEM  =
+  "您是本智能体课程的助教。每个答案都必须以您通过" +
+  "read_course_page 阅读的页面为依据；如果页面未涉及相关内容，请明确说明。请根据" +
+  "问题需要阅读足够多的页面，每次执行一个推理或阅读步骤，然后作答。对于" +
+  "涉及整个课程的问题（\\"summarize the course\\", \\"what will I build\\"），请先阅读" +
+  "“overview”页面。请列出您使用的页面 id。\\n\\n 页面：\\n" + INDEX;
+
+// One createReactAgent per model; each keeps its own MemorySaver for multi-turn.
+const agents = {};
+function getAgent(model) {
+  const activeModel = helpers.isDefaultModelApiBaseUrl(cfg.url) ? model : cfg.model;
+  if (!agents[activeModel]) {
+    const llm = new ChatOpenAI({
+      configuration: { baseURL, dangerouslyAllowBrowser: true, fetch: helpers.browserChatFetch() },
+      apiKey: cfg.needsKey ? helpers.getKey() : "no-key-needed",
+      model: activeModel, temperature: 0, maxTokens: 16384,
+    });
+    const readCoursePage = tool(
+      async ({ page }) => await helpers.coursePage(page),
+      { name: "read_course_page",
+        description: "读取 THIS 课程的一个页面，并以 markdown 格式返回其文本。",
+        schema: z.object({ page: z.enum(PAGES.map(p => p.id)).describe("要读取的页面，例如 01b-react") }) },
+    );
+    agents[activeModel] = createReactAgent({ llm, tools: [readCoursePage], checkpointer: new MemorySaver() });
+  }
+  return agents[activeModel];
+}
+
+// The artifact is a live chat panel, not a transcript dump.
+helpers.mountChatUI(document.getElementById("react-artifact"), {
+  modules: PAGES,
+  models: [
+    { id: "nvidia/nemotron-3-nano-30b-a3b",    label: "Nemotron Nano 30B · fast" },
+    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B · stronger" },
+  ],
+  greeting: "可以向我询问任何课程相关问题。我会先阅读相关页面，再作答。",
+  examples: [
+    "什么是 ReAct 循环？",
+    "总结整门课程",
+    "比较 RAG 与深度智能体模式",
+    "OpenShell 沙箱如何限制智能体的活动范围？",
+    "何时应将任务分派给多个专家，而不是交给单个智能体？",
+    "带我从基本循环逐步构建到始终在线的智能体",
+  ],
+  respond: async (text, ctx) => {
+    const agent = getAgent(ctx.model);
+    const messages = [];
+    if (ctx.turn === 0) {
+      messages.push({ role: "system", content: SYSTEM });
+      // Pin each selected page in full so the chip reflects the actual context.
+      for (const id of ctx.modules) {
+        const body = await helpers.coursePage(id);
+        ctx.view.tool("已固定 " + id + " · " + helpers.estimateTokens(body) + " 个 token", body);
+        messages.push({ role: "system", content: "已固定的页面（" + id + "）：\\n\\n" + body });
+      }
+      // Context-budget check: warn (don't silently clip) if the prompt overflows.
+      const est = helpers.estimateTokens(messages);
+      if (est > WINDOW(ctx.model)) ctx.view.warn("提示词约 " + est + " 个词元 > " + ctx.model + "，窗口约 " + WINDOW(ctx.model) + "。请取消固定一个页面。");
+    }
+    messages.push({ role: "user", content: text });
+
+    // Bound the loop so a confused agent cannot spin forever.
+    const stream = await agent.stream({ messages },
+      { streamMode: "messages", configurable: { thread_id: ctx.thread }, recursionLimit: 24, signal: ctx.signal });
+    // Render each event as it streams; key tool chips by tool-call id.
+    const byId = {}, activeByIndex = {};
+    let lastInput = 0, totalOut = 0, sawUsage = false;
+    for await (const part of stream) {
+      const chunk = Array.isArray(part) ? part[0] : part;
+      const meta  = Array.isArray(part) ? part[1] : null;
+      const node  = meta && meta.langgraph_node;
+      // Tool results get their own chip, including failed reads.
+      if (node === "tools" && chunk.tool_call_id && byId[chunk.tool_call_id]) {
+        const c = byId[chunk.tool_call_id];
+        c.body.textContent = String(chunk.content);
+        if (chunk.status === "error" || /^\\(unknown page/.test(String(chunk.content).trim())) {
+          c.classList.add("err"); c.sum.textContent = c.sum.textContent.replace("🔧", "✗");
+        }
+        continue;
+      }
+      // tool CALL: each new call (tc.id present) PUSHES a fresh chip; arg deltas (no id) extend the call currently open at that index.
+      for (const tc of (chunk.tool_call_chunks || [])) {
+        const idx = tc.index == null ? 0 : tc.index;
+        let c;
+        if (tc.id) { c = ctx.view.tool("read_course_page …", "（读取中）");
+          c.body = c.querySelector(".chatui-tool-body"); c.sum = c.querySelector("summary"); c.args = "";
+          byId[tc.id] = c; activeByIndex[idx] = c; }
+        else { c = activeByIndex[idx]; }
+        if (!c) continue;
+        c.args += (tc.args || "");
+        try { const p = JSON.parse(c.args).page; if (p) c.sum.textContent = "🔧 读取页面 · " + p; } catch (_) {}
+      }
+      // reasoning trace (nemotron streams it on additional_kwargs.reasoning_content)
+      const r = chunk.additional_kwargs && chunk.additional_kwargs.reasoning_content;
+      if (r && node === "agent") ctx.view.reasoning(r);
+      // token usage rolls up across the ReAct loop's LLM calls
+      if (chunk.usage_metadata) { sawUsage = true; lastInput = chunk.usage_metadata.input_tokens || lastInput; totalOut += chunk.usage_metadata.output_tokens || 0; }
+      // Show answer tokens from the agent node; tool output stays in tool chips.
+      if (typeof chunk.content === "string" && chunk.content && node === "agent")
+        ctx.view.token(chunk.content);
+    }
+    if (sawUsage) ctx.view.usage({ input: lastInput, output: totalOut });
+  },
+});
+
+helpers.log("✓ 构件已挂载到下方。请向下滚动并与其对话。");
+return "构件已挂载到下方。编辑此单元并重新运行即可重建。";
+`,
+});
+</script>
+</body>
+</html>

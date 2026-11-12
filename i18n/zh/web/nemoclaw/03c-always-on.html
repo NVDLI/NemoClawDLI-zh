@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>持续运行 · 安全智能体</title>
+<link rel="stylesheet" href="styles/_style.css"/>
+<script src="vendor/highlight-11.10.0.min.js"></script>
+<link rel="stylesheet" href="vendor/codemirror-5.65.21.css"/>
+<link rel="stylesheet" href="vendor/codemirror-monokai-5.65.21.css"/>
+<script src="vendor/codemirror-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-xml-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-javascript-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-css-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-htmlmixed-5.65.21.js"></script>
+<script src="vendor/codemirror-mode-python-5.65.21.js"></script>
+<style>
+</style>
+<style>
+  .knobs-table { width: 100%; border-collapse: collapse; font-size: .88rem; margin: .8em 0; }
+  .knobs-table thead tr { border-bottom: 2px solid var(--bd); }
+  .knobs-table th { text-align: left; padding: 8px 12px; color: var(--td);
+                    font-size: .76rem; text-transform: uppercase; letter-spacing: .05em; }
+  .knobs-table td { padding: 10px 12px; border-bottom: 1px solid var(--e2); vertical-align: top; }
+  .knobs-table tr:last-child td { border-bottom: none; }
+  .knobs-table td:first-child { font-family: var(--mono); color: var(--gs); font-weight: 700; }
+  .knobs-table code { font-size: .82em; }
+  .file-tree {
+    background: var(--e2); border: 1px solid var(--bd); border-radius: var(--r);
+    padding: 14px 18px; font-family: var(--mono); font-size: .82rem;
+    line-height: 1.7; color: var(--td); white-space: pre-wrap; margin: 1em 0;
+  }
+  .file-tree .fname { color: var(--gs); font-weight: 700; }
+  .skill-file { overflow-x: auto; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="logo" href="index.html">NVIDIA · 安全智能体</a>
+  <nav id="nav"></nav>
+  <div class="spacer"></div>
+  <span class="key-pill" id="key-status" onclick="location.href='01a-loop.html?openKeyPanel=1'">…</span>
+  <span class="key-pill" id="claw-status" onclick="location.href='03a-kickstart.html#probe-claw'">…</span>
+</div>
+
+<main>
+  <div id="journey-map"></div>
+
+  <div class="hero">
+    <div class="eyebrow">模块 3 · 第 3 部分（共 3 部分）</div>
+    <h1><span>持续运行的</span>智能体</h1>
+    <p class="lead">
+      模块 3b 会在您发送消息时运行智能体。OpenClaw 还可以通过技能、心跳、
+      <a href="https://en.wikipedia.org/wiki/Cron" target="_blank" rel="noopener">cron</a>
+      作业和子智能体开始工作。每条路径仍会进入同一个智能体循环和 OpenShell
+      沙箱；具体运行内容由会话、指令和触发器决定。您将安装一项技能，并观察一次由 cron 触发的写入操作。
+    </p>
+
+    <div class="fig-embed" data-svg-src="assets/figures/03c-always-on-1.svg" style="aspect-ratio:820 / 478"></div>
+  </div>
+
+  <h2>触发器如何选择上下文和指令</h2>
+  <p>本页中的每种机制都由以下三个参数描述：</p>
+  <ul>
+    <li><strong>会话</strong>决定一次运行继承谁的上下文。</li>
+    <li><strong>指令</strong>是告诉智能体该做什么的 markdown 文件。</li>
+    <li><strong>触发器</strong>决定何时开始运行。</li>
+  </ul>
+  <p>下表展示了课程所用的配置。可以使用同样的三个字段对其它触发器类型进行分类；OpenClaw 还提供了其它会话模式。</p>
+
+  <table class="knobs-table">
+    <thead><tr><th>名称</th><th>会话</th><th>指令所在位置</th><th>触发器</th></tr></thead>
+    <tbody>
+      <tr><td>技能<span style="color:var(--gs);font-weight:400;font-style:italic">（下方运行）</span></td>      <td>复用调用方的会话</td>          <td><code>workspace/skills/&lt;name&gt;.md</code></td> <td>当指令与用户请求匹配时，模型会在轮次进行期间选择该技能</td></tr>
+      <tr><td>心跳<span style="color:var(--tf);font-weight:400;font-style:italic">（仅介绍概念）</span></td>  <td>此处为主会话</td>             <td><code>HEARTBEAT.md</code></td>                    <td>网关计时器，默认约 30 分钟</td></tr>
+      <tr><td>Cron <span style="color:var(--gs);font-weight:400;font-style:italic">（下方运行）</span></td>       <td>此处使用隔离会话；每次触发都会新建</td><td>JSON 即用型 <code>prompt</code> 字段</td>       <td>cron 调度，精确到分钟</td></tr>
+      <tr><td>子智能体<span style="color:var(--tf);font-weight:400;font-style:italic">（仅介绍概念）</span></td>  <td>新建会话，父智能体持有句柄</td><td>调用 <code>delegate()</code> 时传入的内联字符串</td><td>父智能体在轮次进行期间决定</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    OpenClaw cron 可以将作业绑定到<a href="https://docs.openclaw.ai/cron-vs-heartbeat" target="_blank" rel="noopener">主会话、隔离会话、当前会话或命名会话</a>。本课程使用隔离的 cron 运行，确保每次演示都从全新状态开始。您将在本页运行技能和 cron 作业。心跳和子智能体的
+    <code>delegate()</code> 调用仅作为表格条目在此介绍；本页没有单元会触发它们，因此不必等待。
+  </div>
+
+  <h2>第 1 步 · 添加技能</h2>
+  <p>技能最初是放置在 <code>skills/</code> 目录下的 markdown 文件，通常包含一段简短的
+     front matter 或标题块，供运行时决定何时将其呈现给智能体。智能体不会一次性加载所有指令；当下一轮请求与某项技能匹配时，它会渐进式加载该技能。您无需重启或重新部署智能体，也无需亲自修改系统提示词。</p>
+
+  <div class="file-tree skill-file"><span class="fname"># skills/triage-incident.md</span>
+
+当用户询问生产事故或粘贴可能表明发生事故的日志行时，请按以下顺序操作：
+
+1. 确认受影响的服务和时间范围。
+2. 从 /sandbox/runbooks/. 打开该服务的运行手册。
+3. 建议最小且可逆的缓解措施；不要自行执行。
+4. 创建 Jira 工单前先询问用户。</div>
+
+  <p>下方组件会要求智能体安装上述技能，然后发起一次专门设计为与其匹配的聊天补全。匹配过程自动完成。智能体会将请求与工作区中每项技能的描述进行比较，因此无需在提示词中指明所需技能。请观察智能体如何在第二轮使用这项新技能。</p>
+
+  <div id="fig-calls"></div>
+
+  <div class="callout">
+    <p><strong>与 Kickstart 使用同一个运行时。</strong>您正在操作的就是在 Kickstart 页面上连接的那个 OpenClaw 智能体。</p>
+  </div>
+
+  <div id="gw-recover"></div>
+
+  <div id="cell-skill"></div>
+
+  <h2>第 2 步 · 检查正在运行的智能体</h2>
+
+  <p>调度作业位于网关上，而不是某个 HTTP REST 路由之后。因此，
+     Control UI 使用的同一个 WebSocket 连接，也是您通过 cron 方法
+     <code>cron.list</code>、<code>cron.add</code> 和 <code>cron.remove</code>
+     列出和管理这些作业的通道。cron 作业按照自身计时器触发，使持续运行的智能体无需人工介入即可执行操作。课程运行时会为本次演示创建隔离会话。如果连续性比隔离性更重要，OpenClaw 也可以将调度工作绑定到其它受支持的会话模式。</p>
+
+  <p>下方组件将带您完成 cron 作业的整个生命周期：</p>
+  <ol>
+    <li>它会建立连接，并列出已安装的 cron 作业。</li>
+    <li>它会安装一个每分钟触发一次的演示作业，并向
+        <code>MEMORY.md</code> 追加一行内容。</li>
+    <li>它会等待约七十秒，让作业跨过分钟边界并自动运行。</li>
+    <li>下一个单元会从沙箱中读取 <code>MEMORY.md</code> 的末尾内容，让您看到无人操作时由 cron 触发的智能体所写入的那一行。</li>
+    <li>最后一个单元会移除该作业，避免留下任何内容。</li>
+  </ol>
+  <p>这次写入并非由人工提示触发，而是由 cron 调度自动驱动。即使您不在场，它也能代表智能体完成实际工作。</p>
+
+  <div id="probe-cron"></div>
+
+  <div class="callout warn">
+    <strong>Cron 作业会在无人值守的情况下运行。</strong>如果某条调度指令要求智能体“发送每日报告”，无论您是否正在查看，它都会按时触发。课程会为每次触发选择一个隔离会话，因此某次运行中的错误不会污染下一次运行的记录。其它 cron 配置则可以在多次触发之间保留或绑定会话上下文。模块 4a 会在此基础上添加内核级隔离层。由 cron 触发的智能体尝试进行的每次文件系统访问和网络连接，都必须在系统调用执行前通过明确的允许列表检查。这样，即使调度作业行为异常，也只能访问策略允许的资源。
+  </div>
+
+  <h2>后续应用方向</h2>
+  <p>
+    公开的
+    <a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes</a>
+    代码库提供了相同的几类广泛能力：可复用技能、持久化记忆、计划任务和消息网关。其实现方式和默认设置与 OpenClaw 不同，因此应比较两者的安全边界和会话行为，而不能因为功能名称相同，就认定风险控制措施也相同。
+  </p>
+
+  <p>任何能够写入可复用指令、计划任务并接收远程消息的执行框架，都可能让受入侵指令在一次对话结束后继续存在。模块 4 会区分这些应用层控制与沙箱控制；后者用于限制文件系统、进程和网络访问。
+  </p>
+  <div class="callout warn">
+    <strong>Hermes 会限制其消息入口。</strong>Hermes 的<a href="https://hermes-agent.nousresearch.com/docs/user-guide/security/" target="_blank" rel="noopener">最新安全指南</a>介绍了配对码，以及平台级或全局用户允许列表；没有匹配的允许规则时采用
+    <code>default: deny</code>。这些应用层控制决定谁可以与智能体通信。操作系统沙箱则另行限制其工具能够访问的资源。
+  </div>
+  <p>这种将技能作为记忆化轨迹的模式，在整个生态系统中还以其它名称和形式出现：</p>
+  <ul>
+    <li><a href="https://arxiv.org/abs/2305.16291" target="_blank" rel="noopener">Wang et al., <em>Voyager</em> (2023)</a>。这一理念的研究起源，通过 Minecraft 智能体得到演示。</li>
+    <li><a href="https://langchain-ai.github.io/langgraph/concepts/persistence/" target="_blank" rel="noopener">LangGraph Persistence</a>。利用带检查点的图实现保存和恢复。</li>
+    <li><a href="https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills/overview" target="_blank" rel="noopener">Anthropic, <em>Agent Skills</em></a>。面向生产环境的技能文件夹布局。</li>
+  </ul>
+
+  <div class="references">
+    <h3>参考资料</h3>
+    <ul>
+      <li><a href="https://arxiv.org/abs/2305.16291" target="_blank" rel="noopener">Wang et al., <em>Voyager: An Open-Ended Embodied Agent</em> (2023)</a>。本页所基于的技能库和记忆化轨迹机制，该论文通过 Minecraft 智能体进行了演示。</li>
+      <li><a href="https://arxiv.org/abs/2304.03442" target="_blank" rel="noopener">Park et al., <em>Generative Agents</em> (2023)</a>。多日自主智能体模拟；持续运行的循环会复用其中的反思和记忆整合模式。</li>
+      <li><a href="https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills/overview" target="_blank" rel="noopener">Anthropic, <em>Agent Skills</em></a>。面向生产环境的技能文件夹布局，本页的 <code>skills/&lt;name&gt;.md</code> 即插即用机制沿用了这一布局。</li>
+      <li><a href="https://langchain-ai.github.io/langgraph/concepts/persistence/" target="_blank" rel="noopener">LangGraph, <em>Persistence</em> (checkpointers)</a>。带检查点的图以另一种生产形态提供了相同的保存和恢复原语。</li>
+      <li><a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes Agent</a>。一种智能体应用，具有可自我改进的技能、持久化记忆、cron 和消息网关；NVIDIA 的 DGX Spark 操作手册将 Hermes 和 NemoClaw 列为不同的设置路径。</li>
+      <li><a href="https://docs.openclaw.ai/cron-vs-heartbeat" target="_blank" rel="noopener">OpenClaw, <em>Automation &amp; Tasks</em></a>。cron、心跳、钩子和后台任务当前的会话及触发语义。</li>
+      <li><a href="https://hermes-agent.nousresearch.com/docs/user-guide/security/" target="_blank" rel="noopener">Hermes Agent, <em>Security</em></a>。消息网关调用方的配对和允许列表行为。</li>
+      <li><a href="https://en.wikipedia.org/wiki/Cron" target="_blank" rel="noopener">cron(8)</a>。cron 即插即用机制所借鉴的调度原语之权威参考资料。</li>
+    </ul>
+    <p class="references-note">完整列表请参阅<a href="04c-going-further.html#refs">深入探索 · 参考资料</a>。</p>
+  </div>
+
+  <h2>动手实践 · 在对话中触发技能</h2>
+  <p>
+    通过网关与正在运行的智能体对话。如果您已在步骤 1 中安装
+    triage-incident 技能，请粘贴一段事故信息，观察智能体如何在对话过程中自行选用该技能，无需您说出技能名称。
+  </p>
+  <p>
+    心跳或 cron 触发时使用的也是同一套机制，只不过这次由您发送的消息驱动，而不是由计时器驱动。
+  </p>
+  <div id="alwayson-cell"></div>
+  <div id="alwayson-artifact"></div>
+  <script type="module">
+    import { mountRunCell } from "./scripts/_shared.js";
+    mountRunCell("#alwayson-cell", {
+      label: "“动手试试”练习代码",
+      autorun: true,
+      code: `// This is the Try-it artifact. Paste an incident and the live agent picks up a
+// matching skill mid-turn, the same machinery a heartbeat or cron fire uses.
+// Edit the greeting, examples, or respond logic, then Run to re-render.
+helpers.mountChatUI("#alwayson-artifact", {
+  disabled: () => { const c = helpers.getOpenClawConnection(); return !(c.token && c.rawUrl); },
+  disabledMsg: "请先在模块 3a 中连接可启动实例，并提供该实例的 URL 和 token。",
+  greeting: "请先在 Kickstart 页面连接，然后发送一条与某项技能匹配的消息，例如“us-east-1 中的 checkout-service 出现 502 错误，我该怎么办？”",
+  examples: ["us-east-1 中的 checkout-service 出现 502 错误", "您配置了哪些技能？", "逐步讲解事件响应手册", "您安排了哪些 cron 作业？", "您会如何分流处理突发的延迟峰值？", "概述一下，如果凌晨 3 点收到告警，您会怎么做"],
+  respond: async (text, ctx) => { await helpers.openclawChat(text, { session: "art-" + ctx.thread, view: ctx.view, signal: ctx.signal }); },
+});
+helpers.log("结果呈现在下方。编辑配置后，点击“运行”。");
+
+// The panel is helpers.mountChatUI and it streams through helpers.openclawChat; open the helpers tab above to read either one's source.
+`,
+    });
+  </script>
+
+  <div class="foot-nav">
+    <a href="03b-openclaw.html">← 模块 3b：OpenClaw</a>
+    <a class="next" href="04a-safety.html">模块 4a：NemoClaw 中的 OpenShell →</a>
+  </div>
+</main>
+
+<script type="module">
+import { buildNav, updateKeyPill, updateClawPill, mountJourneyMap, mountCanvasFlow, GW_CONNECT, mountGwRecover, mountDiagram } from "./scripts/_shared.js";
+document.getElementById("nav").innerHTML = buildNav("03c-always-on.html");
+const pill = document.getElementById("key-status");
+updateKeyPill(pill);
+updateClawPill(document.getElementById("claw-status"));
+mountJourneyMap("#journey-map", "3c");
+hljs.highlightAll();
+
+// ── The always-on loop: the agent wakes on a schedule, acts, writes back ──────
+mountDiagram("#fig-calls", {
+  kicker: "NO HUMAN IN THE LOOP",
+  title: "持续运行的循环",
+  maxWidth: 980,
+  boxW: 268,
+  boxH: 116,
+  gapX: 86,
+  top: 58,
+  nodes: [
+    { id: "cron", label: "调度", kind: "env", x: 0, y: 0, lines: ["cron 或心跳", "按计时器触发"] },
+    { id: "gw",   label: "网关循环", kind: "agent", x: 1, y: 0,
+      lines: ["模型制定计划并调用工具", "然后重复"], socket: "已配置的会话" },
+    { id: "logs", label: "工作区 / 日志", kind: "data", x: 2, y: 0, lines: ["MEMORY.md", "日志和产物"] },
+  ],
+  edges: [
+    { from: "cron", to: "gw",   label: "唤醒",  fromPort: "right", toPort: "left", labelDy: -42, tint: "env"   },
+    { from: "gw",   to: "logs", label: "写入", fromPort: "right", toPort: "left", labelDy: -42, tint: "agent" },
+    { from: "logs", to: "gw",   label: "读取",  fromPort: "bottom-left", toPort: "right", toOffset: 34, labelDy: 34, return: true, tint: "data"  },
+  ],
+});
+
+// ── Shared WS connect snippet (used as prefix in each connect node) ──────────
+
+// ── Shared chat-turn snippet ───────────────────────────────────────────────────
+// Subscribe before chat.send, or tool events stay invisible.
+const gwChat = (sk, msg) => {
+  // Pass { raw: "<js expr>" } when sessionKey must be computed at run time.
+  const skExpr = (sk && typeof sk === "object" && sk.raw) ? sk.raw : JSON.stringify(sk);
+  // msg is usually a literal.
+  // Pass { raw: "<js>" } to supply the whole message-assignment block, e.g. a stack of prompts where the last line wins.
+  const msgBlock = (msg && typeof msg === "object" && msg.raw)
+    ? msg.raw
+    : ("let message = " + JSON.stringify(msg) + ";");
+  return `if (!state.call) { helpers.log("请先运行 Connect。"); return; }
+
+// ── tune these ──────────────────────────────────────────────────────────────
+${msgBlock}
+const sessionKey      = ${skExpr};   // which agent session to talk to
+const IDLE_TIMEOUT_S  = 90;          // give up if the agent goes silent this long (this model can be slow to first token)
+const TOTAL_TIMEOUT_S = 240;         // hard ceiling for the whole turn
+const FINAL_EVENT_GRACE_MS = 1500;   // lifecycle end can arrive just before chat.final
+// ──────────────────────────────────────────────────────────────────────────────
+helpers.log("→ " + message);
+
+// Agent frames go only to sockets subscribed to this session; subscribe before sending the turn.
+if (!state._subs) state._subs = {};
+if (!state._subs[sessionKey]) {
+  await state.call("sessions.messages.subscribe", { key: sessionKey });
+  state._subs[sessionKey] = true;
+}
+
+// Uncomment to clear this session and force fresh tool work.
+// await state.call("sessions.reset", { key: sessionKey }); helpers.log("🧹 cleared session memory: " + sessionKey);
+
+const _params = {
+  sessionKey,
+  idempotencyKey: Math.random().toString(36).slice(2) + Date.now().toString(36),
+  message,
+};
+
+// Stream handler: tool frames show args/results; assistant frames show answer text.
+// Idle and global timers stop stalled runs; heartbeats never reset the idle timer.
+let _text = "", _finalEv, _t0 = performance.now(), _ttft = 0, _myRun = null;
+let _toolStarts = 0, _didResult = false;            // for the degradation check below
+const IDLE_MS = IDLE_TIMEOUT_S * 1000, GLOBAL_MS = TOTAL_TIMEOUT_S * 1000;
+await new Promise((resolve, reject) => {
+  let _idle, _global, _endGrace, _finished = false;
+  function finish(why, stalled) {
+    if (_finished) return; _finished = true;
+    clearTimeout(_idle); clearTimeout(_global); clearTimeout(_endGrace); state._chatCb = null;
+    if (why) helpers.log(why);
+    // Abort timed-out runs server-side so they stop consuming work and leaking frames.
+    if (stalled) {
+      helpers.log("⛔ 正在中止运行，停止位置：" + sessionKey + "，以免它继续在后台运行…");
+      state.call("chat.abort", { sessionKey }).catch(() => {});
+    }
+    resolve();
+  }
+  function bumpIdle() { clearTimeout(_idle); _idle = setTimeout(() => finish("⏱ no agent activity for " + (IDLE_MS / 1000) + "s; stopping", true), IDLE_MS); }
+  _global = setTimeout(() => finish("⏱ hit the " + (GLOBAL_MS / 1000) + "s global cap", true), GLOBAL_MS);
+  if (helpers.signal) helpers.signal.addEventListener("abort", () => finish("⏹ stopped", true), { once: true });
+  state._chatCb = d => {
+   try {
+    const pl = d.payload || {};
+    // Heartbeats stream the whole time the socket is open but are NOT activity.
+    // Ignore them so they never reset the idle timer (a stalled run emits only heartbeats and must still time out).
+    if (pl.isHeartbeat || d.event === "health" || d.event === "tick") return;
+    // One sessionKey can have several runs; keep only this runId before bumpIdle.
+    // Otherwise stale frames can mask a real stall.
+    if (_myRun && pl.runId && pl.runId !== _myRun) return;
+    bumpIdle();   // real activity on OUR run pushes the idle deadline back
+    if (d.event === "chat" && pl.state === "final") {
+      // final chat frame: fallback prose if no agent text deltas arrived
+      _finalEv = d;
+      _text = helpers.openclawMessageText(pl.message) || _text;
+      finish(); return;
+    }
+    if (d.event !== "agent") return;
+    const sk = pl.sessionKey || "";
+    if (sk !== sessionKey && !sk.endsWith(":" + sessionKey)) return;   // not our session
+    const data = pl.data || {};
+    const stream = pl.stream || "";
+    if (stream === "assistant" || ("delta" in data && "text" in data)) {
+      // the answer, streamed as cumulative text
+      if (!_ttft) _ttft = performance.now() - _t0;
+      _text = data.text || _text;
+    } else if (stream === "tool" && data.phase === "start") {
+      // Show tool input; bad args often explain hangs.
+      _toolStarts++;
+      const inp = data.args ? JSON.stringify(data.args) : (data.meta || "");
+      helpers.log.details("⚙️ " + (data.name || "tool") + (inp ? "  " + inp.replace(/\\n/g, " ").slice(0, 160) : ""), helpers.filterOpenClawRuntimeValue(d));
+    } else if (stream === "tool" && data.phase === "result") {
+      // a tool finished, so show its OUTPUT (works for exec, read, edit, browser, …)
+      _didResult = true;
+      const txt = helpers.openclawResultText(data.result);
+      const mark = data.isError ? "✗" : "✓";
+      helpers.log.details(mark + " " + (data.name || "tool") + (txt ? "  " + txt.trim().replace(/\\n/g, " ⏎ ").slice(0, 200) : ""), helpers.filterOpenClawRuntimeValue(d));
+    } else if (data.phase === "end" && !data.itemId) {
+      // chat.final is authoritative and can trail lifecycle end by one browser turn.
+      clearTimeout(_endGrace); _endGrace = setTimeout(() => finish(), FINAL_EVENT_GRACE_MS);
+    }
+   } catch (e) {
+    // Surface WS handler errors; swallowed exceptions look like hangs.
+    helpers.log("⚠ 帧处理程序错误：" + (e && e.message ? e.message : e));
+   }
+  };
+  bumpIdle();
+  // Lock onto this runId so shared-session chatter is ignored.
+  state.call("chat.send", _params)
+    .then(res => { _myRun = (res && res.runId) || null; })
+    .catch(e => { clearTimeout(_idle); clearTimeout(_global); state._chatCb = null; reject(e); });
+});
+
+// ── response ─────────────────────────────────────────────────────────────────
+helpers.log(_text);
+if (_finalEv) helpers.log.details("← 最终聊天帧", _finalEv);
+const _secs = (performance.now() - _t0) / 1000;
+const _toks = Math.round(_text.length / 4);          // rough estimate: ~4 chars/token
+helpers.log("⏱ " + _secs.toFixed(1) + "秒 · 约" + _toks + " token · " +
+            (_secs ? (_toks / _secs).toFixed(1) : "0") + " tok/s" +
+            (_ttft ? " · 首个 token " + (_ttft / 1000).toFixed(2) + "s" : ""));
+state.out = _text;
+
+// Automatic degradation check. A healthy run returns text and/or a tool result.
+// Started-without-result means a hung tool or model loop; Health check can flag toolSearch.
+if (!_text.trim() && !_didResult && _toolStarts > 0) {
+  helpers.log("⚠ 性能下降：已启动 " + _toolStarts + " 次工具调用，但均未返回结果或答案。");
+  helpers.log("   某个工具已卡住，或模型陷入了循环。上方的 ⚙️ 行显示了卡住时的确切工具及其参数。");
+  helpers.log("   请运行 🩺 Health check（它会标记 toolSearch）和 🛠 Recover；如需深入排查，📜 logs 单元会持续显示运行时日志的末尾内容。");
+}
+`;
+};
+
+// Health / recover / logs flow is shared from _shared.js:
+mountGwRecover("#gw-recover");
+
+mountCanvasFlow("#cell-skill", {
+  label: "安装并触发技能",
+  intro: "在同一个会话中，智能体会将技能写入磁盘、回答与该技能匹配的问题，然后依据技能中的操作步骤检查自己的回复。它通过读取自身工作区找到并选用该技能，无需您在提示词中提供任何指引。",
+  edges: [
+    { from: "sk-conn",    to: "sk-install" },
+    { from: "sk-install", to: "sk-trigger" },
+    { from: "sk-trigger", to: "sk-check" },
+  ],
+  nodes: [
+    {
+      id: "sk-conn", icon: "🔌", title: "Connect", x: 0, y: 0,
+      showCode: false,
+      summary: "打开连接到网关的 WebSocket 并完成身份验证。此流程会将连接存入 state.call，供接下来的三个节点发送对话轮次，无需重新连接。",
+      code: GW_CONNECT + `state._sk = "quick-3c-skill";`,
+    },
+    {
+      id: "sk-install", icon: "🧩", title: "第 1 轮 · 安装技能", x: 0, y: 1,
+      showCode: false,
+      summary: "要求智能体将 skills/triage-incident.md 写入自己的工作区。该技能是一份 Markdown 操作步骤；智能体会在下一轮自动读取，无需更改系统提示词。",
+      code: gwChat("quick-3c-skill",
+        "Add a skill file at skills/triage-incident.md with this content:\n\n" +
+        "When the user asks about a production incident, or pastes a log line suggesting one, " +
+        "do these things in order: 1) confirm the affected service and time window, " +
+        "2) open the runbook for that service from /sandbox/runbooks/, " +
+        "3) suggest the smallest reversible mitigation, do not run it yourself, " +
+        "4) ask the user before opening a Jira ticket. Confirm when the file is saved."),
+    },
+    {
+      id: "sk-trigger", icon: "🚨", title: "第 2 轮 · 触发技能", x: 0, y: 2,
+      showCode: false,
+      summary: "发送一个符合该技能触发条件的事故问题。提示词不会指定技能名称；智能体会将问题与工作区中的技能描述进行匹配。",
+      code: gwChat("quick-3c-skill",
+        "我刚刚收到告警。us-east-1 中的 checkout-service 在过去 12 分钟内持续出现 502 错误。我该怎么办？"),
+    },
+    {
+      id: "sk-check", icon: "🔬", title: "它是否遵循了操作步骤？", x: 0, y: 3,
+      showCode: false,
+      summary: "检查智能体的回复是否包含技能中的四个步骤：确认影响范围、打开运行手册、提出可撤销的缓解措施，以及在创建 Jira 工单前暂停并征求同意。",
+      code: `// Inspect the latest reply for signs that the skill recipe shaped it.
+helpers.log.details("智能体回复", state.out);
+const r = (state.out || "").toLowerCase();
+const hits = ["响应手册", "可逆", "确认", "jira"].filter(w => r.includes(w));
+helpers.log("回复中体现的技能步骤：" + (hits.join(", ") || "（本次运行无）"));
+return { matched_steps: hits };
+`,
+    },
+  ],
+});
+
+mountCanvasFlow("#probe-cron", {
+  label: "网关 · cron 管理",
+  intro: "通过网关 WebSocket 管理计划任务：列出任务、添加任务、轮询运行历史记录、比较 MEMORY.md，然后移除任务。流程完成后，会留下无人值守写入操作的可见证据。",
+  edges: [
+    { from: "cr-conn",  to: "cr-list"  },
+    { from: "cr-list",  to: "cr-add"   },
+    { from: "cr-add",   to: "cr-watch" },
+    { from: "cr-watch", to: "cr-rm"    },
+  ],
+  nodes: [
+    {
+      id: "cr-conn", icon: "🔌", title: "Connect", x: 0, y: 0,
+      showCode: false,
+      summary: "打开网关 WebSocket 并完成身份验证。",
+      code: GW_CONNECT,
+    },
+    {
+      id: "cr-list", icon: "📋", title: "列出当前的 cron 任务", x: 0, y: 1,
+      showCode: false,
+      summary: "调用 cron.list 查看已安排的任务。每个任务都包含服务器分配的 id、结构化调度配置和结构化负载。",
+      code: `// Use the gateway socket to list scheduled jobs without changing anything.
+if (!state.call) { helpers.log("请先运行 Connect。"); return; }
+const pl = await state.call("cron.list");
+const jobs = pl?.jobs || [];
+if (!jobs.length) {
+  helpers.log("（未安装 cron 作业）");
+} else {
+  jobs.forEach(j => {
+    const schedule = j.schedule?.kind === "cron" ? j.schedule.expr : JSON.stringify(j.schedule || {});
+    const message = j.payload?.message || j.payload?.text || "";
+    helpers.log(j.id + "  " + schedule + "  " + message.slice(0, 60));
+  });
+}
+helpers.log.details("cron.list 原始结果", pl);
+return { count: jobs.length };
+`,
+    },
+    {
+      id: "cr-add", icon: "➕", title: "安装一个 cron 演示任务", x: 0, y: 2,
+      showCode: false,
+      summary: "调用 cron.add，并提供名称、结构化调度配置、隔离会话目标和智能体轮次负载。网关会分配一个 id，供后续移除任务时使用。",
+      code: `// Install one short-lived demo cron job so the unattended path is visible.
+if (!state.call) { helpers.log("请先运行 Connect。"); return; }
+const name = "quick-3c-demo";
+const before = await state.call("cron.list");
+let added = (before?.jobs || []).find(job => job.name === name);
+if (!added) {
+  added = await state.call("cron.add", {
+    name,
+    schedule: { kind: "cron", expr: "**** *", tz: "UTC" },
+    sessionTarget: "isolated",
+    wakeMode: "now",
+    payload: {
+      kind: "agentTurn",
+      message: "向 MEMORY.md 追加一行简短内容，记录当前的 UTC 分钟，然后退出。",
+    },
+  });
+}
+if (!added?.id) throw new Error("cron.add 未返回作业 ID");
+state.demoCronId = added.id;
+state.demoCronInstalledAt = Date.now();
+let historyEntries = [];
+try {
+  const history = await state.call("cron.runs", { id: added.id, limit: 20 });
+  historyEntries = history?.entries || history?.runs || [];
+  state.demoCronHistoryAvailable = true;
+} catch (_) {
+  state.demoCronHistoryAvailable = false;
+}
+state.demoCronBaselineRunAt = Math.max(
+  Number(added.state?.lastRunAtMs || 0),
+  ...historyEntries.map(entry => Math.max(Number(entry.ts || 0), Number(entry.runAtMs || 0)))
+);
+helpers.log("已安装 " + name + "，ID 为 " + added.id + "（每分钟触发一次）");
+helpers.log.details("原始 cron.add", added);
+const pl = await state.call("cron.list");
+helpers.log("当前 cron 作业数：" + (pl?.jobs || []).map(j => j.name + "（" + j.id + ")").join(", "));
+helpers.log.details("cron.list 原始结果", pl);
+return { installed: added.id, name };
+`,
+    },
+    {
+      id: "cr-watch", icon: "⏳", title: "检查运行状态，然后读取 MEMORY.md", x: 0, y: 3,
+      showCode: false,
+      summary: "检查一次 cron 后立即返回。请在预定分钟过后重新运行；仅当您明确需要自动轮询时，才启用注释掉的监视模式。",
+      code: `// Check once by default so the lesson never traps you in a 90-second wait.
+// cron.list state is the compatibility fallback for older runtimes.
+if (typeof state.call !== "function" || !state.demoCronId) {
+  helpers.log("请先在模块 3a 中连接 OpenClaw，然后运行 cron 设置节点。");
+  return;
+}
+const AGENT = "my-assistant";   // your agent's name, from GET /api/agent on the Kickstart page
+const POLL_MS = 5000;
+const AUTO_WATCH = false;
+// Alternate mode: change AUTO_WATCH to true to poll for up to 90 seconds.
+const MEMORY_CMD = "echo '=== MEMORY.md（末尾）==='; tail -n 8 .openclaw/workspace/MEMORY.md 2>/dev/null || echo '（尚无 MEMORY.md）'";
+const runStamp = entry => Math.max(Number(entry?.ts || 0), Number(entry?.runAtMs || 0));
+
+const baseline = Number(state.demoCronBaselineRunAt || 0);
+const startedAt = Date.now();
+let observed = null;
+let polls = 0;
+let historyWarningShown = false;
+const maxPolls = AUTO_WATCH ? 18 : 1;
+const progress = helpers.log(AUTO_WATCH
+  ? "正在等待 cron 运行完成 · 每 5 秒轮询一次"
+  : "正在检查一次 cron 运行状态");
+progress.setAttribute("role", "status");
+progress.setAttribute("aria-live", "礼貌");
+
+while (polls < maxPolls) {
+  polls++;
+  let entries = [];
+  try {
+    const history = await state.call("cron.runs", { id: state.demoCronId, limit: 20 });
+    entries = history?.entries || history?.runs || [];
+  } catch (_) {
+    if (!historyWarningShown) {
+      helpers.log("cron.runs 不可用；改为轮询 cron.list 的运行时状态。");
+      historyWarningShown = true;
+    }
+  }
+  const listing = await state.call("cron.list");
+  const job = (listing?.jobs || []).find(item => item.id === state.demoCronId || item.name === "quick-3c-demo");
+  const latestEntry = entries.reduce((latest, entry) => runStamp(entry) > runStamp(latest) ? entry : latest, null);
+  const latestStamp = Math.max(runStamp(latestEntry), Number(job?.state?.lastRunAtMs || 0));
+  const status = latestEntry?.status || job?.state?.lastRunStatus || job?.state?.lastStatus || "尚未完成";
+  if (latestStamp > baseline) {
+    observed = { stamp: latestStamp, status };
+    progress.textContent = "✓ 已报告 cron 运行结果 · " + status + " · " + polls + " 次检查" + (polls === 1 ? "" : "s");
+    break;
+  }
+  progress.textContent = status + " · 第 " + polls + " of " + maxPolls;
+  if (polls < maxPolls) await helpers.delay(POLL_MS);
+}
+
+if (!observed) helpers.log(AUTO_WATCH
+  ? "90 秒内未报告任何已完成的运行。"
+  : "尚无新的运行结果。请在计划执行的分钟过去后重新运行此节点，或启用 AUTO_WATCH。");
+
+helpers.log("正在从沙盒 '" + AGENT + "' 中通过 operator 终端读取 operator.md …");
+const { output, raw, frames } = await helpers.terminal(
+  "openshell sandbox connect " + AGENT,
+  { send: [MEMORY_CMD] }
+);
+helpers.log(output);
+helpers.log.details("原始记录（" + frames + " 个 WebSocket 帧）", raw);
+// Optional visibility: uncomment to inspect the raw cron observation.
+// helpers.log.json("cron observation", observed);
+return {
+  elapsed_s: Math.floor((Date.now() - startedAt) / 1000),
+  polls,
+  run_status: observed?.status || "未观测到",
+  auto_watch: AUTO_WATCH,
+};
+`,
+    },
+    {
+      id: "cr-rm", icon: "🗑", title: "移除演示 cron 作业", x: 0, y: 4,
+      showCode: false,
+      summary: "使用 cron.add 返回的服务器分配 ID 调用 cron.remove。如果页面已重新加载，请先按名称找回该 ID，再移除作业。",
+      code: `// Remove the demo cron so the launchable does not keep running it.
+if (!state.call) { helpers.log("请先运行 Connect。"); return; }
+const before = await state.call("cron.list");
+const job = (before?.jobs || []).find(j => j.id === state.demoCronId || j.name === "quick-3c-demo");
+if (!job) { helpers.log("quick-3c-demo 已不存在"); return { remaining: (before?.jobs || []).map(j => j.id) }; }
+const removed = await state.call("cron.remove", { id: job.id });
+helpers.log("已删除 quick-3c-demo（" + job.id + ")");
+helpers.log.details("原始 cron.remove 结果", removed);
+const pl = await state.call("cron.list");
+const remaining = (pl?.jobs || []).map(j => j.id);
+helpers.log("剩余 cron 任务：" + (remaining.length ? remaining.join(", ") : "（无）"));
+helpers.log.details("cron.list 原始结果", pl);
+return { remaining };
+`,
+    },
+  ],
+});
+</script>
+</body>
+</html>

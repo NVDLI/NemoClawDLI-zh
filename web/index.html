@@ -20,13 +20,11 @@
   "kind": "release-foyer",
   "bundle": "building-agents",
   "released": ["nemoclaw"],
-  "previews": ["cfx11"],
+  "previews": [],
   "entries": {
     "nemoclaw": "/lab/static/nemoclaw/index.html"
   },
-  "preview_entries": {
-    "cfx11": "/lab/static/cfx11/index.html"
-  },
+  "preview_entries": {},
   "contract": "The foyer surfaces only declared releases and explicitly labeled previews. Enforced by link_projection.foyer_release_check."
 }
 </script>
@@ -209,18 +207,6 @@
     course model gateway, so the cells just work. Inside edX the text reads fine, but the
     live cells there need your own API key, which each course page lets you set.
   </div>
-
-  <section class="preview-paths" aria-labelledby="preview-heading">
-    <h2 id="preview-heading">Internal course preview</h2>
-    <p>Available on this branch for review. Preview status does not imply release or licensing approval.</p>
-    <a class="path-card preview" href="/lab/static/cfx11/index.html">
-      <span class="label">Markdown + Python preview</span>
-      <h2>Building LLM Applications With Prompt Engineering</h2>
-      <span class="duration">30 lessons · browser Python</span>
-      <p>Run the imported notebook cells in a persistent Pyodide session and connect directly to NVIDIA models with your own API key.</p>
-      <span class="arrow">Open the preview →</span>
-    </a>
-  </section>
 
   <div class="switcher-grid">
     <section class="foyer-switcher" id="language-switcher" aria-live="polite">

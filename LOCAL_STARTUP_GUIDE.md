@@ -7,7 +7,6 @@ This guide covers two deployment targets:
 
 Section 0 is **one-time setup** (skip if `nemoclaw --version` already works).
 Section 1 onward is the **every-session startup** after setup is complete.
-For troubleshooting, see `LOCAL_DEPLOYMENT_NOTES.md`.
 
 ---
 
@@ -166,7 +165,7 @@ ssh -L 8081:localhost:8081 \
     -L 8011:localhost:8011 \
     jiyang_wang@<dgx-ip>
 ```
-Open `http://localhost:8081/web/nemoclaw/03a-kickstart.html` in Windows browser.
+Open `http://localhost:8081/zh/nemoclaw/03a-kickstart.html` in Windows browser.
 Configure base URLs as `http://127.0.0.1:8010/v1` for both Chat and Embedder.
 
 **Scenario B — DGX and WSL2 running simultaneously:**
@@ -177,7 +176,7 @@ ssh -L 8082:localhost:8081 \
     -L 8014:localhost:8011 \
     jiyang_wang@<dgx-ip>
 ```
-Open `http://localhost:8082/web/nemoclaw/03a-kickstart.html` in Windows browser.
+Open `http://localhost:8082/zh/nemoclaw/03a-kickstart.html` in Windows browser.
 Configure base URLs as `http://127.0.0.1:8013/v1` for both Chat and Embedder.
 
 > **Alternative — no tunnel needed**: If you have a monitor connected to the DGX, open a
@@ -249,7 +248,7 @@ Copy this token — you will paste it into the browser on page 03a.
 
 ## 3 — Browser Setup
 
-1. Open **http://localhost:8081/web/nemoclaw/03a-kickstart.html**
+1. Open **http://localhost:8081/zh/nemoclaw/03a-kickstart.html**
 2. Enter your NVIDIA API key in the **API key** field
 3. Enter the bearer token from Step 2 in the **Bearer token** field
 4. Complete the health check on 03a to confirm the chain is working end to end

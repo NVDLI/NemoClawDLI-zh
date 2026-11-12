@@ -8,9 +8,8 @@
 # space-before-tab sequences, so exempt only this immutable, hash-validated path from that diff rule.
 SECURITY.md text eol=lf whitespace=-space-before-tab
 
-# These two reviewed trees preserve upstream/source whitespace byte-for-byte. The notebook importer
-# binds every cell digest, and the shared-vendor manifest binds every publisher asset digest.
-web/cfx11/content/** text eol=lf whitespace=-trailing-space,-blank-at-eof
+# This reviewed tree preserves upstream/source whitespace byte-for-byte. The shared-vendor
+# manifest binds every publisher asset digest.
 web/shared/vendor/** text eol=lf whitespace=-trailing-space,-blank-at-eof
 
 # SVG is XML/text and worth diffing; keep it as text.

@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /* ─── Lite-mode overlay ────────────────────────────────────────────────────
    Only inlined by scripts/build/bundle_standalone.py for the iframe-ready single-
    file exports. The lab view (web/*.html served behind nginx) stays on the

@@ -758,8 +758,10 @@ def run(scope: str = "ship", write: bool = True, stamp: str | None = None, lang:
             localization_find.extend(locale_find)
             localization_manifest[locale] = locale_manifest
             if write:
-                _, _, _, localization_profile, _ = la.locale_paths(TASK1, locale)
-                la.write_manifest(TASK1, localization_profile, locale_manifest)
+                _, localization_root, _, localization_profile, _ = la.locale_paths(TASK1, locale)
+                locale_meta = json.loads((localization_root / "locale.json").read_text(encoding="utf-8"))
+                if locale_meta.get("review_required", True) is not False:
+                    la.write_manifest(TASK1, localization_profile, locale_manifest)
     except Exception as e:
         localization_find = [{"code": "audit-error", "path": "i18n",
                               "detail": f"localization audit error: {e}"}]

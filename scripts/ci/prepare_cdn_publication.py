@@ -14,7 +14,7 @@ from pathlib import Path
 
 SCHEMA = "dli-cdn-publication/2"
 PRIMARY_COURSE = "nemoclaw"
-OPTIONAL_COURSES = ("cfx11",)
+OPTIONAL_COURSES: tuple[str, ...] = ()
 
 
 def _copy_tree(source: Path, destination: Path) -> None:

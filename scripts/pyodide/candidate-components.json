@@ -1,9 +1,9 @@
 {
   "schema": "pyodide-candidate-components/1.0",
-  "status": "mixed-runtime-fetch-and-course-wheel-distribution",
+  "status": "runtime-fetch-only",
   "review_state": "human-approval-required",
-  "reviewed_snapshot_sha256": "fb538a19ec9e0f72debe5a65c70d8d7ccc6675e42c67f9d631c699eb12d81923",
-  "purpose": "Exact inventory for browser-Python demonstrations and the internal c-fx-11-v1 course candidate. The cookbook fetches its pinned runtime; the course candidate fetches Pyodide core and ships its separately locked Python wheels from this repository.",
+  "reviewed_snapshot_sha256": "1638e8cb22b67c8c62a2052864de8e91e87c0487fe47a0c69fb64d28b7694944",
+  "purpose": "Exact inventory for the repository's browser-Python demonstration. The cookbook page fetches its pinned runtime at read time; no Python wheels are copied into or shipped from this repository.",
   "source_pattern": {
     "kind": "task-supplied-local-reference",
     "license": "MIT",
@@ -30,24 +30,6 @@
     "distribution": "fetched by the browser at runtime; not copied into this repository",
     "profile": "core"
   },
-  "course_candidate": {
-    "entrypoint": "web/cfx11/runtime/worker.js",
-    "trigger": "learner runs a Python cell in the internal c-fx-11-v1 branch-staging candidate",
-    "runtime": {
-      "pyodide": "314.0.2",
-      "python": "3.14.2",
-      "abi": "2026_0",
-      "architecture": "wasm32",
-      "platform": "emscripten_5_0_3"
-    },
-    "base_url": "https://cdn.jsdelivr.net/pyodide/v314.0.2/full/",
-    "distribution": "Pyodide core is fetched by the learner browser; exact third-party wheels are copied into and shipped with this internal course candidate.",
-    "wheel_lock": "web/cfx11/runtime/wheels.lock.json",
-    "direct_packages": [
-      "contractions", "langchain", "langchain-core", "langchain-nvidia-ai-endpoints",
-      "langgraph", "openai", "pydantic", "requests", "Wikipedia-API"
-    ]
-  },
   "profiles": {
     "acquisition": {
       "description": "Download helper considered for a future asset-preparation tool. It would run only while preparing browser files and would not be included in the learner course.",
@@ -58,7 +40,7 @@
       "components": ["pyodide", "cpython-standard-library"]
     },
     "network": {
-      "description": "Exact packages reviewed for the standalone cookbook's possible browser-Python HTTPS and OpenAI-compatible API activities. The internal c-fx-11-v1 candidate uses its separate course wheel lock.",
+      "description": "Exact packages reviewed for the standalone cookbook's possible browser-Python HTTPS and OpenAI-compatible API activities.",
       "root_packages": ["requests", "pyodide-http", "openai"],
       "components": [
         "annotated-types", "anyio", "certifi", "charset-normalizer", "distro", "httpx", "idna",

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 # Canonical pre-push boundary: verify base and complete proposed history, then delegate
 # deterministic current-tree validation to release_gate.py. Local hooks are feedback;
 # required host CI reruns independently and remains authoritative.

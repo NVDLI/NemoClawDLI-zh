@@ -20,7 +20,6 @@ class ColorThemeTests(unittest.TestCase):
 
     def test_stylesheet_discovery_includes_every_web_course(self) -> None:
         paths = {path.relative_to(color_theme.WEB).as_posix() for path in color_theme.style_files()}
-        self.assertIn("cfx11/course.css", paths)
         self.assertIn("nemoclaw/styles/_style.css", paths)
 
     def test_os_only_palette_is_rejected(self) -> None:

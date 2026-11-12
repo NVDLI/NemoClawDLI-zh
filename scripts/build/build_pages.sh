@@ -152,15 +152,6 @@ for name in previews:
         raise SystemExit(f"[build_pages] ERROR: declared preview is incomplete: web/{name}")
     shutil.copytree(source, target_root / name, dirs_exist_ok=True)
 
-    if name == "cfx11":
-        import subprocess
-        subprocess.run([
-            sys.executable,
-            str(root / "scripts/notebook-import/build_content_bundle.py"),
-            "--course", str(source),
-            "--output", str(target_root / name / "content-bundle.json"),
-        ], check=True)
-
 if previews:
     shared = root / "web/shared"
     if not shared.is_dir():
@@ -378,7 +369,9 @@ fi
 # that actually exist in this artifact. The English URL follows COURSE_PREFIX;
 # translation courses live under <lang>/nemoclaw/.
 if [ -f "$T1/scripts/build/build_language_manifest.py" ]; then
-    python3 "$T1/scripts/build/build_language_manifest.py" --out "$OUT/languages.json" --site-root "$OUT" --course-prefix "$COURSE_PREFIX" || echo "[build_pages] language manifest skipped"
+    python3 "$T1/scripts/build/build_language_manifest.py" --out "$OUT/languages.json" \
+        --site-root "$OUT" --course-prefix "$COURSE_PREFIX" --project-default \
+        || echo "[build_pages] language manifest skipped"
 fi
 
 # Source mirrors execute the same foyer and locale runtime as their production projections.

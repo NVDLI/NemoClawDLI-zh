@@ -184,12 +184,86 @@ Runnable cells are teaching surfaces. Keep application plumbing behind named hel
 
 ## Contribution Terms
 
-This repository is licensed under Apache-2.0. Unless you clearly mark a submission as
-`Not a Contribution`, any contribution intentionally submitted for inclusion is offered
-under Apache-2.0, with the contribution terms in [`LICENSE`](LICENSE).
-This Apache-2.0 project does not require a separate contributor license agreement. Every commit
-must carry the DCO 1.1 signoff defined and reproduced verbatim in [`DCO.md`](DCO.md). The signoff
-certifies origin and submission rights. It does not transfer copyright or replace review.
+This repository is dual-licensed. NVIDIA-authored source code is licensed under
+Apache-2.0. NVIDIA-authored documentation, skills, and assets are licensed under
+CC-BY-4.0. A file that mixes documentation and code is licensed under both sets of terms.
+Third-party materials retain their existing licenses and are not relicensed; see
+[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) and
+[`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md). The complete, unmodified text of
+both licenses is in [`LICENSE`](LICENSE).
+
+Unless you clearly mark a submission as `Not a Contribution`, any contribution
+intentionally submitted for inclusion is offered under those same terms: Apache-2.0 for
+source code, CC-BY-4.0 for documentation, skills, and assets, and both for a mixed file.
+A separate contributor license agreement is not required.
+
+### Signing Off Your Work
+
+Every commit must carry a Developer Certificate of Origin signoff. By signing off, you
+certify that you wrote the contribution yourself, or that you otherwise hold sufficient
+rights to submit it under this project's licenses. **Commits without signoffs will not be
+accepted.**
+
+Sign off with the `-s` flag:
+
+```bash
+git commit -s -m "Describe your change"
+```
+
+That adds a trailer to the commit message naming you as the certifying contributor:
+
+```text
+Signed-off-by: Your Name <your@email.com>
+```
+
+Use your real name and an email address you control. The signoff records origin and
+submission rights. It does not transfer copyright, and it does not replace source
+provenance, license review, tests, or the human approval required by this document.
+
+If a signoff check fails, amend an unpublished commit with `git commit --amend --signoff`.
+For several commits, rebase and amend each commit deliberately. Do not rewrite commits
+another contributor has already based work on; add corrected commits or coordinate the
+repair instead. Never fabricate a trailer for a bot or another contributor. Additional
+signoff guidance, including the rules for stacked proposal branches, is in
+[`DCO.md`](DCO.md).
+
+The full, unmodified text of the certification follows.
+
+```text
+Developer Certificate of Origin
+Version 1.1
+
+Copyright (C) 2004, 2006 The Linux Foundation and its contributors.
+
+Everyone is permitted to copy and distribute verbatim copies of this
+license document, but changing it is not allowed.
+
+Developer's Certificate of Origin 1.1
+
+By making a contribution to this project, I certify that:
+
+(a) The contribution was created in whole or in part by me and I
+    have the right to submit it under the open source license
+    indicated in the file; or
+
+(b) The contribution is based upon previous work that, to the best
+    of my knowledge, is covered under an appropriate open source
+    license and I have the right under that license to submit that
+    work with modifications, whether created in whole or in part
+    by me, under the same open source license (unless I am
+    permitted to submit under a different license), as indicated
+    in the file; or
+
+(c) The contribution was provided directly to me by some other
+    person who certified (a), (b) or (c) and I have not modified
+    it.
+
+(d) I understand and agree that this project and the contribution
+    are public and that a record of the contribution (including all
+    personal information I submit with it, including my sign-off) is
+    maintained indefinitely and may be redistributed consistent with
+    this project or the open source license(s) involved.
+```
 
 Do not submit material you do not have the right to contribute. Third-party text, images,
 datasets, model artifacts, copied examples, cached web pages, and generated assets need
