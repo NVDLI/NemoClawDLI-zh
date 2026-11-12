@@ -90,19 +90,19 @@ NVIDIA 的法律、安全或发布审批。
 **每次使用时的快速启动步骤：**
 
 ```bash
-# 1. Set your API key
+# 1. 设置 API 密钥
 export NVAPI_KEY="nvapi-..."
 
-# 2. Start all background services in one command
+# 2. 使用一个命令启动全部后台服务
 #    WSL2:  bash "/mnt/c/…/repo/start_proxies.sh"
 #    DGX:   bash ~/nemoclaw-zh/start_proxies.sh
 
-# 3. Recover the container, set up the forward service, fix iptables rules
-#    (see LOCAL_STARTUP_GUIDE.md steps 1c–1f for the full commands)
+# 3. 恢复容器、配置转发服务并修复 iptables 规则
+#    （完整命令见 LOCAL_STARTUP_GUIDE.md 第 1c–1f 步）
 
-# DGX only — two options to access course pages:
-#   Option A: open Firefox directly on the DGX at http://localhost:8081/...
-#   Option B: SSH tunnel from Windows (see LOCAL_STARTUP_GUIDE.md § 0.5 for port details)
+# 仅 DGX：访问课程页面有两种方式：
+#   方式 A：直接在 DGX 上使用 Firefox 打开 http://localhost:8081/...
+#   方式 B：从 Windows 建立 SSH 隧道（端口说明见 LOCAL_STARTUP_GUIDE.md 第 0.5 节）
 #    ssh -L 8081:localhost:8081 -L 8010:localhost:8010 -L 8011:localhost:8011 <user>@<dgx-ip>
 ```
 
@@ -110,19 +110,6 @@ export NVAPI_KEY="nvapi-..."
 `http://localhost:8081/zh/nemoclaw/03a-kickstart.html`，输入 API 密钥和 bearer token，
 并通过健康检查确认整条链路正常。然后前往 `http://localhost:8081/zh/nemoclaw/01a-loop.html`，
 按以下顺序完成各页面：01a、01b、01c、02a……03a、03b、03c、04a、04b、04c。
-
-### 原始的基于构建的本地运行方式
-
-上游仓库支持基于构建的本地运行（无需 Docker），适用于不需要 Brev Launchable 的页面。
-请安装 Python 3.11+、Node.js 20+、pnpm 和 Chromium，然后运行：
-
-```bash
-bash scripts/build/build_pages.sh public
-python3 -m http.server -d public 8000
-```
-
-打开 `http://localhost:8000/` 后会默认进入简体中文课程，也可以通过课程顶部的语言菜单切换到 English。
-在此模式下，模块 3 和模块 4 仍需要 launchable。
 
 ## 参与贡献
 
