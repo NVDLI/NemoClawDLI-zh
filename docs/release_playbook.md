@@ -1,12 +1,28 @@
 # Release playbook
 
 This playbook defines how this course bundle moves from internal prepublication staging to the
-reserved [`NVDLI/NemoClawDLI`](https://github.com/NVDLI/NemoClawDLI) repository, which becomes the
-canonical Full-OSS DLI course repository after approved cutover. The repository keeps authored content,
+[`NVDLI/NemoClawDLI-zh`](https://github.com/NVDLI/NemoClawDLI-zh) repository. Internal GitLab remains
+the canonical source for this Chinese release; GitHub is the publication target. The repository keeps authored content,
 deployment, validation, public planning, and governance together.
 
-Current state: internal release candidate. The public repository name is reserved but not populated,
-and external publication remains pending OSRB approval. See [`RELEASE_STATUS.json`](../RELEASE_STATUS.json).
+Current state: the Chinese course is awaiting completion of publication review. The GitHub
+repository is populated, but its current visibility has not been verified. This is recorded as
+`pending-publication-review` and `populated-visibility-unverified` in
+[`RELEASE_STATUS.json`](../RELEASE_STATUS.json). Neither label grants publication permission.
+All applicable publication prerequisites must be verified through the authorized process
+before changing repository visibility. Private review details are not published here.
+
+The Chinese release uses Apache-2.0 and CC-BY-4.0 as scoped in `LICENSE`. The
+`target_license` field is a descriptive label, not an SPDX expression or a license change.
+The private review record is maintained in the authorized system; private approval contents,
+identities, evidence digests, expiry dates, and artifact bindings must not be invented.
+`publication_decision` remains null until a genuine structured decision is available.
+
+The publication checker still accepts only `approved-for-publication` or `published`, and
+then requires a structured decision and external evidence verification. Use the former only
+once the remaining publication requirements and technical controls are satisfied. Use the
+latter only after public visibility is verified. Updating these descriptive fields must not
+bypass that guard or mark the unimplemented verifier as implemented.
 Terms such as `released course` elsewhere in the repository identify courses selected for the
 learner foyer; they do not assert public publication.
 The GitHub Pages and release workflows must run
@@ -18,8 +34,9 @@ approval cannot lift this technical hold.
 ## Public GitHub write hold
 
 Public GitHub writes are on hold while `RELEASE_STATUS.json` records
-`publication_state` as `pending-osrb-approval` or `external_mirror` as
-`reserved-not-populated`. During the hold, maintainers and automation must not push branches or
+`publication_state` as `pending-publication-review` or `external_mirror` as
+`reserved-not-populated`. The Chinese release also remains on hold in
+`pending-publication-review`, regardless of mirror population. During the hold, maintainers and automation must not push branches or
 tags, populate the reserved repository, enable Pages, create releases, or approve a GitHub
 deployment environment. The checked-in GitHub workflows are reviewable release-candidate
 configuration, but they remain inert because `contribution_safety_audit.py

@@ -1,9 +1,9 @@
 {
   "schema": "nemoclaw-release-status/1",
-  "publication_state": "pending-osrb-approval",
+  "publication_state": "pending-publication-review",
   "canonical_repository": "internal-gitlab",
-  "external_mirror": "reserved-not-populated",
-  "external_repository": "https://github.com/NVDLI/NemoClawDLI",
+  "external_mirror": "populated-visibility-unverified",
+  "external_repository": "https://github.com/NVDLI/NemoClawDLI-zh",
   "intended_oss_type": "Type-I",
   "oss_scope": "nemoclaw-dli-course-repository",
   "excluded_product_scope": [
@@ -13,7 +13,7 @@
   ],
   "maintenance_status": "release-candidate",
   "community_intake": "disabled-pending-publication-approval",
-  "target_license": "Apache-2.0",
+  "target_license": "Apache-2.0 and CC-BY-4.0",
   "notice_required": false,
   "decision_policy": {
     "default": "deny",

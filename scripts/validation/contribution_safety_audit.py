@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import datetime as dt
 import json
 import os
@@ -284,7 +285,7 @@ def audit_publication_approval(root: Path = ROOT) -> list[dict[str, str]]:
     if status.get("publication_state") not in {"approved-for-publication", "published"}:
         return [finding("publication-approval", "RELEASE_STATUS.json",
                         "external publication is not approved",
-                        "complete OSRB approval, then update release status in a reviewed change")]
+                        "complete remaining publication approvals and evidence binding, then update release status in a reviewed change")]
     return decision_record_findings(status)
 
 
@@ -311,13 +312,13 @@ def audit_repo(
                            "restore the machine-readable release status contract"))
     expected_status = {
         "schema": "nemoclaw-release-status/1",
-        "publication_state": "pending-osrb-approval",
+        "publication_state": "pending-publication-review",
         "canonical_repository": "internal-gitlab",
-        "external_mirror": "reserved-not-populated",
-        "external_repository": "https://github.com/NVDLI/NemoClawDLI",
+        "external_mirror": "populated-visibility-unverified",
+        "external_repository": "https://github.com/NVDLI/NemoClawDLI-zh",
         "maintenance_status": "release-candidate",
         "community_intake": "disabled-pending-publication-approval",
-        "target_license": "Apache-2.0",
+        "target_license": "Apache-2.0 and CC-BY-4.0",
     }
     for key, expected in expected_status.items():
         if status.get(key) != expected:
@@ -330,7 +331,7 @@ def audit_repo(
             "deny-by-default release decision policy changed or is incomplete",
             "restore evidence binding, independent approval, and expiry requirements",
         ))
-    if status.get("publication_state") == "pending-osrb-approval" and status.get("publication_decision") is not None:
+    if status.get("publication_state") in {"pending-osrb-approval", "pending-publication-review"} and status.get("publication_decision") is not None:
         out.append(finding(
             "decision-record", "RELEASE_STATUS.json",
             "pending publication carries a premature decision record",
@@ -346,21 +347,24 @@ def audit_repo(
                            "NOTICE presence disagrees with RELEASE_STATUS.json",
                            "add NOTICE only for required attributions and update notice_required together"))
 
-    for rel in ("README.md", "CONTRIBUTING.md",
-                "docs/release_playbook.md", "scripts/compliance/docs/open_source_readiness.md"):
-        require(re.sub(r"\s+", " ", docs[rel]), "pending OSRB approval", rel,
-                "release-status-language", out,
-                "state that external publication remains pending OSRB approval")
+    # Public Chinese documents must not be forced to disclose internal review bodies.
+    for rel in ("README.md", "CONTRIBUTING.md", "docs/release_playbook.md"):
+        if re.search(r"\bOSRB\b", docs[rel], re.IGNORECASE):
+            out.append(finding("public-review-privacy", rel,
+                               "public document names an internal review body",
+                               "describe publication requirements without private process details"))
     license_header = re.sub(r"\s+", " ", docs["LICENSE"]).strip()
-    expected_license_header = (
-        NVIDIA_APACHE_COPYRIGHT + " Apache License Version 2.0, January 2004"
-    )
-    if not license_header.startswith(expected_license_header):
-        out.append(finding(
-            "root-license", "LICENSE",
-            "root LICENSE lacks the NVIDIA copyright followed by the canonical Apache License 2.0 header",
-            "restore the reviewed NVIDIA copyright and Apache License 2.0 text at the root LICENSE path",
-        ))
+    license_tokens = (NVIDIA_APACHE_COPYRIGHT,
+                      "NVIDIA-authored source code is licensed under the Apache License, Version 2.0.",
+                      "Apache License Version 2.0, January 2004",
+                      "Creative Commons Attribution 4.0 International Public License",
+                      "Apache-2.0", "CC-BY-4.0")
+    if (not all(token in license_header for token in license_tokens)
+            or hashlib.sha256(license_header.encode("utf-8")).hexdigest()
+            != "bb67f0ce8e6363a29ebeb57b0ce15e24f548d5df654cc021bb9663b2e0f88bd2"):
+        out.append(finding("root-license", "LICENSE",
+                           "dual-license copyright, scope labels, or license headers are missing",
+                           "retain the reviewed dual-license text; license changes require separate review and fingerprint update"))
     require(docs["CODE_OF_CONDUCT.md"], "private content-reporting flow", "CODE_OF_CONDUCT.md",
             "conduct-report-route", out, "retain a public-safe, non-Issue conduct reporting route")
     require(docs["CODE_OF_CONDUCT.md"], "must not decide its outcome", "CODE_OF_CONDUCT.md",
@@ -372,9 +376,9 @@ def audit_repo(
             "route general employee product-security questions to #ask-security without replacing private vulnerability intake")
     require(docs["SUPPORT.md"], "Breaking changes and retirement decisions", "SUPPORT.md",
             "lifecycle-boundary", out, "document change, retirement, and archival expectations")
-    require(docs["README.md"], "may approve its own protected merge or release", "README.md",
+    require(docs["README.md"], "任何贡献者、维护者或智能体都不能审批自己提交的受保护合并或版本发布。", "README.md",
             "independent-review", out, "keep independent review explicit in role authority")
-    require(docs["README.md"], "approval does not replace a missing control", "README.md",
+    require(docs["README.md"], "人工审批不能替代缺失的控制措施，也不能消除尚未验证的发布风险。", "README.md",
             "approval-not-control", out, "keep unresolved release risk blocked until defended or deliberately accepted")
     require(docs["DCO.md"], "Developer Certificate of Origin 1.1", "DCO.md", "dco-policy", out,
             "document the inbound signoff policy and authoritative DCO version")
@@ -383,19 +387,19 @@ def audit_repo(
     require(docs["DCO.md"], "host-generated squash or merge commit", "DCO.md",
             "dco-stacked-merge", out,
             "prevent stacked proposal merges from replacing signed commits with unsigned generated commits")
-    require(docs["CONTRIBUTING.md"], "stacked merge request", "CONTRIBUTING.md",
+    require(docs["CONTRIBUTING.md"], "堆叠合并请求", "CONTRIBUTING.md",
             "contributor-stacked-merge", out,
             "put the signed-commit preservation rule in contributor first-touch guidance")
-    require(docs["CONTRIBUTING.md"], "Human review identifies accountability but is not a compensating",
+    require(docs["CONTRIBUTING.md"], "人工评审用于明确责任，不能替代有效的控制措施。",
             "CONTRIBUTING.md", "approval-not-control", out,
             "state that review ownership does not replace an enforceable defense")
-    require(docs["CONTRIBUTING.md"], "does not require a separate contributor license agreement",
+    require(docs["CONTRIBUTING.md"], "无需另行签署贡献者许可协议（CLA）。",
             "CONTRIBUTING.md", "cla-applicability", out,
             "state why Apache-2.0 plus DCO does not require a separate CLA")
 
-    require(docs["CONTRIBUTING.md"], "Required CI and protected refs remain authoritative", "CONTRIBUTING.md",
+    require(docs["CONTRIBUTING.md"], "必需的 CI 和受保护引用规则始终具有约束力。", "CONTRIBUTING.md",
             "hook-authority", out, "explain that required CI and protected refs remain authoritative")
-    require(docs["CONTRIBUTING.md"], "Contributor credit and localization ownership",
+    require(docs["CONTRIBUTING.md"], "贡献者署名与本地化责任",
             "CONTRIBUTING.md", "contributor-credit-policy", out,
             "document public Changelog credit and locale prose ownership")
     require(docs["CONTRIBUTING.md"], "Localization-Review:", "CONTRIBUTING.md",
@@ -1465,9 +1469,9 @@ def self_test() -> list[str]:
             ("product-security-question-route", "SUPPORT.md", "[#ask-security](https://nvidia.slack.com/archives/CAHCG5005)", "#security-help"),
             ("dco-policy", "DCO.md", "Developer Certificate of Origin 1.1", "unversioned signoff"),
             ("dco-stacked-merge", "DCO.md", "host-generated squash or merge commit", "generated integration commit"),
-            ("contributor-stacked-merge", "CONTRIBUTING.md", "stacked merge request", "nested proposal"),
-            ("hook-authority", "CONTRIBUTING.md", "Required CI and protected refs remain authoritative", "Local hooks are authoritative"),
-            ("contributor-credit-policy", "CONTRIBUTING.md", "Contributor credit and localization ownership", "Anonymous integration"),
+            ("contributor-stacked-merge", "CONTRIBUTING.md", "堆叠合并请求", "nested proposal"),
+            ("hook-authority", "CONTRIBUTING.md", "必需的 CI 和受保护引用规则始终具有约束力。", "Local hooks are authoritative"),
+            ("contributor-credit-policy", "CONTRIBUTING.md", "贡献者署名与本地化责任", "Anonymous integration"),
             ("localization-review-policy", "CONTRIBUTING.md", "Localization-Review:", "Translation-Note:"),
             ("agent-localization-ownership", "docs/agent_process.md", "Preserve contributor and locale ownership", "Rewrite translations automatically"),
             ("course-prose-contract", "docs/course-prose-style.md", "Course prose writing contract", "English review snapshot"),
@@ -1619,14 +1623,14 @@ def self_test() -> list[str]:
             ("material-fail-closed-policy", "scripts/materials/pull_materials.py", "def check_passes", "def check_removed"),
             ("material-explicit-degradation", "scripts/materials/pull_materials.py", '"--allow-transient-unreachable"', '"--allow-all-unreachable"'),
             ("material-provenance-sha", "web/nemoclaw/mats/_materials.json", "7a583caa8f1db1e66220cfa8963b7b37dcaf5655df0e1314f8794ea1ba5c8c94", "7a583caa8f1db1e6"),
-            ("approval-not-control", "README.md", "approval does not replace a missing control", "approval completes the control"),
+            ("approval-not-control", "README.md", "人工审批不能替代缺失的控制措施，也不能消除尚未验证的发布风险。", "approval completes the control"),
             ("root-license", "LICENSE", NVIDIA_APACHE_COPYRIGHT, "Copyright removed"),
             ("root-license", "LICENSE", "Apache License", "Example License"),
-            ("cla-applicability", "CONTRIBUTING.md", "does not require a separate contributor license agreement", "may require another agreement"),
-            ("approval-not-control", "CONTRIBUTING.md", "Human review identifies accountability but is not a compensating", "Human review is a compensating"),
+            ("cla-applicability", "CONTRIBUTING.md", "无需另行签署贡献者许可协议（CLA）。", "may require another agreement"),
+            ("approval-not-control", "CONTRIBUTING.md", "人工评审用于明确责任，不能替代有效的控制措施。", "Human review is a compensating"),
             ("agent-dco", "AGENTS.md", "Every proposed commit", "Every release"),
-            ("release-status", "RELEASE_STATUS.json", '"pending-osrb-approval"', '"published"'),
-            ("release-status", "RELEASE_STATUS.json", '"reserved-not-populated"', '"not-published"'),
+            ("release-status", "RELEASE_STATUS.json", '"pending-publication-review"', '"published"'),
+            ("release-status", "RELEASE_STATUS.json", '"populated-visibility-unverified"', '"not-published"'),
             ("release-status", "RELEASE_STATUS.json", '"maintenance_status": "release-candidate"', '"maintenance_status": "archived"'),
             ("decision-policy", "RELEASE_STATUS.json", '"human_review_effect": "no-state-change-without-evidence-bound-decision"', '"human_review_effect": "approval-is-sufficient"'),
             ("decision-record", "RELEASE_STATUS.json", '"publication_decision": null', '"publication_decision": {}'),

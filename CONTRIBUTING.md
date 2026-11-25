@@ -1,233 +1,142 @@
-# Contributing
+# 贡献指南
 
-This repository is the internal release-candidate workspace for proposed open-source NVIDIA
-DLI course material. External publication remains pending OSRB approval; see
-[`RELEASE_STATUS.json`](RELEASE_STATUS.json).
-The selected publication target is a Full-OSS-Project intended as OSS Type I. After cutover, public
-GitHub owns the canonical course workflow from planning through release. Internal GitLab consumes
-reviewed public changes for additional validation and internal deployment. This scope excludes the
-NemoClaw product, its launchable, and the product runtime.
+本指南适用于 NeMoClaw 中文 DLI 课程仓库中的内容、构建工具和验证工具，不适用于 NemoClaw 产品本身、其 launchable 或产品运行时。公开发布状态由 [`RELEASE_STATUS.json`](RELEASE_STATUS.json) 记录；提交贡献不代表获得发布或部署权限。
 
-The release tree packages authored browser content with build and validation tools. Browser work
-belongs in `web/`; repository tooling belongs in `scripts/`. The repository does not own a service
-stack, lab image, or container topology.
+## 两种贡献方式
 
-## Two Contribution Paths
+### 提交问题或建议
 
-The easy path contributes knowledge. The guarded path changes the release.
+如果你有相关经验，但尚未准备好可供合并的补丁，请提交结构化 Issue，说明受影响的内容、实际行为、预期结果和支持证据。问题描述规范见 [`docs/issue_standards.md`](docs/issue_standards.md)。
 
-Use the issue path when you have relevant expertise but no release-ready patch. That expertise may
-concern the course or its platform. Security observations and learner experience also belong here.
-File a focused Issue that identifies the affected surface. Describe the observed behavior and the
-expected result, then attach supporting evidence. The issue anatomy and cadence live in
-[`docs/issue_standards.md`](docs/issue_standards.md). This path works best for cross-cutting course
-claims and pedagogy. Use it for source concerns or deployment assumptions as well.
-Use structured Issues for actionable defects. After external intake is approved and enabled,
-use Discussions for questions or early ideas. Learning friction without a concrete defect belongs
-there as well. Neither route requires code. Report vulnerabilities privately through
-[`SECURITY.md`](SECURITY.md).
+当 Discussions 获准启用后，可在那里提出开放性问题或早期想法。安全漏洞不得通过公开 Issue 或 Discussion 报告，请遵循 [`SECURITY.md`](SECURITY.md) 的私密报告流程。
 
-Use the direct patch path when you can carry the change through the structured release
-process. The full release and external-mirror model lives in [`docs/release_playbook.md`](docs/release_playbook.md).
-A direct MR should update its source and declared blast-radius files. If recurrence is plausible,
-include a validator. An issue-scoped change that satisfies every acceptance
-criterion uses `Closes #N` so the host closes the issue on merge. A partial change uses
-`Addresses #N` and includes a `Remaining issue work` section naming the unmet criteria. Compare
-the final diff and evidence with the issue checklist before handoff; do not leave a fully satisfied
-issue on a non-closing relationship.
+### 直接提交补丁
 
-A patch is not trusted because a person or agent produced it, or because it passes one local
-command. It becomes eligible to merge only after required CI runs on the submitted commit. The
-proposal must record concrete evidence and remaining risk. Review ownership must be clear, and
-protected-ref policy must accept the result. Release and deployment writes require a separate
-protected action.
+如果你能完成变更、验证和评审流程，可以提交合并请求（MR/PR）。发布边界见 [`docs/release_playbook.md`](docs/release_playbook.md)。补丁应同时更新源文件和声明的影响范围内的文件；对于可能再次出现的问题，应补充验证器或回归测试。
 
-Keep the compact submission contract at the top of an MR. GitLab exposes only the leading
-description window to CI. Preserve the template order from Summary through Out of scope, and keep
-every required heading inside the first 2,700 characters. Put longer rationale below that block.
+满足关联 Issue 的全部验收条件时，使用 `Closes #N`。只完成部分工作时，使用 `Addresses #N`，并在 `Remaining issue work` 部分列出剩余条件。交接前应逐项核对最终差异、证据和 Issue 验收清单。
 
-## Orientation
+无论补丁由人工还是智能体生成，都不能仅凭来源或某条本地命令通过就视为可信。必须在提交的确切 commit 上运行所需 CI，记录证据和剩余风险，明确评审责任，并满足受保护分支规则。发布和部署写入需要单独授权。
 
-Read [`AGENTS.md`](AGENTS.md) first. Every source directory carries a
-`SKILL.html` whose `skill-meta` JSON block is the machine-readable brain for that
-directory. [`SKILL_CONTRACT.md`](SKILL_CONTRACT.md) specifies that format. The root
-`SKILL.html` tenets and validation suites set the content bar.
+MR 顶部应保留紧凑的提交约定。GitLab 的 CI 只能读取描述开头的一定范围，请保留模板中 Summary 到 Out of scope 的顺序，并将必需标题置于前 2,700 个字符内；详细说明放在其后。
 
-Adding a directory also adds its beacon. Run `python3 scripts/skills/gen_directory_beacons.py`,
-then review the generated summary and links. CI derives the complete directory set from tracked
-and proposed files and provides no exemption mechanism.
+## 开始之前
 
-For localization, start at [`scripts/translate/SKILL.html`](scripts/translate/SKILL.html). Then open
-either current locale profile:
-[`pt-BR`](scripts/translate/locales/pt-BR/SKILL.html) or
-[`es-ES`](scripts/translate/locales/es-ES/SKILL.html).
-Translate learner-facing prose in the sparse `i18n/<code>/` overlay. Do not copy standalone
-runtime modules or machine-contract pages into it. Assets and data remain shared too. Inline executable structure
-must remain equivalent to English; localized UI strings may differ. Locale profiles also reject literal wording
-that is grammatical but unnatural for the target student and developer audience.
-For canonical learner-facing explanations, follow
-[`docs/course-prose-style.md`](docs/course-prose-style.md). That contract also governs instructions
-and supporting text. Record page-specific decisions in the Issue or MR instead of maintaining a
-repository scorecard.
+先阅读 [`AGENTS.md`](AGENTS.md)。各源目录的 `SKILL.html` 包含机器可读的 `skill-meta` 元数据，格式见 [`SKILL_CONTRACT.md`](SKILL_CONTRACT.md)。根目录 `SKILL.html` 和验证套件定义内容要求。
 
-## Structured Release Process
+新增目录时也要新增对应的引导文件。运行 `python3 scripts/skills/gen_directory_beacons.py`，并检查生成的摘要和链接。CI 根据受跟踪及拟新增文件推导完整目录集合，不提供豁免机制。
 
-1. Start from a clean branch for one coherent release concern.
-2. Read the relevant Issue or MR before editing.
-3. Sign every commit under the Developer Certificate of Origin in [`DCO.md`](DCO.md).
-4. Update the source surface and every declared blast-radius file.
-5. Keep course title, abstract, and objectives verbatim from [`web/nemoclaw/COURSE_CANON.md`](web/nemoclaw/COURSE_CANON.md).
-6. Add or update a validator when the same class of problem should not recur.
-7. Run the validation ladder below.
-8. Open an MR that names the issue relationship and lists validation results.
+本仓库面向中文课程。英文内容是含义和可执行结构的参考，但不应将英文措辞检查直接套用于中文文档。不要仅因英文表述变化而自动改写中文。中文术语、表达和教学说明由中文评审者确认。共享运行时、资源和数据不应为了翻译而复制；可执行结构必须保持等价，面向学习者的文字可以本地化。有关工具说明见 [`scripts/translate/SKILL.html`](scripts/translate/SKILL.html)，课程说明写作规范见 [`docs/course-prose-style.md`](docs/course-prose-style.md)。页面级决策记录在 Issue 或 MR 中。
 
-Use `git commit --signoff` to add a `Signed-off-by` trailer matching the commit author. CI checks
-every commit in the proposed range. If the check fails, follow the repair guidance in `DCO.md`;
-do not squash away another contributor's authorship or treat a signoff as permission to submit
-third-party material.
+## 结构化提交流程
 
-For a stacked merge request whose target is another unmerged proposal branch, preserve the original
-signed commits. Do not use the host's squash or merge button: its generated commits do not inherit
-DCO trailers and will fail the parent proposal's complete-range check. Follow the maintainer-owned
-fast-forward or deliberate rebase/cherry-pick procedure in [`DCO.md`](DCO.md).
+1. 从干净分支开始，一次只处理一个明确的变更主题。
+2. 编辑前先阅读相关 Issue 或 MR。
+3. 按 [`DCO.md`](DCO.md) 要求为每个 commit 添加来源签署。
+4. 更新源文件及声明影响范围内的文件。
+5. 遵守 [`web/nemoclaw/COURSE_CANON.md`](web/nemoclaw/COURSE_CANON.md) 中课程标题、摘要和目标的约定；翻译应保持原意。
+6. 对可能复发的问题新增或更新验证器及测试。
+7. 运行下述验证流程。
+8. 提交 MR/PR，写明 Issue 关系和验证结果。
 
-### Contributor credit and localization ownership
+使用 `git commit --signoff` 添加与作者一致的 `Signed-off-by` 尾注。CI 会检查拟提交范围内的全部 commit。失败时按 `DCO.md` 修复，不得抹去其他贡献者的作者信息，也不得将签署视为提交第三方材料的许可。
 
-Preserve signed authorship when integrating another contributor's work. Add a public thank-you in
-the Unreleased section of [`CHANGELOG.md`](CHANGELOG.md) when a learner-facing translation or other
-substantial contribution lands, while keeping private contact details out of the repository.
+对于目标分支本身尚未合并的堆叠合并请求，应保留原始签署 commit。不要使用平台的 squash 或 merge 按钮，因为自动生成的 commit 不会继承 DCO 尾注，可能导致父请求的完整范围检查失败。按 [`DCO.md`](DCO.md) 采用由维护者负责的快进或明确的 rebase/cherry-pick 流程。
 
-Canonical English defines meaning and executable structure, while translators own the target
-language's wording. If an English edit leaves that meaning unchanged, a language reviewer may accept the new
-source hash without rewriting localized HTML. Changes to localized prose require review by someone
-qualified in that locale. Record that review in the MR with a public name:
+### 贡献者署名与本地化责任
+
+集成他人的工作时保留签署和作者信息。学习者可见的翻译或其他重要贡献合入时，在 [`CHANGELOG.md`](CHANGELOG.md) 的 Unreleased 部分公开致谢，但不要加入私人联系方式。
+
+英文参考定义原意和可执行结构，中文表达由中文贡献者及评审者负责。只影响英文措辞而不改变含义的修改，不应强制改写中文 HTML。中文内容修改需要具备相应语言能力的人评审，并在 MR 中使用公开署名记录：
 
 ```text
-Localization-Review: es-ES=Public Reviewer Name
+Localization-Review: zh-CN=Public Reviewer Name
 ```
 
-## Install the Hooks
+## 安装本地钩子
 
 ```bash
 bash scripts/build/install-hooks.sh
 ```
 
-This resolves Git's real hook directory, including linked worktrees, then installs two hooks:
+脚本会解析真实 Git hooks 目录（包括关联 worktree），并安装：
 
-- `pre-commit`: protected-branch refusal, contributor-local and sensitive-content boundaries,
-  contribution audit, corruption guard, canvas-HTML validation, and page-runtime smoke checks.
-- `pre-push`: behind-branch refusal, complete-history signoff and content checks, external release
-  reminders, then one change-aware canonical ship gate. It may reuse only an identical clean local
-  success; required CI always reruns on the submitted commit.
+- `pre-commit`：检查受保护分支写入、贡献者本地文件与敏感内容边界、贡献约定、文件损坏、canvas HTML 及页面运行时基本功能。
+- `pre-push`：检查分支落后、完整历史签署和内容、发布提醒，并运行感知变更范围的统一 ship 检查。只有完全相同且干净的本地成功结果才可复用；所需 CI 始终在提交的 commit 上重新执行。
 
-Local hooks provide early feedback. Required CI and protected refs remain authoritative because Git
-allows hooks to be bypassed. Human review identifies accountability but is not a compensating
-control. An unresolved release concern stays blocked until its defense is verified or the protected
-release guard retrieves the authorized decision and compares it with the exact artifact. That
-automated comparison is not implemented, so a decision record cannot unlock publication today.
+本地钩子仅提供提前反馈；必需的 CI 和受保护引用规则始终具有约束力。人工评审用于明确责任，不能替代有效的控制措施。未解决的发布风险必须保持阻断，直至防护措施得到验证，或受保护的发布检查能获取授权决定并与确切构建产物进行比对。目前该自动比对尚未实现，因此单有决定记录不能解除发布阻断。
 
-## Validate Before Pushing
+## 推送前验证
 
 ```bash
-python3 scripts/validation/release_gate.py --tier fast --no-write --changed-since origin/main --jobs 4
+python3 scripts/validation/release_gate.py --tier fast --no-write --changed-since nvdli/main --jobs 4
 ```
 
-Run `python3 scripts/validation/release_gate.py --tier ship --no-write --changed-since origin/main --jobs 4` once before
-pushing a proposal. The gate always audits the complete current tree and skips only unaffected
-detector mutation suites. New, deleted, renamed, copied, and otherwise unclaimed paths automatically
-select the full mutation matrix, regardless of directory or extension. Omit `--changed-since` for a release candidate. Use constituent commands
-only for focused iteration or diagnosis; the shared gate already composes them. See
-[`docs/release-test-plan.md`](docs/release-test-plan.md) for claim and evidence mapping.
+推送提案前再运行一次：
 
-Python validator fixtures use standard-library `unittest` discovery, while JavaScript fixtures use
-Node's built-in `node:test`. Add framework-visible tests under `tests/validation`; the shared gate
-discovers them without a registry edit whenever tests change and on every release candidate. Do not maintain numeric totals in CLI output; the harness rejects fixed
-denominators in shared fast and ship gates.
+```bash
+python3 scripts/validation/release_gate.py --tier ship --no-write --changed-since nvdli/main --jobs 4
+```
 
-For browser or Studio changes, also run the browser harness described in
-[`docs/lab_runtime_testing.md`](docs/lab_runtime_testing.md).
+上述 `nvdli/main` 是本地发布目标的远程跟踪引用；若远程别名不同，请替换为实际目标基线。发布候选版本应省略 `--changed-since`，执行完整检查。
 
-## Conventions
+统一检查始终审计完整当前文件树，仅跳过不受变更影响的检测器变异测试。新增、删除、改名、复制或未归类的路径会选择完整测试矩阵，不受目录或扩展名限制。各组成命令仅用于定向调试，证据映射见 [`docs/release-test-plan.md`](docs/release-test-plan.md)。
 
-The full operating creed is projected into the root `SKILL.html` skill-meta. Run
-`python3 scripts/validation/tenets.py` to inspect the gate that enforces it. Highlights:
+Python 验证器测试使用标准库 `unittest`，JavaScript 测试使用 Node 内置 `node:test`。将测试放在 `tests/validation` 中；统一检查在测试变更时和每个发布候选版本上自动发现它们，不必修改注册表。不要在共享 fast/ship 输出中硬编码固定测试总数。
 
-- Edit content in place. Scratch work goes to `/tmp` and is never committed.
-- Authored prose avoids em-dashes. Rewrite the sentence rather than swap punctuation.
-- `web/` stays browser-only and cannot assume student-provisioned microservices.
-- Host Python, Node.js, and Chromium run repository checks; external isolation is operator-owned.
-- Do not commit lab-generated runtime output, caches, or the `public/` Pages build.
+涉及浏览器或 Studio 时，还需运行 [`docs/lab_runtime_testing.md`](docs/lab_runtime_testing.md) 中的浏览器测试。
 
-### Student-visible code
+## 编写约定
 
-Runnable cells are teaching surfaces. Keep application plumbing behind named helpers.
+完整约定见根目录 `SKILL.html` 的 `skill-meta`，可运行 `python3 scripts/validation/tenets.py` 检查。
 
-- Keep an editable RunCell at or below 120 nonblank lines. Move transport and rendering machinery
-  behind a named helper. Session and compatibility code belongs there too. The cell should expose
-  the helper's contract and return its result.
-- Use descriptive names. Single letters are reserved for familiar local coordinates or tiny loop
-  indexes; a cell must not make the learner decode a collection of unrelated one-letter variables.
-- Put one logical statement on a line. A compact expression may be readable, but repeated
-  multi-statement lines are not an acceptable substitute for structure.
-- Return the structured outcome. Use `helpers.log` to show progress and evidence. Keep the value
-  computed by the exercise as its return result; the runtime must display both when both exist.
-- Use the RunCell or CanvasFlow Stop signal for every long operation. Prefer `helpers.delay(ms)`
-  to raw timer promises, and combine a cell signal with any timeout-specific AbortController.
-- When an intermediate value or alternate input helps the lesson, include one clearly labeled,
-  commented-out `helpers.log.json(...)`, `helpers.log.details(...)`, or alternate assignment at
-  the relevant line so a learner can reveal it without inventing instrumentation from scratch.
-- Name cross-cell `state` inputs and outputs near the top of the cell. Guard missing prerequisites,
-  then return a compact summary of the state written for the next step.
+- 原位修改源内容；临时材料放在工作区临时目录，且不得提交。
+- 撰写说明时避免使用英文长破折号，优先重写句子。
+- `web/` 保持浏览器端边界；本地部署的服务要求应在启动指南中明确，不应隐含在浏览器代码中。
+- 主机上的 Python、Node.js 和 Chromium 用于仓库验证；外部隔离环境由操作者负责。
+- 不得提交实验生成的运行时输出、缓存或 `public/` Pages 构建目录。
 
-`python3 -m unittest discover -v -s tests/validation` mutation-tests these rules; the normal
-`cell_audit.py` run enforces their deterministic subset across every numbered lesson.
+### 学习者可见代码
 
-## Contribution Terms
+可运行单元是教学内容，应将传输和渲染等实现细节封装在有明确名称的辅助函数中。
 
-This repository is dual-licensed. NVIDIA-authored source code is licensed under
-Apache-2.0. NVIDIA-authored documentation, skills, and assets are licensed under
-CC-BY-4.0. A file that mixes documentation and code is licensed under both sets of terms.
-Third-party materials retain their existing licenses and are not relicensed; see
-[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) and
-[`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md). The complete, unmodified text of
-both licenses is in [`LICENSE`](LICENSE).
+- 可编辑 RunCell 不超过 120 个非空行；会话、兼容和底层实现放入辅助函数，单元只展示接口和结果。
+- 使用描述性名称；单字母仅用于常见坐标或简短循环下标。
+- 每行表达一个逻辑语句，不用密集的多语句行代替清晰结构。
+- 返回结构化结果，使用 `helpers.log` 展示过程和证据；需要时同时保留返回值与日志。
+- 长操作使用 RunCell 或 CanvasFlow 的 Stop 信号；优先使用 `helpers.delay(ms)`，并将单元信号与超时 AbortController 结合。
+- 在有助于理解的位置保留清晰标注且默认注释的 `helpers.log.json(...)`、`helpers.log.details(...)` 或替代赋值，便于学习者自行启用。
+- 在单元开头明确跨单元 `state` 的输入和输出，检查前置条件，并返回本步状态写入的简要摘要。
 
-Unless you clearly mark a submission as `Not a Contribution`, any contribution
-intentionally submitted for inclusion is offered under those same terms: Apache-2.0 for
-source code, CC-BY-4.0 for documentation, skills, and assets, and both for a mixed file.
-A separate contributor license agreement is not required.
+`python3 -m unittest discover -v -s tests/validation` 对规则进行变异测试；常规 `cell_audit.py` 检查会对所有编号课程页面执行其中可确定性验证的部分。
 
-### Signing Off Your Work
+## 贡献条款
 
-Every commit must carry a Developer Certificate of Origin signoff. By signing off, you
-certify that you wrote the contribution yourself, or that you otherwise hold sufficient
-rights to submit it under this project's licenses. **Commits without signoffs will not be
-accepted.**
+本仓库采用双许可证。NVIDIA 编写的源代码适用 Apache-2.0；NVIDIA 编写的文档、skills 和资源适用 CC-BY-4.0。混合文档与代码的文件同时适用两组条款。第三方材料保留原许可证，不作重新许可。详见 [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md)、[`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md) 和包含两份完整许可证正文的 [`LICENSE`](LICENSE)。
 
-Sign off with the `-s` flag:
+除非明确将提交标记为 `Not a Contribution`，有意提交以纳入本项目的贡献均按相同条款提供：源代码适用 Apache-2.0，文档、skills 和资源适用 CC-BY-4.0，混合文件同时适用两组条款。
+
+无需另行签署贡献者许可协议（CLA）。
+
+### 为贡献签署来源证明
+
+每个 commit 必须包含 Developer Certificate of Origin（DCO）来源签署。签署表示你自行创作了该贡献，或具有按本项目许可证提交它的充分权利。**不接受缺少签署的 commit。**
 
 ```bash
 git commit -s -m "Describe your change"
 ```
 
-That adds a trailer to the commit message naming you as the certifying contributor:
+commit 消息将包含：
 
 ```text
 Signed-off-by: Your Name <your@email.com>
 ```
 
-Use your real name and an email address you control. The signoff records origin and
-submission rights. It does not transfer copyright, and it does not replace source
-provenance, license review, tests, or the human approval required by this document.
+请使用真实姓名和你控制的邮箱。签署记录来源及提交权利，不转移版权，也不能替代来源证明、许可证审核、测试或所需人工评审。
 
-If a signoff check fails, amend an unpublished commit with `git commit --amend --signoff`.
-For several commits, rebase and amend each commit deliberately. Do not rewrite commits
-another contributor has already based work on; add corrected commits or coordinate the
-repair instead. Never fabricate a trailer for a bot or another contributor. Additional
-signoff guidance, including the rules for stacked proposal branches, is in
-[`DCO.md`](DCO.md).
+对于尚未发布的 commit，可用 `git commit --amend --signoff` 修复。多个 commit 应有意逐个 rebase 并修复。不要擅自重写他人已基于其开展工作的历史，应追加修复或先协调。不得为机器人或其他贡献者伪造签署。详见 [`DCO.md`](DCO.md)。
 
-The full, unmodified text of the certification follows.
+以下保留未经修改的 DCO 原文，避免翻译改变认证内容：
 
 ```text
 Developer Certificate of Origin
@@ -265,10 +174,7 @@ By making a contribution to this project, I certify that:
     this project or the open source license(s) involved.
 ```
 
-Do not submit material you do not have the right to contribute. Third-party text, images,
-datasets, model artifacts, copied examples, cached web pages, and generated assets need
-source and license disposition before they are committed. The governing process is
-[`scripts/compliance/docs/vendor_policy.md`](scripts/compliance/docs/vendor_policy.md), and the required gate is:
+不得提交无权贡献的材料。第三方文字、图片、数据集、模型产物、复制示例、缓存网页和生成资源在提交前都需确认来源及许可证处理方式。规则见 [`scripts/compliance/docs/vendor_policy.md`](scripts/compliance/docs/vendor_policy.md)，必需检查为：
 
 ```bash
 python3 scripts/compliance/source_gate.py

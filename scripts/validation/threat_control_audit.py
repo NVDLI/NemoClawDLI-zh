@@ -322,8 +322,8 @@ REQUIRED_TOKENS = {
         "len(document.splitlines()) < 300",
     ),
     "RELEASE_STATUS.json": (
-        '"publication_state": "pending-osrb-approval"',
-        '"external_mirror": "reserved-not-populated"',
+        '"publication_state": "pending-publication-review"',
+        '"external_mirror": "populated-visibility-unverified"',
         '"canonical_repository": "internal-gitlab"',
         '"intended_oss_type": "Type-I"',
         '"oss_scope": "nemoclaw-dli-course-repository"',
